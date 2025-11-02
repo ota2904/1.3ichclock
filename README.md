@@ -5,9 +5,33 @@
 [![MCP](https://img.shields.io/badge/MCP-2024--11--05-purple.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Bảng điều khiển Web hiện đại để kiểm soát máy tính Windows qua Xiaozhi MCP (Model Context Protocol).
+Bảng điều khiển Web hiện đại để kiểm soát máy tính Windows qua Xiaozhi MCP (Model Context Protocol) với **30 công cụ mạnh mẽ**.
 
 ![Dashboard](https://via.placeholder.com/800x400/7c3aed/ffffff?text=Xiaozhi+Control+Panel)
+
+---
+
+## ⚡ Cài Đặt Siêu Nhanh (3 Bước)
+
+### 1️⃣ Cài Đặt Tự Động
+```bash
+INSTALL.bat
+```
+Script sẽ tự động cài Python packages và khởi động server!
+
+### 2️⃣ Lấy JWT Token
+- Truy cập: https://dash.upx8.com
+- Tạo MCP Endpoint → Copy JWT token
+
+### 3️⃣ Kết Nối
+- Mở: http://localhost:8000
+- Tab **Cấu Hình** → Dán token → **Lưu**
+
+✅ **Xong!** Giờ bạn có thể điều khiển PC qua Xiaozhi AI!
+
+📖 **Chi tiết:** Xem [QUICKSTART.md](QUICKSTART.md)
+
+---
 
 ## ✨ Tính Năng
 
@@ -64,148 +88,146 @@ Bảng điều khiển Web hiện đại để kiểm soát máy tính Windows q
 - 🌈 8 màu action cards (blue, green, orange, red, purple, cyan, pink, indigo)
 - 📱 Responsive design
 
-## 🚀 Cài Đặt Nhanh
+---
 
-### 1. Clone Repository
-```bash
-git clone https://github.com/YOUR_USERNAME/xiaozhi-mcp-panel.git
-cd xiaozhi-mcp-panel
+## 📦 Cấu Trúc Dự Án
+
+```
+xiaozhi-mcp-panel/
+├── 📄 xiaozhi_final.py      # File chính (1200+ lines)
+├── 🚀 INSTALL.bat            # Cài đặt tự động
+├── 🚀 START.bat              # Khởi động nhanh
+├── 📖 QUICKSTART.md          # Hướng dẫn chi tiết
+├── 📖 README.md              # File này
+├── 📋 requirements.txt       # Dependencies
+├── 📝 CHANGELOG.md           # Lịch sử phiên bản
+└── 📜 LICENSE                # MIT License
 ```
 
-### 2. Cài Dependencies
+---
+
+## 🔄 Sử Dụng Hàng Ngày
+
+### Khởi Động
 ```bash
-pip install -r requirements.txt
+START.bat
 ```
 
-### 3. Chạy Server
-```bash
-# Windows
-RUN.bat
-
-# Hoặc dùng Python trực tiếp
-python xiaozhi_final.py
-```
-
-### 4. Mở Dashboard
+### Truy Cập Dashboard
 ```
 http://localhost:8000
 ```
 
-## 🔌 Kết Nối Xiaozhi MCP
-
-### Bước 1: Lấy JWT Token
-1. Truy cập [Xiaozhi Dashboard](https://dash.upx8.com)
-2. Đăng nhập tài khoản
-3. Tạo MCP Endpoint mới
-4. Copy JWT token
-
-### Bước 2: Cấu Hình
-1. Mở `http://localhost:8000`
-2. Click tab **Cấu hình**
-3. Dán JWT token vào **Thiết bị 1**
-4. Click **Lưu**
-
-### Bước 3: Kiểm Tra
-Trong terminal sẽ thấy:
-```
-✅ [Xiaozhi] Connected! (Thiết bị 1)
-📨 [initialize]
-📨 [notifications/initialized]
-📨 [tools/list]
-```
-
-## 📊 Kiến Trúc
-
-```
-xiaozhi_final.py (1200+ lines)
-├── 🔧 Tool Implementations (30 async functions)
-├── 📋 TOOLS Registry (MCP tool definitions)
-├── 🌐 Xiaozhi WebSocket Client
-│   ├── Auto-retry connection
-│   ├── JWT authentication
-│   └── MCP protocol handler
-├── 🚀 FastAPI Application
-│   ├── HTTP endpoints (/api/*)
-│   ├── WebSocket endpoint (/ws)
-│   └── Static HTML dashboard
-└── 💻 Embedded HTML/CSS/JS (Single-file deployment)
-```
-
-## 🛡️ Yêu Cầu Hệ Thống
-
-- **OS:** Windows 10/11
-- **Python:** 3.13 trở lên
-- **RAM:** Tối thiểu 4GB
-- **Disk:** 100MB trống
-
-## 🔧 API Endpoints
-
-| Method | Endpoint | Mô Tả |
-|--------|----------|-------|
-| GET | `/` | Dashboard HTML |
-| GET | `/api/resources` | System resources |
-| POST | `/api/volume` | Set volume |
-| POST | `/api/screenshot` | Take screenshot |
-| POST | `/api/notification` | Show notification |
-| GET | `/api/endpoints` | Get device configs |
-| POST | `/api/endpoints` | Save device configs |
-| WS | `/ws` | WebSocket updates |
-
-## 📝 MCP Protocol
-
-Tuân thủ [Model Context Protocol 2024-11-05](https://modelcontextprotocol.io/):
-- ✅ JSON-RPC 2.0 over WebSocket
-- ✅ initialize/initialized handshake
-- ✅ tools/list for tool discovery
-- ✅ tools/call for execution
-
-## 🎓 Tham Khảo
-
-Dự án lấy cảm hứng từ:
-- [xiaozhi-MCPTools](https://github.com/ZhongZiTongXue/xiaozhi-MCPTools) - Reference implementation (60+ tools)
-- [Model Context Protocol](https://modelcontextprotocol.io/) - Official MCP specification
-- [FastAPI](https://fastapi.tiangolo.com/) - Modern async web framework
-
-## 🐛 Known Issues
-
-- ⚠️ Một số tools yêu cầu quyền Administrator
-- ⚠️ pyautogui có thể bị chặn bởi antivirus
-- ⚠️ Wallpaper API đôi khi timeout
-
-## 🚀 Roadmap
-
-- [ ] Thêm authentication cho dashboard
-- [ ] Multi-language support (EN/VI/CN)
-- [ ] Plugin system để mở rộng tools
-- [ ] Mobile responsive optimization
-- [ ] Docker deployment
-- [ ] Thêm 20+ tools từ reference project
-
-## 📜 License
-
-MIT License - Xem [LICENSE](LICENSE) để biết thêm chi tiết.
-
-## 🤝 Đóng Góp
-
-Contributions, issues và feature requests đều được chào đón!
-
-1. Fork dự án
-2. Tạo branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Mở Pull Request
-
-## 📞 Support
-
-- 🐛 [Issues](https://github.com/YOUR_USERNAME/xiaozhi-mcp-panel/issues)
-- 💬 [Discussions](https://github.com/YOUR_USERNAME/xiaozhi-mcp-panel/discussions)
-- 🌐 [Xiaozhi Dashboard](https://dash.upx8.com)
-- 📖 [MCP Documentation](https://modelcontextprotocol.io/)
-
-## ⭐ Show Your Support
-
-Nếu dự án hữu ích, hãy cho một **Star** ⭐!
+### Dừng Server
+Nhấn `Ctrl + C` trong terminal
 
 ---
 
+## 🛠️ 30 Tools Có Sẵn
+
+<details>
+<summary><b>🖥️ Hệ Thống (7 tools)</b></summary>
+
+- 🔊 Điều chỉnh âm lượng
+- 📸 Chụp màn hình  
+- 🔔 Hiển thị thông báo
+- 💻 Tài nguyên hệ thống
+- 🔆 Độ sáng màn hình
+- 🔒 Khóa máy tính
+- ⏰ Lên lịch tắt máy
+</details>
+
+<details>
+<summary><b>📁 File & Process (7 tools)</b></summary>
+
+- 🚀 Mở ứng dụng
+- 📋 Tiến trình đang chạy
+- ❌ Tắt tiến trình
+- � Tạo file mới
+- � Đọc file
+- � Liệt kê files
+- � Thông tin đĩa
+</details>
+
+<details>
+<summary><b>🌐 Mạng & Web (3 tools)</b></summary>
+
+- 🌐 Thông tin mạng
+- 🔋 Thông tin pin
+- � Tìm kiếm Google
+</details>
+
+<details>
+<summary><b>� Tiện Ích (13 tools)</b></summary>
+
+- 🧮 Máy tính
+- ⏰ Thời gian
+- 📋 Lấy/Đặt Clipboard
+- 🔊 Phát âm thanh
+- �️ Hiển thị Desktop
+- ↩️ Hoàn tác
+- 🎨 Đổi Theme
+- 🖼️ Đổi hình nền
+- 📁 Đường dẫn Desktop
+- 📋 Dán nội dung
+- ⏎ Nhấn Enter
+- � Tìm trong tài liệu
+</details>
+
+---
+
+## 🎯 Yêu Cầu Hệ Thống
+
+- **OS:** Windows 10/11
+- **Python:** 3.13+
+- **RAM:** 4GB+
+- **Disk:** 100MB
+
+---
+
+## 📚 Tài Liệu
+
+- 📖 [Quick Start Guide](QUICKSTART.md) - Hướng dẫn chi tiết
+- 📝 [Changelog](CHANGELOG.md) - Lịch sử cập nhật
+- 📜 [License](LICENSE) - MIT License
+
+---
+
+## 🎓 Tham Khảo
+
+- [xiaozhi-MCPTools](https://github.com/ZhongZiTongXue/xiaozhi-MCPTools) - Reference project (60+ tools)
+- [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification
+- [Xiaozhi Dashboard](https://dash.upx8.com) - Lấy JWT token
+
+---
+
+## 🤝 Đóng Góp
+
+Contributions, issues và feature requests được chào đón!
+
+1. Fork repo
+2. Tạo branch (`git checkout -b feature/YourFeature`)
+3. Commit (`git commit -m 'Add YourFeature'`)
+4. Push (`git push origin feature/YourFeature`)
+5. Mở Pull Request
+
+---
+
+## 📞 Support
+
+- 🐛 [Issues](https://github.com/nguyenconghuy2904-source/miniz_pc_tool2/issues)
+- 🌐 [Xiaozhi Dashboard](https://dash.upx8.com)
+- 📖 [Documentation](QUICKSTART.md)
+
+---
+
+## ⭐ Show Support
+
+Nếu project hữu ích, hãy cho một **Star** ⭐!
+
+---
+
+<p align="center">
 Made with ❤️ using FastAPI + MCP + Xiaozhi AI
+</p>
+
