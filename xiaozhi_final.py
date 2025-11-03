@@ -515,16 +515,31 @@ async def list_music(subfolder: str = "") -> dict:
         
         music_files.sort(key=lambda x: x['filename'])
         
-        # Tạo message với hướng dẫn rõ ràng cho AI
+        # Tạo message với hướng dẫn RẤT RÕ RÀNG cho AI - bao gồm cả example call
         if len(music_files) > 0:
+            first_file = music_files[0]['filename']
             filenames_list = [f['filename'] for f in music_files]
-            instruction = f"Tìm thấy {len(music_files)} bài hát. To play music, use play_music tool with exact filename from the list below:"
-            message_parts = [instruction] + [f"  - {fname}" for fname in filenames_list[:10]]  # Show first 10
+            
+            # Message với example call cụ thể
+            instruction = f"Found {len(music_files)} song(s). NOW call play_music tool to play!"
+            example_call = f"\nNext step: call play_music(filename=\"{first_file}\")"
+            file_list = "\nAvailable files:"
+            message_parts = [instruction, example_call, file_list] + [f"  - {fname}" for fname in filenames_list[:10]]
+            
             if len(music_files) > 10:
                 message_parts.append(f"  ... and {len(music_files) - 10} more")
+            
             full_message = "\n".join(message_parts)
+            
+            # Thêm next_action để AI hiểu rõ
+            next_action = {
+                "tool": "play_music",
+                "parameters": {"filename": first_file},
+                "instruction": f"Call play_music with filename=\"{first_file}\" to play the first song"
+            }
         else:
             full_message = "No music files found. Please add music files to music_library folder."
+            next_action = None
         
         return {
             "success": True,
@@ -532,7 +547,8 @@ async def list_music(subfolder: str = "") -> dict:
             "count": len(music_files),
             "library_path": str(MUSIC_LIBRARY),
             "message": full_message,
-            "instruction": "Use play_music(filename) with exact filename from files list"
+            "next_action": next_action,
+            "instruction": "MUST call play_music(filename) next with exact filename from files list"
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -900,7 +916,7 @@ TOOLS = {
     # MUSIC LIBRARY TOOLS
     "list_music": {
         "handler": list_music, 
-        "description": "Liệt kê file nhạc trong music_library. REQUIRED: Call this FIRST before play_music! Returns list with 'files' array containing objects with 'filename' field. Use the exact 'filename' value from response to call play_music next. Example workflow: 1) call list_music(), 2) get filename from response.files[0].filename, 3) call play_music(filename=that_filename).", 
+        "description": "Step 1 of 2: List music files. THIS DOES NOT PLAY MUSIC! After calling this, you MUST call play_music next. Response includes 'next_action' showing exactly how to call play_music. ALWAYS follow with play_music call using filename from response.", 
         "parameters": {
             "subfolder": {
                 "type": "string", 
@@ -911,11 +927,11 @@ TOOLS = {
     },
     "play_music": {
         "handler": play_music, 
-        "description": "Play music file from music_library. MUST call list_music FIRST to get exact filename! After calling list_music, copy the 'filename' value from response.files[0].filename and pass it here. Example: if list_music returns files[0].filename='song.mp3', then call play_music(filename='song.mp3'). DO NOT make up filename - ALWAYS use exact value from list_music response!", 
+        "description": "Step 2 of 2: ACTUALLY PLAY THE MUSIC! This is the tool that plays music. Call this immediately after list_music with the filename from list_music response.files[0].filename. Example: list_music returns filename='song.mp3' → call play_music(filename='song.mp3').", 
         "parameters": {
             "filename": {
                 "type": "string", 
-                "description": "EXACT filename from list_music response (e.g., response.files[0].filename). Copy the complete filename including extension. Example: 'my_song.mp3' or 'Pop/my_song.mp3'", 
+                "description": "EXACT filename from list_music response.files[0].filename. Include file extension. Example: 'song.mp3'", 
                 "required": True
             }
         }
@@ -1035,6 +1051,37 @@ async def xiaozhi_websocket_client():
                             print(f"📨 [{method}]")
                         response = await handle_xiaozhi_message(data)
                         await ws.send(json.dumps({"jsonrpc": "2.0", "id": data.get("id"), "result": response}))
+
+                        # If the tool response suggests a next_action (for example list_music
+                        # returning {'next_action': {'tool': 'play_music', 'parameters': {...}}}),
+                        # execute it locally on the server as a fallback so music actually plays
+                        # even if the remote AI/client doesn't invoke the follow-up.
+                        try:
+                            if isinstance(response, dict) and response.get("next_action"):
+                                na = response.get("next_action")
+                                next_tool = na.get("tool")
+                                next_params = na.get("parameters", {}) or {}
+                                # Only execute if the tool exists locally
+                                if next_tool and next_tool in TOOLS:
+                                    print(f"⏯️ [Auto Action] Executing suggested next_action {next_tool} with params: {next_params}")
+                                    try:
+                                        # call the handler (handlers may be async)
+                                        handler = TOOLS[next_tool]["handler"]
+                                        if asyncio.iscoroutinefunction(handler):
+                                            res2 = await handler(**next_params)
+                                        else:
+                                            # run sync handlers in executor
+                                            loop = asyncio.get_event_loop()
+                                            res2 = await loop.run_in_executor(None, lambda: handler(**next_params))
+                                        print(f"⏯️ [Auto Action Result] {next_tool}: {res2}")
+                                    except Exception as e:
+                                        print(f"❌ [Auto Action] Error executing {next_tool}: {e}")
+                                        import traceback
+                                        traceback.print_exc()
+                        except Exception:
+                            # defensive: do not let auto-action failures disrupt websocket loop
+                            import traceback
+                            traceback.print_exc()
                         
                         # Batch broadcast - chỉ broadcast cho methods quan trọng
                         if method in ["tools/call", "initialize"]:
