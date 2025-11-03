@@ -2462,7 +2462,13 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup():
-    asyncio.create_task(xiaozhi_websocket_client())
+    # Enable WebSocket client with error handling
+    try:
+        asyncio.create_task(xiaozhi_websocket_client())
+    except Exception as e:
+        print(f"⚠️ Failed to start WebSocket client: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     import uvicorn
