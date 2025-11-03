@@ -526,36 +526,96 @@ async def list_music(subfolder: str = "") -> dict:
         return {"success": False, "error": str(e)}
 
 async def play_music(filename: str) -> dict:
-    """Phát nhạc từ music_library"""
+    """
+    Phát nhạc từ music_library bằng Windows Media Player.
+    
+    IMPORTANT: Always use 'list_music' first to get exact filename!
+    
+    Args:
+        filename: Exact filename from list_music (e.g., 'song.mp3' or 'Pop/song.mp3')
+        
+    Returns:
+        dict with 'success', 'filename', 'path', 'size_mb', 'message'
+        
+    Examples:
+        play_music("my_song.mp3") -> Plays the file
+        play_music("Pop/my_song.mp3") -> Plays file from Pop folder
+        
+    Note: Search is case-insensitive and supports partial matching
+    """
     try:
         if not MUSIC_LIBRARY.exists():
             return {"success": False, "error": "Thư mục music_library không tồn tại"}
         
-        # Tìm file trong thư mục và các subfolder
+        print(f"🎵 [Play Music] Tìm file: '{filename}'")
+        
+        # Tìm file trong thư mục và các subfolder (hỗ trợ tìm theo tên hoặc path)
         music_path = None
+        filename_lower = filename.lower()
+        
+        # Thử tìm exact match trước
         for file_path in MUSIC_LIBRARY.rglob("*"):
-            if file_path.is_file() and file_path.name == filename:
-                music_path = file_path
-                break
+            if file_path.is_file():
+                if file_path.name == filename:
+                    music_path = file_path
+                    break
+        
+        # Nếu không tìm thấy, thử case-insensitive
+        if not music_path:
+            for file_path in MUSIC_LIBRARY.rglob("*"):
+                if file_path.is_file():
+                    if file_path.name.lower() == filename_lower:
+                        music_path = file_path
+                        break
+        
+        # Nếu vẫn không tìm thấy, thử tìm theo relative path
+        if not music_path:
+            for file_path in MUSIC_LIBRARY.rglob("*"):
+                if file_path.is_file():
+                    rel_path = str(file_path.relative_to(MUSIC_LIBRARY))
+                    if rel_path == filename or rel_path.lower() == filename_lower:
+                        music_path = file_path
+                        break
+        
+        # Nếu vẫn không tìm thấy, thử partial match
+        if not music_path:
+            for file_path in MUSIC_LIBRARY.rglob("*"):
+                if file_path.is_file() and filename_lower in file_path.name.lower():
+                    music_path = file_path
+                    break
         
         if not music_path or not music_path.exists():
-            return {"success": False, "error": f"Không tìm thấy file '{filename}'"}
+            # List available files for debugging
+            available = [f.name for f in MUSIC_LIBRARY.rglob("*") if f.is_file() and f.suffix.lower() in MUSIC_EXTENSIONS]
+            return {
+                "success": False, 
+                "error": f"Không tìm thấy file '{filename}'",
+                "available_files": available[:5]  # Show first 5 files
+            }
         
         if music_path.suffix.lower() not in MUSIC_EXTENSIONS:
             return {"success": False, "error": f"Định dạng file không được hỗ trợ: {music_path.suffix}"}
         
-        # Mở file nhạc với Windows Media Player
+        print(f"🎵 [Play Music] Đã tìm thấy: {music_path}")
+        
+        # Mở file nhạc với Windows Media Player (chạy async)
         import os
-        os.startfile(str(music_path))
+        import asyncio
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, os.startfile, str(music_path))
         
         return {
             "success": True,
-            "filename": filename,
+            "filename": music_path.name,
             "path": str(music_path.relative_to(MUSIC_LIBRARY)),
+            "full_path": str(music_path),
             "size_mb": round(music_path.stat().st_size / (1024**2), 2),
-            "message": f"✅ Đang phát: {filename}"
+            "message": f"✅ Đang phát: {music_path.name}"
         }
     except Exception as e:
+        print(f"❌ [Play Music] Error: {e}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e)}
 
 async def stop_music() -> dict:
@@ -826,10 +886,44 @@ TOOLS = {
     "get_disk_usage": {"handler": get_disk_usage, "description": "Thông tin đĩa", "parameters": {}},
     
     # MUSIC LIBRARY TOOLS
-    "list_music": {"handler": list_music, "description": "Liệt kê tất cả nhạc trong music_library", "parameters": {"subfolder": {"type": "string", "description": "Thư mục con (tùy chọn)", "required": False}}},
-    "play_music": {"handler": play_music, "description": "Phát nhạc từ music_library", "parameters": {"filename": {"type": "string", "description": "Tên file nhạc", "required": True}}},
-    "stop_music": {"handler": stop_music, "description": "Dừng nhạc đang phát", "parameters": {}},
-    "search_music": {"handler": search_music, "description": "Tìm kiếm nhạc theo tên", "parameters": {"keyword": {"type": "string", "description": "Từ khóa tìm kiếm", "required": True}}},
+    "list_music": {
+        "handler": list_music, 
+        "description": "Liệt kê tất cả file nhạc trong thư viện music_library. Sử dụng tool này để xem danh sách nhạc có sẵn trước khi phát. Returns list of music files with filename, path, and size.", 
+        "parameters": {
+            "subfolder": {
+                "type": "string", 
+                "description": "Tên thư mục con để lọc (ví dụ: 'Pop', 'Rock', 'Classical'). Để trống để liệt kê tất cả.", 
+                "required": False
+            }
+        }
+    },
+    "play_music": {
+        "handler": play_music, 
+        "description": "Phát file nhạc từ thư viện music_library bằng Windows Media Player. ALWAYS use 'list_music' tool first to get the exact filename, then use this tool to play. Accepts filename (e.g., 'song.mp3') or path (e.g., 'Pop/song.mp3'). The search is case-insensitive and supports partial matching.", 
+        "parameters": {
+            "filename": {
+                "type": "string", 
+                "description": "Tên file nhạc CHÍNH XÁC từ kết quả list_music (ví dụ: 'my_song.mp3' hoặc 'Pop/my_song.mp3'). Use exact filename from list_music result.", 
+                "required": True
+            }
+        }
+    },
+    "stop_music": {
+        "handler": stop_music, 
+        "description": "Dừng phát nhạc hiện tại bằng cách đóng Windows Media Player. Use this tool to stop any currently playing music.", 
+        "parameters": {}
+    },
+    "search_music": {
+        "handler": search_music, 
+        "description": "Tìm kiếm file nhạc theo từ khóa trong tên file. Returns matching music files. Use this before play_music to find songs by keyword.", 
+        "parameters": {
+            "keyword": {
+                "type": "string", 
+                "description": "Từ khóa để tìm trong tên file (ví dụ: 'love', 'rock', 'remix'). Case-insensitive search.", 
+                "required": True
+            }
+        }
+    },
     
     # NEW TOOLS FROM REFERENCE
     "lock_computer": {"handler": lock_computer, "description": "Khóa máy tính", "parameters": {}},
@@ -867,13 +961,21 @@ async def handle_xiaozhi_message(message: dict) -> dict:
     elif method == "tools/call":
         tool_name = params.get("name")
         args = params.get("arguments", {})
+        print(f"🔧 [Tool Call] {tool_name} with args: {args}")
         if tool_name not in TOOLS:
-            return {"content": [{"type": "text", "text": f"Error: Tool '{tool_name}' not found"}], "isError": True}
+            error_msg = f"Error: Tool '{tool_name}' not found"
+            print(f"❌ {error_msg}")
+            return {"content": [{"type": "text", "text": error_msg}], "isError": True}
         try:
             result = await TOOLS[tool_name]["handler"](**args)
+            print(f"✅ [Tool Result] {tool_name}: {result}")
             return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}
         except Exception as e:
-            return {"content": [{"type": "text", "text": f"Error: {str(e)}"}], "isError": True}
+            error_msg = f"Error calling {tool_name}: {str(e)}"
+            print(f"❌ {error_msg}")
+            import traceback
+            traceback.print_exc()
+            return {"content": [{"type": "text", "text": error_msg}], "isError": True}
     return {"error": f"Unknown method: {method}"}
 
 async def xiaozhi_websocket_client():
