@@ -795,6 +795,89 @@ async def open_website(url: str) -> dict:
         return {"success": False, "error": str(e)}
 
 # ============================================================
+# YOUTUBE PLAYER CONTROL TOOLS
+# ============================================================
+
+async def control_youtube(action: str) -> dict:
+    """
+    Điều khiển YouTube player bằng keyboard shortcuts.
+    Phải có cửa sổ YouTube đang active/focused.
+    """
+    try:
+        import pyautogui
+        import time
+
+        # Định nghĩa các actions và keyboard shortcuts tương ứng
+        shortcuts = {
+            # Video control
+            "play_pause": "k",  # K hoặc Space - Tạm dừng / Tiếp tục
+            "rewind_10": "j",   # J - Lùi lại 10 giây
+            "forward_10": "l",  # L - Tiến tới 10 giây
+            "rewind_5": "left", # ← - Lùi lại 5 giây
+            "forward_5": "right", # → - Tiến tới 5 giây
+            "beginning": "home", # 0 hoặc Home - Quay về đầu video
+            "end": "end",       # End - Tua đến cuối video
+            "frame_back": ",",  # , - Lùi lại 1 khung hình
+            "frame_forward": ".", # . - Tiến tới 1 khung hình
+
+            # Volume control
+            "volume_up": "up",    # ↑ - Tăng âm lượng 5%
+            "volume_down": "down", # ↓ - Giảm âm lượng 5%
+            "mute_toggle": "m",   # M - Bật / Tắt tiếng
+        }
+
+        if action not in shortcuts:
+            available_actions = ", ".join(shortcuts.keys())
+            return {
+                "success": False,
+                "error": f"Action không hợp lệ: {action}. Các actions có sẵn: {available_actions}"
+            }
+
+        key = shortcuts[action]
+
+        # Đợi một chút để đảm bảo YouTube player đang active
+        time.sleep(0.5)
+
+        # Gửi keyboard shortcut
+        if key in ["left", "right", "up", "down", "home", "end"]:
+            pyautogui.press(key)
+        else:
+            pyautogui.press(key)
+
+        # Mô tả action cho user
+        action_descriptions = {
+            "play_pause": "Tạm dừng / Tiếp tục video",
+            "rewind_10": "Lùi lại 10 giây",
+            "forward_10": "Tiến tới 10 giây",
+            "rewind_5": "Lùi lại 5 giây",
+            "forward_5": "Tiến tới 5 giây",
+            "beginning": "Quay về đầu video",
+            "end": "Tua đến cuối video",
+            "frame_back": "Lùi lại 1 khung hình",
+            "frame_forward": "Tiến tới 1 khung hình",
+            "volume_up": "Tăng âm lượng 5%",
+            "volume_down": "Giảm âm lượng 5%",
+            "mute_toggle": "Bật / Tắt tiếng",
+        }
+
+        description = action_descriptions.get(action, action)
+
+        return {
+            "success": True,
+            "message": f"✅ Đã thực hiện: {description}",
+            "action": action,
+            "key_pressed": key,
+            "note": "Đảm bảo cửa sổ YouTube đang active/focused để lệnh có hiệu lực"
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "note": "Có thể cần cài đặt pyautogui hoặc cửa sổ YouTube chưa active"
+        }
+
+# ============================================================
 # NEW TOOLS FROM XIAOZHI-MCPTOOLS REFERENCE
 # ============================================================
 
@@ -1100,6 +1183,19 @@ TOOLS = {
             "url": {
                 "type": "string", 
                 "description": "URL của trang web (ví dụ: 'github.com' hoặc 'https://github.com/user/repo')", 
+                "required": True
+            }
+        }
+    },
+    
+    # YOUTUBE CONTROL TOOLS
+    "control_youtube": {
+        "handler": control_youtube, 
+        "description": "Điều khiển YouTube player bằng keyboard shortcuts. Phải có cửa sổ YouTube đang active/focused. Hỗ trợ play/pause, tua video, điều chỉnh âm lượng, v.v.", 
+        "parameters": {
+            "action": {
+                "type": "string", 
+                "description": "Hành động điều khiển: play_pause, rewind_10, forward_10, rewind_5, forward_5, beginning, end, frame_back, frame_forward, volume_up, volume_down, mute_toggle", 
                 "required": True
             }
         }
