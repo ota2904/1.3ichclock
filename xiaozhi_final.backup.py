@@ -8,9 +8,7 @@ import asyncio
 import json
 import subprocess
 import psutil
-import time
 from datetime import datetime
-from pathlib import Path
 from fastapi import FastAPI, WebSocket, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -20,71 +18,22 @@ import websockets
 # CONFIGURATION
 # ============================================================
 
-CONFIG_FILE = Path(__file__).parent / "xiaozhi_endpoints.json"
-
 DEFAULT_ENDPOINT = {
     "name": "Thiết bị 1",
     "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjA4NTI1OSwiZXhwIjoxNzkzNjQyODU5fQ.GK91-17mqarpETPwz7N6rZj5DaT7bJkpK7EM6lO0Rdmfztv_KeOTBP9R4Lvy3uXKMCJn3gwucvelCur95GAn5Q",
     "enabled": True
 }
 
-def load_endpoints_from_file():
-    """Đọc cấu hình endpoints từ file JSON"""
-    if CONFIG_FILE.exists():
-        try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                print(f"✅ [Config] Loaded {len(data.get('endpoints', []))} endpoints from {CONFIG_FILE.name}")
-                return data.get('endpoints', []), data.get('active_index', 0)
-        except Exception as e:
-            print(f"⚠️ [Config] Error loading {CONFIG_FILE.name}: {e}")
-    
-    # Trả về cấu hình mặc định nếu không có file
-    return [
-        DEFAULT_ENDPOINT,
-        {"name": "Thiết bị 2", "token": "", "enabled": False},
-        {"name": "Thiết bị 3", "token": "", "enabled": False}
-    ], 0
+endpoints_config = [
+    DEFAULT_ENDPOINT,
+    {"name": "Thiết bị 2", "token": "", "enabled": False},
+    {"name": "Thiết bị 3", "token": "", "enabled": False}
+]
 
-def save_endpoints_to_file(endpoints, active_index):
-    """Lưu cấu hình endpoints vào file JSON - chỉ khi có thay đổi"""
-    try:
-        # Kiểm tra nếu data không thay đổi thì không cần lưu
-        new_data = {
-            'endpoints': endpoints,
-            'active_index': active_index,
-            'last_updated': datetime.now().isoformat()
-        }
-        
-        # Đọc dữ liệu cũ để so sánh (trừ last_updated)
-        if CONFIG_FILE.exists():
-            try:
-                with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                    old_data = json.load(f)
-                    # So sánh endpoints và active_index
-                    if (old_data.get('endpoints') == endpoints and 
-                        old_data.get('active_index') == active_index):
-                        # Không có thay đổi, skip save
-                        return True
-            except Exception:
-                pass
-        
-        # Có thay đổi, tiến hành lưu
-        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-            json.dump(new_data, f, ensure_ascii=False, indent=2)
-        print(f"💾 [Config] Saved {len(endpoints)} endpoints to {CONFIG_FILE.name}")
-        return True
-    except Exception as e:
-        print(f"❌ [Config] Error saving to {CONFIG_FILE.name}: {e}")
-        return False
-
-# Load cấu hình từ file
-endpoints_config, loaded_active_index = load_endpoints_from_file()
-active_endpoint_index = loaded_active_index
+active_endpoint_index = 0
 xiaozhi_connected = False
 active_connections = []
 xiaozhi_ws = None
-should_reconnect = False  # Flag để trigger reconnect
 
 print("🚀 Xiaozhi Final - Sidebar UI")
 print(f"🌐 Web: http://localhost:8000")
@@ -95,158 +44,15 @@ print(f"📡 MCP: Multi-device ready")
 # ============================================================
 
 async def set_volume(level: int) -> dict:
-    """Điều chỉnh âm lượng hệ thống - Cải tiến cho MCP"""
     try:
         if not 0 <= level <= 100:
-            return {"success": False, "error": "Level phải từ 0-100"}
-        
-        # Sử dụng pycaw để điều chỉnh âm lượng chính xác và nhanh
-        try:
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-            from comtypes import CLSCTX_ALL
-            
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = interface.QueryInterface(IAudioEndpointVolume)
-            
-            # Lấy âm lượng hiện tại trước khi thay đổi
-            current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
-            
-            # Set âm lượng mới (0.0 - 1.0)
-            volume.SetMasterVolumeLevelScalar(level / 100.0, None)
-            
-            return {
-                "success": True, 
-                "level": level, 
-                "previous_level": current_volume,
-                "message": f"✅ Âm lượng: {current_volume}% → {level}%"
-            }
-        except ImportError:
-            # Fallback về PowerShell nếu không có pycaw (nhưng cải thiện logic)
-            # Sử dụng WMI để set âm lượng chính xác hơn
-            ps_cmd = f"""
-Add-Type -TypeDefinition @'
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {{
-    int NotImpl1(); int NotImpl2();
-    int GetMasterVolumeLevelScalar(out float level);
-    int SetMasterVolumeLevelScalar(float level, System.Guid eventContext);
-}}
-[Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-class MMDeviceEnumeratorComObject {{ }}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {{
-    int NotImpl1();
-    int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
-}}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {{
-    int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}}
-'@
-$enumerator = [System.Activator]::CreateInstance([Type]::GetTypeFromCLSID([Guid]'BCDE0395-E52F-467C-8E3D-C4579291692E'))
-$device = $null
-$enumerator.GetDefaultAudioEndpoint(0, 1, [ref]$device)
-$aev = $null
-$device.Activate([Guid]'5CDF2C82-841E-4546-9722-0CF74078229A', 0, 0, [ref]$aev)
-$current = 0.0
-$aev.GetMasterVolumeLevelScalar([ref]$current)
-$aev.SetMasterVolumeLevelScalar({level / 100.0}, [Guid]::Empty)
-Write-Output "Volume changed from $([int]($current * 100))% to {level}%"
-"""
-            proc = await asyncio.create_subprocess_exec(
-                "powershell", "-NoProfile", "-Command", ps_cmd,
-                stdout=asyncio.subprocess.PIPE, 
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=3)
-            
-            if proc.returncode == 0:
-                output = stdout.decode('utf-8', errors='ignore').strip()
-                return {
-                    "success": True, 
-                    "level": level, 
-                    "message": f"✅ {output if output else f'Âm lượng: {level}%'}"
-                }
-            else:
-                error_msg = stderr.decode('utf-8', errors='ignore').strip()
-                return {"success": False, "error": f"PowerShell error: {error_msg}"}
-                
-    except asyncio.TimeoutError:
-        return {"success": False, "error": "Timeout khi điều chỉnh âm lượng"}
+            return {"success": False, "error": "Level 0-100"}
+        ps_cmd = f"$obj = New-Object -ComObject WScript.Shell; for($i=0; $i -lt 50; $i++) {{ $obj.SendKeys([char]174) }}; for($i=0; $i -lt {level}; $i+=2) {{ $obj.SendKeys([char]175) }}"
+        proc = await asyncio.create_subprocess_exec("powershell", "-Command", ps_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await asyncio.wait_for(proc.wait(), timeout=5)
+        return {"success": True, "level": level, "message": f"Âm lượng: {level}%"}
     except Exception as e:
-        return {"success": False, "error": f"Lỗi: {str(e)}"}
-
-async def get_volume() -> dict:
-    """Lấy mức âm lượng hiện tại của hệ thống"""
-    try:
-        try:
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-            from comtypes import CLSCTX_ALL
-            
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = interface.QueryInterface(IAudioEndpointVolume)
-            
-            current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
-            is_muted = volume.GetMute()
-            
-            return {
-                "success": True,
-                "level": current_volume,
-                "muted": bool(is_muted),
-                "message": f"🔊 Âm lượng hiện tại: {current_volume}%" + (" (Tắt tiếng)" if is_muted else "")
-            }
-        except ImportError:
-            # Fallback PowerShell
-            ps_cmd = """
-Add-Type -TypeDefinition @'
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {
-    int NotImpl1(); int NotImpl2();
-    int GetMasterVolumeLevelScalar(out float level);
-}
-[Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-class MMDeviceEnumeratorComObject { }
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {
-    int NotImpl1();
-    int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
-}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {
-    int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}
-'@
-$enumerator = [System.Activator]::CreateInstance([Type]::GetTypeFromCLSID([Guid]'BCDE0395-E52F-467C-8E3D-C4579291692E'))
-$device = $null
-$enumerator.GetDefaultAudioEndpoint(0, 1, [ref]$device)
-$aev = $null
-$device.Activate([Guid]'5CDF2C82-841E-4546-9722-0CF74078229A', 0, 0, [ref]$aev)
-$current = 0.0
-$aev.GetMasterVolumeLevelScalar([ref]$current)
-Write-Output ([int]($current * 100))
-"""
-            proc = await asyncio.create_subprocess_exec(
-                "powershell", "-NoProfile", "-Command", ps_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=3)
-            
-            if proc.returncode == 0:
-                level = int(stdout.decode('utf-8', errors='ignore').strip())
-                return {
-                    "success": True,
-                    "level": level,
-                    "message": f"🔊 Âm lượng hiện tại: {level}%"
-                }
-            else:
-                return {"success": False, "error": "Không thể lấy âm lượng"}
-    except Exception as e:
-        return {"success": False, "error": f"Lỗi: {str(e)}"}
+        return {"success": False, "error": str(e)}
 
 async def take_screenshot() -> dict:
     try:
@@ -264,44 +70,12 @@ async def show_notification(title: str, message: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# Cache cho system resources
-_resource_cache = None
-_resource_cache_time = 0
-RESOURCE_CACHE_DURATION = 2  # Cache 2 giây
-
 async def get_system_resources() -> dict:
-    """Lấy thông tin tài nguyên hệ thống với caching"""
-    global _resource_cache, _resource_cache_time
-    
     try:
-        # Kiểm tra cache
-        now = time.time()
-        if _resource_cache and (now - _resource_cache_time) < RESOURCE_CACHE_DURATION:
-            return _resource_cache
-        
-        # Lấy dữ liệu mới - giảm interval từ 1s xuống 0.1s
-        cpu = psutil.cpu_percent(interval=0.1)
+        cpu = psutil.cpu_percent(interval=1)
         mem = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
-        
-        result = {
-            "success": True, 
-            "data": {
-                "cpu_percent": cpu, 
-                "memory_percent": mem.percent, 
-                "memory_used_gb": round(mem.used / (1024**3), 2), 
-                "memory_total_gb": round(mem.total / (1024**3), 2), 
-                "disk_percent": disk.percent, 
-                "disk_used_gb": round(disk.used / (1024**3), 2), 
-                "disk_total_gb": round(disk.total / (1024**3), 2)
-            }
-        }
-        
-        # Cập nhật cache
-        _resource_cache = result
-        _resource_cache_time = now
-        
-        return result
+        return {"success": True, "data": {"cpu_percent": cpu, "memory_percent": mem.percent, "memory_used_gb": round(mem.used / (1024**3), 2), "memory_total_gb": round(mem.total / (1024**3), 2), "disk_percent": disk.percent, "disk_used_gb": round(disk.used / (1024**3), 2), "disk_total_gb": round(disk.total / (1024**3), 2)}}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -339,8 +113,7 @@ async def list_running_processes(limit: int = 10) -> dict:
         for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
             try:
                 procs.append({"pid": p.info['pid'], "name": p.info['name'], "cpu": round(p.info['cpu_percent'], 2), "memory": round(p.info['memory_percent'], 2)})
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                # Bỏ qua các tiến trình không thể truy cập
+            except:
                 pass
         procs = sorted(procs, key=lambda x: x['cpu'], reverse=True)[:limit]
         return {"success": True, "processes": procs, "count": len(procs)}
@@ -357,19 +130,12 @@ async def kill_process(identifier: str) -> dict:
             killed.append(f"{name} (PID: {identifier})")
         else:
             for p in psutil.process_iter(['pid', 'name']):
-                try:
-                    if identifier.lower() in p.info['name'].lower():
-                        p.terminate()
-                        killed.append(f"{p.info['name']} (PID: {p.info['pid']})")
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
+                if identifier.lower() in p.info['name'].lower():
+                    p.terminate()
+                    killed.append(f"{p.info['name']} (PID: {p.info['pid']})")
         if killed:
             return {"success": True, "message": f"Đã tắt: {', '.join(killed)}"}
         return {"success": False, "error": f"Không tìm thấy '{identifier}'"}
-    except psutil.NoSuchProcess:
-        return {"success": False, "error": f"Tiến trình không tồn tại: {identifier}"}
-    except psutil.AccessDenied:
-        return {"success": False, "error": f"Không có quyền tắt tiến trình: {identifier}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -476,8 +242,7 @@ async def get_disk_usage() -> dict:
             try:
                 usage = psutil.disk_usage(part.mountpoint)
                 disks.append({"device": part.device, "mountpoint": part.mountpoint, "fstype": part.fstype, "total_gb": round(usage.total / (1024**3), 2), "used_gb": round(usage.used / (1024**3), 2), "free_gb": round(usage.free / (1024**3), 2), "percent": usage.percent})
-            except (PermissionError, OSError):
-                # Bỏ qua các ổ đĩa không thể truy cập
+            except:
                 pass
         return {"success": True, "disks": disks, "count": len(disks)}
     except Exception as e:
@@ -534,17 +299,10 @@ async def undo_operation() -> dict:
         return {"success": False, "error": str(e)}
 
 async def set_theme(dark_mode: bool = True) -> dict:
-    """Đổi theme Windows sáng/tối. Nếu dark_mode=None thì toggle"""
+    """Đổi theme Windows sáng/tối"""
     try:
         import winreg
         key_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-        
-        # Nếu dark_mode là None, toggle mode hiện tại
-        if dark_mode is None:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as key:
-                current_value = winreg.QueryValueEx(key, "AppsUseLightTheme")[0]
-                dark_mode = (current_value == 1)  # Nếu đang sáng (1) thì chuyển sang tối (True)
-        
         value = 0 if dark_mode else 1
         
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
@@ -556,43 +314,35 @@ async def set_theme(dark_mode: bool = True) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def change_wallpaper(keyword: str = "", custom_path: str = "") -> dict:
-    """
-    Đổi hình nền desktop
-    - Nếu có custom_path: dùng file được chỉ định
-    - Nếu không: chọn ngẫu nhiên từ hình Windows có sẵn
-    """
+async def change_wallpaper(keyword: str = "") -> dict:
+    """Đổi hình nền desktop (từ API)"""
     try:
-        import ctypes, os, random
+        import ctypes
+        import requests
+        import tempfile
         
-        # Nếu có đường dẫn custom
-        if custom_path:
-            if not os.path.exists(custom_path):
-                return {"success": False, "error": f"File không tồn tại: {custom_path}"}
-            ctypes.windll.user32.SystemParametersInfoW(0x0014, 0, custom_path, 0x01 | 0x02)
-            return {"success": True, "message": f"Đã đặt hình nền: {custom_path}"}
+        api_url = "https://wp.upx8.com/api.php"
+        params = {"content": keyword} if keyword else {}
         
-        # Chọn ngẫu nhiên từ Windows wallpapers
-        wallpaper_paths = [
-            r"C:\Windows\Web\Wallpaper\Windows\img0.jpg",
-            r"C:\Windows\Web\Wallpaper\Windows\img19.jpg",
-            r"C:\Windows\Web\Wallpaper\Spotlight\img14.jpg",
-            r"C:\Windows\Web\Wallpaper\Spotlight\img50.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeA\img20.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeA\img21.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeB\img24.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeB\img25.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeC\img28.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeC\img29.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeD\img32.jpg",
-            r"C:\Windows\Web\Wallpaper\ThemeD\img33.jpg",
-        ]
-        available = [p for p in wallpaper_paths if os.path.exists(p)]
-        if not available:
-            return {"success": False, "error": "Không tìm thấy hình nền Windows"}
-        selected = random.choice(available)
-        ctypes.windll.user32.SystemParametersInfoW(0x0014, 0, selected, 0x01 | 0x02)
-        return {"success": True, "message": f"Đã đổi hình nền: {os.path.basename(selected)}"}
+        resp = requests.get(api_url, params=params, timeout=15, allow_redirects=False)
+        image_url = resp.headers.get("Location") or resp.headers.get("location")
+        
+        if not image_url:
+            return {"success": False, "error": "Không lấy được hình nền"}
+        
+        img_resp = requests.get(image_url, timeout=15, stream=True)
+        img_resp.raise_for_status()
+        
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        for chunk in img_resp.iter_content(chunk_size=8192):
+            if chunk:
+                temp_file.write(chunk)
+        temp_file.close()
+        
+        ctypes.windll.user32.SystemParametersInfoW(0x0014, 0, temp_file.name, 0x01 | 0x02)
+        
+        theme = keyword if keyword else "ngẫu nhiên"
+        return {"success": True, "message": f"Đã đổi hình nền: {theme}"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -605,26 +355,18 @@ async def get_desktop_path() -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def paste_content(content: str = "") -> dict:
-    """
-    Dán nội dung vào vị trí con trỏ
-    Nếu content rỗng, chỉ thực hiện Ctrl+V với clipboard hiện tại
-    """
+async def paste_content(content: str) -> dict:
+    """Dán nội dung vào vị trí con trỏ"""
     try:
         import pyperclip
         import pyautogui
         import time
         
-        if content:
-            # Nếu có content, copy vào clipboard trước
-            pyperclip.copy(content)
-            time.sleep(0.3)
-        
-        # Thực hiện paste
+        pyperclip.copy(content)
+        time.sleep(0.3)
         pyautogui.hotkey('ctrl', 'v')
         
-        msg = f"Đã dán: {content[:50]}..." if content else "Đã thực hiện paste"
-        return {"success": True, "message": msg}
+        return {"success": True, "message": f"Đã dán: {content[:50]}..."}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -636,17 +378,6 @@ async def press_enter() -> dict:
         return {"success": True, "message": "Đã nhấn Enter"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
-# CÁC HÀM TRÙNG LẶP ĐÃ ĐƯỢC XÓA - SỬ DỤNG PHIÊN BẢN GỐC Ở TRÊN
-# minimize_all_windows -> sử dụng show_desktop
-# undo_action -> sử dụng undo_operation  
-# toggle_dark_mode -> sử dụng set_theme
-# set_wallpaper -> đã tích hợp vào change_wallpaper
-# paste_text -> sử dụng paste_content
-# find_on_screen -> sử dụng find_in_document
-# shutdown_computer -> sử dụng shutdown_schedule
-
 
 async def find_in_document(search_text: str) -> dict:
     """Tìm kiếm trong tài liệu (Ctrl+F)"""
@@ -677,8 +408,7 @@ async def find_in_document(search_text: str) -> dict:
 # ============================================================
 
 TOOLS = {
-    "set_volume": {"handler": set_volume, "description": "Điều chỉnh âm lượng hệ thống (0-100) - Nhanh và chính xác", "parameters": {"level": {"type": "integer", "description": "Mức âm lượng từ 0-100", "required": True}}},
-    "get_volume": {"handler": get_volume, "description": "Lấy mức âm lượng hiện tại của hệ thống", "parameters": {}},
+    "set_volume": {"handler": set_volume, "description": "Điều chỉnh âm lượng (0-100)", "parameters": {"level": {"type": "integer", "description": "Mức âm lượng", "required": True}}},
     "take_screenshot": {"handler": take_screenshot, "description": "Chụp màn hình", "parameters": {}},
     "show_notification": {"handler": show_notification, "description": "Hiển thị thông báo", "parameters": {"title": {"type": "string", "description": "Tiêu đề", "required": True}, "message": {"type": "string", "description": "Nội dung", "required": True}}},
     "get_system_resources": {"handler": get_system_resources, "description": "Tài nguyên hệ thống", "parameters": {}},
@@ -707,7 +437,7 @@ TOOLS = {
     "set_theme": {"handler": set_theme, "description": "Đổi theme Windows", "parameters": {"dark_mode": {"type": "boolean", "description": "True=tối, False=sáng", "required": False}}},
     "change_wallpaper": {"handler": change_wallpaper, "description": "Đổi hình nền", "parameters": {"keyword": {"type": "string", "description": "Từ khóa (phong cảnh, anime...)", "required": False}}},
     "get_desktop_path": {"handler": get_desktop_path, "description": "Lấy đường dẫn Desktop", "parameters": {}},
-    "paste_content": {"handler": paste_content, "description": "Dán nội dung (Ctrl+V)", "parameters": {"content": {"type": "string", "description": "Nội dung cần dán (tùy chọn)", "required": False}}},
+    "paste_content": {"handler": paste_content, "description": "Dán nội dung (Ctrl+V)", "parameters": {"content": {"type": "string", "description": "Nội dung cần dán", "required": True}}},
     "press_enter": {"handler": press_enter, "description": "Nhấn Enter", "parameters": {}},
     "find_in_document": {"handler": find_in_document, "description": "Tìm trong tài liệu (Ctrl+F)", "parameters": {"search_text": {"type": "string", "description": "Nội dung tìm kiếm", "required": True}}}
 }
@@ -745,7 +475,7 @@ async def handle_xiaozhi_message(message: dict) -> dict:
     return {"error": f"Unknown method: {method}"}
 
 async def xiaozhi_websocket_client():
-    global xiaozhi_connected, xiaozhi_ws, should_reconnect
+    global xiaozhi_connected, xiaozhi_ws
     retry = 0
     while True:
         try:
@@ -761,27 +491,18 @@ async def xiaozhi_websocket_client():
             async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
                 xiaozhi_ws = ws
                 xiaozhi_connected = True
-                should_reconnect = False  # Reset flag khi kết nối thành công
                 print(f"✅ [Xiaozhi] Connected! ({ep['name']})")
                 
-                # Batch broadcast kết nối - tạo tasks và chạy parallel
-                broadcast_msg = {"type": "endpoint_connected", "endpoint": ep['name'], "index": active_endpoint_index}
-                tasks = []
                 for conn in active_connections:
-                    tasks.append(asyncio.create_task(conn.send_json(broadcast_msg)))
-                # Chạy tất cả broadcasts cùng lúc
-                await asyncio.gather(*tasks, return_exceptions=True)
+                    try:
+                        await conn.send_json({"type": "endpoint_connected", "endpoint": ep['name'], "index": active_endpoint_index})
+                    except:
+                        pass
                 
                 init_msg = {"jsonrpc": "2.0", "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "xiaozhi-final", "version": "4.0.0"}}, "id": 1}
                 await ws.send(json.dumps(init_msg))
                 
                 async for msg in ws:
-                    # Kiểm tra nếu cần reconnect (user đã chuyển thiết bị)
-                    if should_reconnect:
-                        print(f"🔄 [Xiaozhi] Reconnecting to new endpoint...")
-                        await ws.close()
-                        break
-                    
                     try:
                         data = json.loads(msg)
                         method = data.get("method", "unknown")
@@ -790,28 +511,13 @@ async def xiaozhi_websocket_client():
                         response = await handle_xiaozhi_message(data)
                         await ws.send(json.dumps({"jsonrpc": "2.0", "id": data.get("id"), "result": response}))
                         
-                        # Batch broadcast - chỉ broadcast cho methods quan trọng
-                        if method in ["tools/call", "initialize"]:
-                            broadcast_msg = {"type": "xiaozhi_activity", "method": method, "timestamp": datetime.now().isoformat()}
-                            # Cleanup dead connections trước khi broadcast
-                            dead_connections = []
-                            for conn in active_connections:
-                                try:
-                                    await conn.send_json(broadcast_msg)
-                                except Exception:
-                                    dead_connections.append(conn)
-                            # Remove dead connections
-                            for conn in dead_connections:
-                                active_connections.remove(conn)
-                    except json.JSONDecodeError as e:
-                        print(f"⚠️ [Xiaozhi] JSON decode error: {e}")
-                    except Exception as e:
-                        print(f"⚠️ [Xiaozhi] Message handling error: {e}")
-        except websockets.exceptions.WebSocketException as e:
-            xiaozhi_connected = False
-            wait = min(2 ** min(retry, 5), 60)
-            print(f"❌ [Xiaozhi] WebSocket error: {e}")
-            await asyncio.sleep(wait)
+                        for conn in active_connections:
+                            try:
+                                await conn.send_json({"type": "xiaozhi_activity", "method": method, "timestamp": datetime.now().isoformat()})
+                            except:
+                                pass
+                    except:
+                        pass
         except Exception as e:
             xiaozhi_connected = False
             wait = min(2 ** min(retry, 5), 60)
@@ -912,32 +618,6 @@ async def index():
         .log-success { color: #10b981; border-left-color: #10b981; }
         .log-error { color: #ef4444; border-left-color: #ef4444; }
         .log-info { color: #3b82f6; border-left-color: #3b82f6; }
-        
-        /* SETTINGS ICON */
-        .settings-icon { font-size: 1.8em; cursor: pointer; transition: all 0.3s; padding: 10px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; }
-        .settings-icon:hover { transform: rotate(90deg); background: #667eea; color: white; }
-        
-        /* MODAL POPUP */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); animation: fadeIn 0.3s; }
-        .modal-content { background: white; margin: 5% auto; padding: 0; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideDown 0.3s; }
-        .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; border-radius: 15px 15px 0 0; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h2 { margin: 0; font-size: 1.5em; }
-        .close-btn { font-size: 2em; cursor: pointer; color: white; background: none; border: none; line-height: 1; transition: transform 0.2s; }
-        .close-btn:hover { transform: scale(1.2); }
-        .modal-body { padding: 30px; }
-        .modal-body label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-        .modal-body input { width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; transition: border-color 0.3s; }
-        .modal-body input:focus { outline: none; border-color: #667eea; }
-        .modal-footer { padding: 20px 30px; background: #f9fafb; border-radius: 0 0 15px 15px; display: flex; gap: 15px; justify-content: flex-end; }
-        .modal-btn { padding: 12px 30px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 1em; }
-        .modal-btn.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .modal-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
-        .modal-btn.secondary { background: #e5e7eb; color: #666; }
-        .modal-btn.secondary:hover { background: #d1d5db; }
-        .modal-btn.info { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; }
-        .modal-btn.info:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(23, 162, 184, 0.4); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -946,6 +626,7 @@ async def index():
         <div class="logo">🚀 Xiaozhi MCP<br><small style="font-size:0.6em;opacity:0.8;">Điều Khiển Máy Tính</small></div>
         <div class="menu-item active" onclick="showSection('dashboard')">📊 Dashboard</div>
         <div class="menu-item" onclick="showSection('tools')">🛠️ Công Cụ</div>
+        <div class="menu-item" onclick="showSection('config')">⚙️ Cấu hình</div>
         <div class="menu-item" onclick="showSection('log')">📋 Log</div>
     </div>
     
@@ -955,7 +636,6 @@ async def index():
         <div class="header">
             <h1>Dashboard</h1>
             <div class="status">
-                <div class="settings-icon" onclick="openSettingsModal()" title="Cấu hình Endpoint">⚙️</div>
                 <div class="status-badge" id="xiaozhi-status">
                     <span class="status-dot"></span>
                     <span id="xiaozhi-text">Connecting...</span>
@@ -1030,14 +710,7 @@ async def index():
                     <div class="tool-card">
                         <h3>🔊 Điều chỉnh âm lượng</h3>
                         <input type="number" id="volume" min="0" max="100" value="50" placeholder="0-100">
-                        <button onclick="
-                            const level = parseInt(document.getElementById('volume').value);
-                            if (isNaN(level) || level < 0 || level > 100) {
-                                addLog('❌ Âm lượng phải từ 0-100', 'error');
-                            } else {
-                                callAPI('/api/volume', {level: level});
-                            }
-                        ">Đặt âm lượng</button>
+                        <button onclick="callAPI('/api/volume', {level: parseInt(document.getElementById('volume').value)})">Đặt âm lượng</button>
                     </div>
                     <div class="tool-card">
                         <h3>📸 Chụp màn hình</h3>
@@ -1047,15 +720,7 @@ async def index():
                         <h3>🔔 Thông báo</h3>
                         <input type="text" id="notif-title" placeholder="Tiêu đề">
                         <input type="text" id="notif-message" placeholder="Nội dung">
-                        <button onclick="
-                            const title = document.getElementById('notif-title').value.trim();
-                            const message = document.getElementById('notif-message').value.trim();
-                            if (!title || !message) {
-                                addLog('❌ Vui lòng nhập tiêu đề và nội dung', 'error');
-                            } else {
-                                callAPI('/api/notification', {title: title, message: message});
-                            }
-                        ">Hiển thị</button>
+                        <button onclick="callAPI('/api/notification', {title: document.getElementById('notif-title').value, message: document.getElementById('notif-message').value})">Hiển thị</button>
                     </div>
                     <div class="tool-card">
                         <h3>💻 Tài nguyên hệ thống</h3>
@@ -1069,14 +734,7 @@ async def index():
                     <div class="tool-card">
                         <h3>🔆 Độ sáng màn hình</h3>
                         <input type="number" id="brightness" min="0" max="100" value="50" placeholder="0-100">
-                        <button onclick="
-                            const level = parseInt(document.getElementById('brightness').value);
-                            if (isNaN(level) || level < 0 || level > 100) {
-                                addLog('❌ Độ sáng phải từ 0-100', 'error');
-                            } else {
-                                callTool('set_brightness', {level: level});
-                            }
-                        ">Đặt độ sáng</button>
+                        <button onclick="callTool('set_brightness', {level: parseInt(document.getElementById('brightness').value)})">Đặt độ sáng</button>
                     </div>
                 </div>
                 
@@ -1174,14 +832,14 @@ async def index():
             </div>
         </div>
         
-        <!-- CONFIG SECTION - HIDDEN (Replaced by Modal) -->
+        <!-- CONFIG SECTION -->
         <div id="config-section" style="display:none;">
             <div class="config-section">
-                <h2 style="color:#667eea;margin-bottom:20px;">⚙️ Cấu hình hiện tại</h2>
-                <p style="color:#666;margin-bottom:20px;">Sử dụng icon ⚙️ ở góc phải trên để thay đổi endpoint</p>
-                <div id="current-endpoint-info" style="background:#f9fafb;padding:20px;border-radius:12px;border:2px solid #e5e7eb;">
-                    <p><strong>Thiết bị đang hoạt động:</strong> <span id="current-device-name">-</span></p>
-                    <p><strong>Token:</strong> <span id="current-device-token" style="font-family:monospace;font-size:0.9em;word-break:break-all;">-</span></p>
+                <h2 style="color:#667eea;margin-bottom:20px;">⚙️ Quản lý Thiết bị (3 Devices)</h2>
+                <div class="device-grid" id="device-grid"></div>
+                <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;">
+                    <button style="background:#10b981;padding:12px 24px;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;" onclick="loadDevices()">🔄 Tải lại</button>
+                    <button style="background:#3b82f6;padding:12px 24px;border:none;border-radius:8px;color:white;cursor:pointer;font-weight:bold;" onclick="saveDevices()">💾 Lưu cấu hình</button>
                 </div>
             </div>
         </div>
@@ -1189,28 +847,6 @@ async def index():
         <!-- LOG SECTION -->
         <div id="log-section" style="display:none;">
             <div class="log-panel" id="log"></div>
-        </div>
-        
-        <!-- SETTINGS MODAL -->
-        <div id="settingsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>⚙️ Cấu hình Endpoint</h2>
-                    <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <label for="endpoint-url">Endpoint (JWT Token hoặc URL đầy đủ):</label>
-                    <input type="text" id="endpoint-url" placeholder="Nhập JWT token hoặc URL đầy đủ wss://api.xiaozhi.me/mcp/?token=..." />
-                    <p style="color:#666;font-size:0.9em;margin-top:-10px;">
-                        <strong>Lưu ý:</strong> Có thể nhập JWT token trực tiếp hoặc URL đầy đủ <code>wss://api.xiaozhi.me/mcp/?token=...</code> - hệ thống sẽ tự động xử lý
-                    </p>
-                </div>
-                <div class="modal-footer">
-                    <button class="modal-btn secondary" onclick="closeSettingsModal()">Hủy</button>
-                    <button class="modal-btn info" onclick="copyFullUrl()">📋 Copy URL đầy đủ</button>
-                    <button class="modal-btn primary" onclick="saveEndpoint()">💾 Lưu</button>
-                </div>
-            </div>
         </div>
     </div>
     
@@ -1224,7 +860,10 @@ async def index():
             
             document.getElementById('dashboard-section').style.display = name === 'dashboard' ? 'block' : 'none';
             document.getElementById('tools-section').style.display = name === 'tools' ? 'block' : 'none';
+            document.getElementById('config-section').style.display = name === 'config' ? 'block' : 'none';
             document.getElementById('log-section').style.display = name === 'log' ? 'block' : 'none';
+            
+            if (name === 'config') loadDevices();
         }
         
         // Tab switching
@@ -1234,83 +873,55 @@ async def index():
         }
         
         // Quick actions - 20 tools
-        function setVolumeQuick(level) { 
-            if (level >= 0 && level <= 100) {
-                callTool('set_volume', {level});
-            } else {
-                addLog('❌ Âm lượng phải từ 0-100', 'error');
-            }
-        }
-        function getVolumeInfo() {
-            callTool('get_volume', {});
-        }
+        function setVolumeQuick(level) { callAPI('/api/volume', {level}); }
         function screenshot() { callAPI('/api/screenshot', {}); }
         function notification() { callAPI('/api/notification', {title: 'Xiaozhi', message: 'Test notification'}); }
         function setBrightness() { 
             const level = prompt('Nhập độ sáng (0-100):', '50');
-            if (level === null) return;
-            const levelNum = parseInt(level);
-            if (isNaN(levelNum) || levelNum < 0 || levelNum > 100) {
-                addLog('❌ Độ sáng phải từ 0-100', 'error');
-                return;
-            }
-            callTool('set_brightness', {level: levelNum});
+            if (level) callTool('set_brightness', {level: parseInt(level)});
         }
         function openApp() {
             const app = prompt('Nhập tên app (notepad/calc/paint/cmd/explorer):', 'notepad');
-            if (app && app.trim()) callTool('open_application', {app_name: app.trim()});
+            if (app) callTool('open_application', {app_name: app});
         }
         function listProcesses() { callTool('list_running_processes', {limit: 10}); }
         function killProcess() {
             const id = prompt('Nhập PID hoặc tên tiến trình:', 'chrome');
-            if (id && id.trim()) callTool('kill_process', {identifier: id.trim()});
+            if (id) callTool('kill_process', {identifier: id});
         }
         function createFile() {
             const path = prompt('Đường dẫn file:', 'C:/test.txt');
-            if (!path || !path.trim()) return;
             const content = prompt('Nội dung:', 'Hello World');
-            if (content !== null) callTool('create_file', {path: path.trim(), content});
+            if (path && content) callTool('create_file', {path, content});
         }
         function readFile() {
             const path = prompt('Đường dẫn file:', 'C:/test.txt');
-            if (path && path.trim()) callTool('read_file', {path: path.trim()});
+            if (path) callTool('read_file', {path});
         }
         function listFiles() {
             const dir = prompt('Thư mục:', 'C:/Users');
-            if (dir && dir.trim()) callTool('list_files', {directory: dir.trim()});
+            if (dir) callTool('list_files', {directory: dir});
         }
         function diskUsage() { callTool('get_disk_usage', {}); }
         function networkInfo() { callTool('get_network_info', {}); }
         function batteryStatus() { callTool('get_battery_status', {}); }
         function searchWeb() {
             const query = prompt('Từ khóa tìm kiếm:', '');
-            if (query && query.trim()) callTool('search_web', {query: query.trim()});
+            if (query) callTool('search_web', {query});
         }
         function calculator() {
             const expr = prompt('Biểu thức toán học:', '2+2*3');
-            if (expr && expr.trim()) callAPI('/api/calculator', {expression: expr.trim()});
+            if (expr) callAPI('/api/calculator', {expression: expr});
         }
         function getClipboard() { callTool('get_clipboard', {}); }
         function setClipboard() {
             const text = prompt('Nội dung cần copy:', '');
-            if (text !== null && text.trim()) callTool('set_clipboard', {text: text.trim()});
+            if (text) callTool('set_clipboard', {text});
         }
         function playSound() {
             const freq = prompt('Tần số Hz (200-2000):', '1000');
-            if (freq === null) return;
             const dur = prompt('Thời gian ms (100-3000):', '500');
-            if (dur === null) return;
-            const freqNum = parseInt(freq);
-            const durNum = parseInt(dur);
-            if (isNaN(freqNum) || freqNum < 200 || freqNum > 2000) {
-                addLog('❌ Tần số phải từ 200-2000 Hz', 'error');
-                return;
-            }
-            if (isNaN(durNum) || durNum < 100 || durNum > 3000) {
-                addLog('❌ Thời gian phải từ 100-3000 ms', 'error');
-                return;
-            }
-            callTool('play_sound', {frequency: freqNum, duration: durNum});
+            if (freq && dur) callTool('play_sound', {frequency: parseInt(freq), duration: parseInt(dur)});
         }
         
         // NEW TOOL FUNCTIONS
@@ -1321,20 +932,8 @@ async def index():
         }
         function shutdownSchedule() {
             const action = prompt('Hành động (shutdown/restart/cancel):', 'shutdown');
-            if (!action || !action.trim()) return;
-            const actionLower = action.trim().toLowerCase();
-            if (!['shutdown', 'restart', 'cancel'].includes(actionLower)) {
-                addLog('❌ Hành động không hợp lệ. Dùng: shutdown, restart, hoặc cancel', 'error');
-                return;
-            }
             const delay = prompt('Trì hoãn (giây):', '60');
-            if (delay === null) return;
-            const delayNum = parseInt(delay) || 0;
-            if (delayNum < 0) {
-                addLog('❌ Thời gian trì hoãn phải >= 0', 'error');
-                return;
-            }
-            callTool('shutdown_schedule', {action: actionLower, delay: delayNum});
+            if (action) callTool('shutdown_schedule', {action: action, delay: parseInt(delay) || 0});
         }
         function showDesktop() {
             callTool('show_desktop', {});
@@ -1347,24 +946,22 @@ async def index():
             callTool('set_theme', {dark_mode: dark});
         }
         function changeWallpaper() {
-            const keyword = prompt('Từ khóa hình nền (hoặc để trống để chọn ngẫu nhiên):', '');
+            const keyword = prompt('Từ khóa hình nền (phong cảnh, anime, v.v... hoặc để trống):', '');
             callTool('change_wallpaper', {keyword: keyword || ''});
         }
         function getDesktopPath() {
             callTool('get_desktop_path', {});
         }
         function pasteContent() {
-            const content = prompt('Nhập nội dung cần dán (hoặc để trống để dán clipboard hiện tại):', '');
-            callTool('paste_content', {content: content || ''});
+            const content = prompt('Nhập nội dung cần dán:', '');
+            if (content) callTool('paste_content', {content: content});
         }
         function pressEnter() {
             callTool('press_enter', {});
         }
         function findInDocument() {
             const searchText = prompt('Nhập nội dung tìm kiếm:', '');
-            if (searchText && searchText.trim()) {
-                callTool('find_in_document', {search_text: searchText.trim()});
-            }
+            if (searchText) callTool('find_in_document', {search_text: searchText});
         }
 
         // API caller
@@ -1378,310 +975,88 @@ async def index():
                 });
                 const result = await response.json();
                 addLog(`✅ ${JSON.stringify(result).substring(0, 100)}`, 'success');
-                return result;
             } catch (error) {
                 addLog(`❌ Error: ${error.message}`, 'error');
-                return {success: false, error: error.message};
             }
         }
         
-        async function callTool(name, params) {
-            try {
-                addLog(`🛠️ Tool: ${name}`, 'info');
-                // Gọi API endpoint tương ứng với tool
-                const endpoint = `/api/tool/${name}`;
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(params)
-                });
-                const result = await response.json();
-                addLog(`✅ ${name}: ${JSON.stringify(result).substring(0, 150)}`, 'success');
-                return result;
-            } catch (error) {
-                addLog(`❌ Tool error: ${error.message}`, 'error');
-                return {success: false, error: error.message};
-            }
+        function callTool(name, params) {
+            addLog(`🛠️ Tool: ${name}`, 'info');
         }
         
         async function getResources() {
             try {
-                // Sử dụng cache nếu còn hiệu lực
-                const now = Date.now();
-                if (resourceCache && (now - lastResourceFetch) < RESOURCE_CACHE_TIME) {
-                    return;
-                }
-                
                 const response = await fetch('/api/resources');
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('cpu').textContent = data.data.cpu_percent + '%';
                     document.getElementById('ram').textContent = data.data.memory_percent + '%';
                     document.getElementById('disk').textContent = data.data.disk_percent + '%';
-                    
-                    // Cập nhật cache
-                    resourceCache = data;
-                    lastResourceFetch = now;
-                } else {
-                    addLog(`❌ Lỗi lấy tài nguyên: ${data.error}`, 'error');
                 }
             } catch (error) {
                 addLog(`❌ ${error.message}`, 'error');
             }
         }
         
-        // Debounce helper
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-        
         async function calculate() {
-            try {
-                const expr = document.getElementById('calc-expr').value.trim();
-                if (!expr) {
-                    document.getElementById('calc-result').textContent = 'Vui lòng nhập biểu thức';
-                    return;
-                }
-                const response = await fetch('/api/calculator', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({expression: expr})
-                });
-                const data = await response.json();
-                document.getElementById('calc-result').textContent = data.success ? data.result : data.error;
-            } catch (error) {
-                document.getElementById('calc-result').textContent = 'Lỗi: ' + error.message;
-            }
+            const expr = document.getElementById('calc-expr').value;
+            const response = await fetch('/api/calculator', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({expression: expr})
+            });
+            const data = await response.json();
+            document.getElementById('calc-result').textContent = data.success ? data.result : data.error;
         }
         
         async function getCurrentTime() {
-            try {
-                const response = await fetch('/api/time');
-                const data = await response.json();
-                if (data.data) {
-                    document.getElementById('time-result').textContent = data.data.datetime;
-                }
-            } catch (error) {
-                document.getElementById('time-result').textContent = 'Lỗi: ' + error.message;
-            }
+            const response = await fetch('/api/time');
+            const data = await response.json();
+            document.getElementById('time-result').textContent = data.data.datetime;
         }
         
-        // Modal functions
-        function openSettingsModal() {
-            document.getElementById('settingsModal').style.display = 'block';
-            loadCurrentEndpoint();
-        }
-        
-        function closeSettingsModal() {
-            document.getElementById('settingsModal').style.display = 'none';
-        }
-        
-        // Click outside modal to close
-        window.onclick = function(event) {
-            const modal = document.getElementById('settingsModal');
-            if (event.target === modal) {
-                closeSettingsModal();
-            }
-        }
-        
-        async function loadCurrentEndpoint() {
-            try {
-                const response = await fetch('/api/endpoints');
-                const data = await response.json();
-                
-                // Tìm thiết bị đang active (Thiết bị 3 - index 2)
-                const activeDevice = data.endpoints[2]; // Thiết bị 3
-                
-                if (activeDevice && activeDevice.token) {
-                    document.getElementById('endpoint-url').value = activeDevice.token;
-                }
-                
-                // Cập nhật thông tin hiện tại trong config section
-                if (document.getElementById('current-device-name')) {
-                    document.getElementById('current-device-name').textContent = activeDevice?.name || 'Chưa cấu hình';
-                }
-                if (document.getElementById('current-device-token')) {
-                    const token = activeDevice?.token || 'Chưa có token';
-                    document.getElementById('current-device-token').textContent = 
-                        token.length > 50 ? token.substring(0, 50) + '...' : token;
-                }
-            } catch (error) {
-                addLog('❌ Lỗi tải endpoint: ' + error.message, 'error');
-            }
-        }
-        
-        async function saveEndpoint() {
-            let input = document.getElementById('endpoint-url').value.trim();
-            
-            if (!input) {
-                addLog('❌ Vui lòng nhập JWT token hoặc URL đầy đủ!', 'error');
-                return;
-            }
-            
-            let token = input;
-            
-            // Nếu user nhập URL đầy đủ, extract token từ URL
-            if (input.startsWith('wss://') || input.startsWith('http')) {
-                try {
-                    const url = new URL(input);
-                    const tokenParam = url.searchParams.get('token');
-                    if (tokenParam) {
-                        token = tokenParam;
-                        addLog('✅ Đã tự động extract token từ URL', 'info');
-                    } else {
-                        addLog('❌ URL không chứa token parameter!', 'error');
-                        return;
-                    }
-                } catch (e) {
-                    addLog('❌ URL không hợp lệ!', 'error');
-                    return;
-                }
-            }
-            
-            try {
-                addLog('⏳ Đang lưu endpoint...', 'info');
-                
-                // Lấy danh sách thiết bị hiện tại
-                const response = await fetch('/api/endpoints');
-                const data = await response.json();
-                
-                // Cập nhật token cho Thiết bị 3 (index 2)
-                const devices = data.endpoints.map((device, index) => {
-                    if (index === 2) { // Thiết bị 3
-                        return {
-                            name: 'Thiết bị 3',
-                            token: token,
-                            enabled: true
-                        };
-                    }
-                    return device;
-                });
-                
-                // Lưu cấu hình
-                const saveResponse = await fetch('/api/endpoints/save', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({devices: devices})
-                });
-                
-                const saveData = await saveResponse.json();
-                
-                if (saveData.success) {
-                    addLog('✅ Đã lưu endpoint thành công!', 'success');
-                    
-                    // Chuyển sang thiết bị 3
-                    const switchResponse = await fetch('/api/endpoints/switch/2', {method: 'POST'});
-                    const switchData = await switchResponse.json();
-                    
-                    if (switchData.success) {
-                        addLog('✅ ' + switchData.message, 'success');
-                    }
-                    
-                    closeSettingsModal();
-                    
-                    // Reload trang sau 2 giây để kết nối lại
-                    setTimeout(() => {
-                        location.reload();
-                    }, 2000);
-                } else {
-                    addLog('❌ Lỗi: ' + saveData.error, 'error');
-                }
-            } catch (error) {
-                addLog('❌ Lỗi lưu endpoint: ' + error.message, 'error');
-            }
-        }
-        
-        function copyFullUrl() {
-            const input = document.getElementById('endpoint-url').value.trim();
-            if (!input) {
-                addLog('❌ Không có dữ liệu để copy!', 'error');
-                return;
-            }
-            
-            let token = input;
-            
-            // Nếu user đã nhập URL đầy đủ, extract token
-            if (input.startsWith('wss://') || input.startsWith('http')) {
-                try {
-                    const url = new URL(input);
-                    const tokenParam = url.searchParams.get('token');
-                    if (tokenParam) {
-                        token = tokenParam;
-                    }
-                } catch (e) {
-                    addLog('❌ URL không hợp lệ!', 'error');
-                    return;
-                }
-            }
-            
-            // Tạo URL đầy đủ
-            const fullUrl = `wss://api.xiaozhi.me/mcp/?token=${token}`;
-            
-            // Copy vào clipboard
-            navigator.clipboard.writeText(fullUrl).then(() => {
-                addLog('✅ Đã copy URL đầy đủ vào clipboard!', 'success');
-            }).catch(err => {
-                addLog('❌ Lỗi copy: ' + err.message, 'error');
+        async function loadDevices() {
+            const response = await fetch('/api/endpoints');
+            const data = await response.json();
+            const grid = document.getElementById('device-grid');
+            grid.innerHTML = '';
+            data.endpoints.forEach((ep, i) => {
+                const card = document.createElement('div');
+                card.className = 'device-card' + (ep.enabled ? ' active' : '');
+                card.innerHTML = `
+                    <h4>📱 ${ep.name}</h4>
+                    <input type="text" placeholder="JWT Token" value="${ep.token}" id="token-${i}">
+                    <button onclick="switchDevice(${i})">🔄 Chuyển sang thiết bị này</button>
+                `;
+                grid.appendChild(card);
             });
         }
         
-        // Legacy functions (kept for compatibility, but hidden from UI)
-        async function loadDevices() {
-            try {
-                const response = await fetch('/api/endpoints');
-                const data = await response.json();
-                
-                // Update current endpoint info in config section
-                const activeDevice = data.endpoints[2]; // Thiết bị 3
-                if (document.getElementById('current-device-name')) {
-                    document.getElementById('current-device-name').textContent = activeDevice?.name || 'Chưa cấu hình';
-                }
-                if (document.getElementById('current-device-token')) {
-                    const token = activeDevice?.token || 'Chưa có token';
-                    document.getElementById('current-device-token').textContent = 
-                        token.length > 50 ? token.substring(0, 50) + '...' : token;
-                }
-            } catch (error) {
-                addLog('❌ Lỗi tải danh sách thiết bị: ' + error.message, 'error');
-            }
+        async function switchDevice(index) {
+            const response = await fetch(`/api/endpoints/switch/${index}`, {method: 'POST'});
+            const data = await response.json();
+            addLog(`✅ ${data.message}`, 'success');
+            loadDevices();
         }
-
+        
+        function saveDevices() {
+            addLog('💾 Saving devices...', 'info');
+        }
+        
         function addLog(message, type = 'info') {
             const log = document.getElementById('log');
-            if (!log) return;
             const entry = document.createElement('div');
             entry.className = `log-entry log-${type}`;
             const time = new Date().toLocaleTimeString();
             entry.innerHTML = `<span class="log-time">${time}</span> ${message}`;
             log.insertBefore(entry, log.firstChild);
-            
-            // Giới hạn 50 logs thay vì 100 để giảm DOM size
-            if (log.children.length > 50) {
-                // Xóa nhiều logs cùng lúc để tránh reflow nhiều lần
-                while (log.children.length > 50) {
-                    log.removeChild(log.lastChild);
-                }
-            }
+            if (log.children.length > 100) log.removeChild(log.lastChild);
         }
         
-        // WebSocket với reconnect optimization
-        let wsReconnectAttempts = 0;
-        const MAX_RECONNECT_DELAY = 30000; // Max 30s
-        
+        // WebSocket
         function connectWS() {
             ws = new WebSocket(`ws://${window.location.host}/ws`);
-            ws.onopen = () => {
-                addLog('✅ WebSocket connected', 'success');
-                wsReconnectAttempts = 0; // Reset counter khi connect thành công
-            };
+            ws.onopen = () => addLog('✅ WebSocket connected', 'success');
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'xiaozhi_status') {
@@ -1702,21 +1077,12 @@ async def index():
             };
             ws.onclose = () => {
                 addLog('❌ WebSocket disconnected', 'error');
-                // Exponential backoff cho reconnect
-                wsReconnectAttempts++;
-                const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), MAX_RECONNECT_DELAY);
-                setTimeout(connectWS, delay);
+                setTimeout(connectWS, 3000);
             };
         }
         
-        // Caching và optimization
-        let resourceCache = null;
-        let lastResourceFetch = 0;
-        const RESOURCE_CACHE_TIME = 3000; // Cache 3 giây
-        
         connectWS();
-        // Giảm polling từ 5s xuống 10s để giảm tải
-        setInterval(getResources, 10000);
+        setInterval(getResources, 5000);
         getResources();
     </script>
 </body>
@@ -1767,238 +1133,19 @@ async def api_calculator(request: CalculatorRequest):
         raise HTTPException(500, result["error"])
     return result
 
-
-# ===== 23 API ENDPOINTS MỚI (Tool 8-30) =====
-
-@app.post("/api/tool/open_application")
-async def api_open_app(data: dict):
-    result = await open_application(data.get("app_name", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/list_running_processes")
-async def api_list_procs(data: dict):
-    result = await list_running_processes(data.get("limit", 10))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/kill_process")
-async def api_kill_proc(data: dict):
-    result = await kill_process(data.get("identifier", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/create_file")
-async def api_create_file(data: dict):
-    result = await create_file(data.get("path", ""), data.get("content", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/read_file")
-async def api_read_file(data: dict):
-    result = await read_file(data.get("path", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/list_files")
-async def api_list_files(data: dict):
-    result = await list_files(data.get("directory", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/get_disk_usage")
-async def api_disk_usage():
-    result = await get_disk_usage()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/get_network_info")
-async def api_network():
-    result = await get_network_info()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/get_battery_status")
-async def api_battery():
-    result = await get_battery_status()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/search_web")
-async def api_search(data: dict):
-    result = await search_web(data.get("query", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/get_clipboard")
-async def api_get_clip():
-    result = await get_clipboard()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/set_clipboard")
-async def api_set_clip(data: dict):
-    result = await set_clipboard(data.get("text", ""))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/play_sound")
-async def api_sound(data: dict):
-    result = await play_sound(data.get("frequency", 1000), data.get("duration", 500))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/set_brightness")
-async def api_brightness(data: dict):
-    result = await set_brightness(data.get("level", 50))
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/minimize_all_windows")
-async def api_minimize():
-    result = await show_desktop()  # Sử dụng show_desktop thay vì minimize_all_windows
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/undo_action")
-async def api_undo():
-    result = await undo_operation()  # Sử dụng undo_operation thay vì undo_action
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/toggle_dark_mode")
-async def api_theme():
-    result = await set_theme(dark_mode=None)  # Toggle bằng cách để None, hàm set_theme sẽ xử lý
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/set_wallpaper")
-async def api_wallpaper(data: dict):
-    path = data.get("path", "")
-    keyword = data.get("keyword", "")
-    # Dùng change_wallpaper với custom_path nếu có path
-    result = await change_wallpaper(keyword=keyword, custom_path=path)
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/paste_text")
-async def api_paste():
-    result = await paste_content(content="")  # paste_content với clipboard hiện tại
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/press_enter")
-async def api_enter():
-    result = await press_enter()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/find_on_screen")
-async def api_find(data: dict):
-    result = await find_in_document(data.get("text", ""))  # Sử dụng find_in_document
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/lock_computer")
-async def api_lock():
-    result = await lock_computer()
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-@app.post("/api/tool/shutdown_computer")
-async def api_shutdown(data: dict):
-    delay = data.get("delay", 0)
-    # Sử dụng shutdown_schedule với action="shutdown"
-    result = await shutdown_schedule(action="shutdown", delay=delay)
-    if not result["success"]:
-        raise HTTPException(500, result["error"])
-    return result
-
-
 @app.get("/api/endpoints")
 async def get_endpoints():
     return {"endpoints": endpoints_config}
 
 @app.post("/api/endpoints/switch/{index}")
 async def switch_endpoint(index: int):
-    global active_endpoint_index, should_reconnect
-    if index < 0 or index >= len(endpoints_config):
-        return {"success": False, "error": "Thiết bị không tồn tại"}
-    
-    device = endpoints_config[index]
-    if not device.get("token"):
-        return {"success": False, "error": "Thiết bị chưa có token. Hãy nhập token và lưu lại!"}
-    
-    # Thay đổi endpoint và trigger reconnect
-    old_index = active_endpoint_index
-    active_endpoint_index = index
-    should_reconnect = True  # Trigger reconnect trong xiaozhi_websocket_client
-    
-    # Lưu vào file
-    save_endpoints_to_file(endpoints_config, active_endpoint_index)
-    
-    print(f"🔄 [Endpoint] Switching from device {old_index} to {index} ({device['name']})")
-    
-    return {"success": True, "message": f"Đã chuyển sang {device['name']}. Đang kết nối lại..."}
-
-@app.post("/api/endpoints/save")
-async def save_endpoints(data: dict):
-    global endpoints_config, should_reconnect
-    try:
-        devices = data.get('devices', [])
-        if not devices:
-            return {"success": False, "error": "Không có dữ liệu"}
-        
-        # Lưu token cũ của thiết bị đang active để so sánh
-        old_active_token = endpoints_config[active_endpoint_index].get('token', '') if active_endpoint_index < len(endpoints_config) else ''
-        
-        # Cập nhật endpoints_config
-        endpoints_config = []
-        for dev in devices:
-            endpoints_config.append({
-                'name': dev.get('name', 'Thiết bị'),
-                'token': dev.get('token', ''),
-                'enabled': bool(dev.get('token', ''))
-            })
-        
-        # Lưu vào file JSON
-        if save_endpoints_to_file(endpoints_config, active_endpoint_index):
-            print(f"✅ [Endpoint] Successfully saved {len(devices)} devices to file")
-        else:
-            print(f"⚠️ [Endpoint] Failed to save to file, but config updated in memory")
-        
-        # Kiểm tra nếu token của thiết bị đang active thay đổi -> reconnect
-        new_active_token = endpoints_config[active_endpoint_index].get('token', '') if active_endpoint_index < len(endpoints_config) else ''
-        if old_active_token != new_active_token and new_active_token:
-            should_reconnect = True
-            print(f"🔄 [Endpoint] Token changed for active device {active_endpoint_index}. Triggering reconnect...")
-        
-        return {"success": True, "message": f"Đã lưu {len(devices)} thiết bị vào file" + (" và đang kết nối lại..." if should_reconnect else "")}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
+    global active_endpoint_index
+    if 0 <= index < len(endpoints_config):
+        if endpoints_config[index]["token"]:
+            active_endpoint_index = index
+            return {"success": True, "message": f"Đã chuyển sang {endpoints_config[index]['name']}"}
+        raise HTTPException(400, "Token is empty")
+    raise HTTPException(404, "Invalid device index")
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -2009,11 +1156,10 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             await websocket.send_text(f"Echo: {data}")
-    except Exception as e:
-        print(f"⚠️ WebSocket client error: {e}")
+    except:
+        pass
     finally:
-        if websocket in active_connections:
-            active_connections.remove(websocket)
+        active_connections.remove(websocket)
 
 @app.on_event("startup")
 async def startup():
@@ -2021,25 +1167,11 @@ async def startup():
 
 if __name__ == "__main__":
     import uvicorn
-    import webbrowser
-    import threading
-    import time
-    
-    def open_browser():
-        """Mo browser sau 2 giay"""
-        time.sleep(2)
-        webbrowser.open("http://localhost:8000")
-    
-    # Khoi dong thread mo browser
-    threading.Thread(target=open_browser, daemon=True).start()
-    
     print("=" * 60)
-    print(" XIAOZHI FINAL - SIDEBAR UI")
+    print("🚀 XIAOZHI FINAL - SIDEBAR UI")
     print("=" * 60)
-    print(" Web Dashboard: http://localhost:8000")
-    print(" WebSocket MCP: Multi-device support")
-    print("  Tools: 30 available (20 original + 10 new from reference)")
-    print(" Browser se tu dong mo sau 2 giay...")
+    print("📊 Web Dashboard: http://localhost:8000")
+    print("🔌 WebSocket MCP: Multi-device support")
+    print("🛠️  Tools: 30 available (20 original + 10 new from reference)")
     print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
