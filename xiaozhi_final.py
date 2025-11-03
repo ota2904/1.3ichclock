@@ -1231,13 +1231,13 @@ async def search_news(keyword: str, max_results: int = 5) -> dict:
 
 async def get_gold_price() -> dict:
     """
-    Lấy giá vàng từ BNews hoặc các nguồn khác
+    Lấy giá vàng từ các nguồn uy tín
     """
     try:
         import requests
         from bs4 import BeautifulSoup
         import re
-        
+
         # Try multiple sources
         sources = [
             {
@@ -1251,23 +1251,23 @@ async def get_gold_price() -> dict:
                 "type": "html"
             }
         ]
-        
+
         print(f"💰 [Gold] Fetching gold prices...")
-        
+
         # Try SJC XML first
         try:
             response = requests.get(sources[0]["url"], timeout=10, headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
             response.encoding = 'utf-8'
-            
+
             if response.status_code == 200:
                 soup = BeautifulSoup(response.content, 'xml')
                 items = soup.find_all('item')
-                
+
                 if items:
                     gold_data = []
-                    
+
                     for item in items[:10]:
                         try:
                             gold_item = {
@@ -1275,38 +1275,38 @@ async def get_gold_price() -> dict:
                                 "buy": item.get('@buy', 'N/A'),
                                 "sell": item.get('@sell', 'N/A')
                             }
-                            
+
                             # Fallback to text content if attributes not found
                             if gold_item["type"] == 'N/A':
                                 type_tag = item.find('type')
                                 buy_tag = item.find('buy')
                                 sell_tag = item.find('sell')
-                                
+
                                 if type_tag:
                                     gold_item["type"] = type_tag.get_text(strip=True)
                                 if buy_tag:
                                     gold_item["buy"] = buy_tag.get_text(strip=True)
                                 if sell_tag:
                                     gold_item["sell"] = sell_tag.get_text(strip=True)
-                            
+
                             gold_data.append(gold_item)
                             print(f"✅ [Gold] {gold_item['type']}: Mua {gold_item['buy']} | Bán {gold_item['sell']}")
-                            
+
                         except Exception as e:
                             print(f"⚠️ [Gold] Error parsing item: {e}")
                             continue
-                    
+
                     if gold_data:
                         # Tạo summary
                         summary_lines = ["💰 GIÁ VÀNG HÔM NAY - SJC", "=" * 60]
-                        
+
                         for item in gold_data:
                             summary_lines.append(f"📊 {item['type']}")
                             summary_lines.append(f"   Mua vào: {item['buy']} VNĐ | Bán ra: {item['sell']} VNĐ")
                             summary_lines.append("")
-                        
+
                         summary_text = "\n".join(summary_lines)
-                        
+
                         return {
                             "success": True,
                             "total": len(gold_data),
@@ -1315,24 +1315,94 @@ async def get_gold_price() -> dict:
                             "message": f"Đã lấy giá {len(gold_data)} loại vàng",
                             "source": "SJC.com.vn"
                         }
-        
+
         except Exception as e:
             print(f"⚠️ [Gold] Error with SJC source: {e}")
-        
-        # Fallback: Return sample data
+
+        # Fallback: Try giavang.org scraping
+        try:
+            print(f"💰 [Gold] Trying giavang.org...")
+            response = requests.get('https://giavang.org/', timeout=15, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+
+                # Look for gold price tables
+                tables = soup.find_all('table')
+                gold_data = []
+
+                for table in tables:
+                    rows = table.find_all('tr')
+
+                    for row in rows:
+                        cols = row.find_all(['td', 'th'])
+                        if len(cols) >= 3:
+                            # Get text from columns
+                            col_texts = [col.get_text(strip=True) for col in cols]
+
+                            # Look for gold type and prices
+                            if len(col_texts) >= 3:
+                                gold_type = col_texts[0]
+                                buy_price = col_texts[1]
+                                sell_price = col_texts[2]
+
+                                # Check if this looks like gold data
+                                if ('vàng' in gold_type.lower() or 'sjc' in gold_type.lower() or 'nhẫn' in gold_type.lower() or 'pnj' in gold_type.lower() or 'doji' in gold_type.lower()) and buy_price and sell_price:
+                                    # Clean prices
+                                    buy_clean = re.sub(r'[^\d]', '', buy_price)
+                                    sell_clean = re.sub(r'[^\d]', '', sell_price)
+
+                                    if buy_clean and sell_clean:
+                                        # Format with dots
+                                        buy_formatted = f"{int(buy_clean):,}".replace(',', '.')
+                                        sell_formatted = f"{int(sell_clean):,}".replace(',', '.')
+
+                                        gold_data.append({
+                                            "type": gold_type,
+                                            "buy": buy_formatted,
+                                            "sell": sell_formatted
+                                        })
+                                        print(f"✅ [Gold] {gold_type}: Mua {buy_formatted} | Bán {sell_formatted}")
+
+                if gold_data:
+                    # Tạo summary
+                    summary_lines = ["💰 GIÁ VÀNG HÔM NAY - GIAVANG.ORG", "=" * 60]
+
+                    for item in gold_data[:15]:  # Limit to 15 items
+                        summary_lines.append(f"📊 {item['type']}")
+                        summary_lines.append(f"   Mua vào: {item['buy']} VNĐ | Bán ra: {item['sell']} VNĐ")
+                        summary_lines.append("")
+
+                    summary_text = "\n".join(summary_lines)
+
+                    return {
+                        "success": True,
+                        "total": len(gold_data),
+                        "gold_prices": gold_data,
+                        "summary": summary_text,
+                        "message": f"Đã lấy giá {len(gold_data)} loại vàng từ giavang.org",
+                        "source": "giavang.org"
+                    }
+
+        except Exception as e:
+            print(f"⚠️ [Gold] Error with giavang.org: {e}")
+
+        # Final fallback: Return sample data
         sample_data = [
             {"type": "Vàng SJC 1L, 10L", "buy": "88.500.000", "sell": "90.000.000"},
             {"type": "Vàng SJC 5c", "buy": "88.500.000", "sell": "90.200.000"},
             {"type": "Vàng nhẫn SJC 99.99 1c, 5c", "buy": "87.800.000", "sell": "89.300.000"},
             {"type": "Vàng nhẫn SJC 99.99 0.5c", "buy": "87.800.000", "sell": "89.400.000"},
         ]
-        
+
         summary_lines = ["💰 GIÁ VÀNG THAM KHẢO", "=" * 60]
         for item in sample_data:
             summary_lines.append(f"📊 {item['type']}")
             summary_lines.append(f"   Mua vào: {item['buy']} VNĐ | Bán ra: {item['sell']} VNĐ")
             summary_lines.append("")
-        
+
         return {
             "success": True,
             "total": len(sample_data),
@@ -1340,9 +1410,9 @@ async def get_gold_price() -> dict:
             "summary": "\n".join(summary_lines),
             "message": f"Giá vàng tham khảo ({len(sample_data)} loại)",
             "source": "Sample Data",
-            "note": "Giá tham khảo, cần cập nhật từ nguồn chính thống"
+            "note": "Giá tham khảo, không thể kết nối nguồn chính thống"
         }
-        
+
     except Exception as e:
         return {"success": False, "error": f"Lỗi: {str(e)}"}
 
