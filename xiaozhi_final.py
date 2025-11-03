@@ -484,6 +484,132 @@ async def get_disk_usage() -> dict:
         return {"success": False, "error": str(e)}
 
 # ============================================================
+# MUSIC LIBRARY TOOLS
+# ============================================================
+
+MUSIC_LIBRARY = Path(__file__).parent / "music_library"
+MUSIC_EXTENSIONS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg', '.wma', '.aac'}
+
+async def list_music(subfolder: str = "") -> dict:
+    """Liệt kê tất cả file nhạc trong thư mục music_library"""
+    try:
+        if not MUSIC_LIBRARY.exists():
+            MUSIC_LIBRARY.mkdir(exist_ok=True)
+            return {"success": True, "files": [], "count": 0, "message": "Thư mục music_library đã được tạo. Hãy thêm nhạc vào!"}
+        
+        search_path = MUSIC_LIBRARY / subfolder if subfolder else MUSIC_LIBRARY
+        
+        if not search_path.exists():
+            return {"success": False, "error": f"Thư mục '{subfolder}' không tồn tại"}
+        
+        music_files = []
+        for file_path in search_path.rglob("*"):
+            if file_path.is_file() and file_path.suffix.lower() in MUSIC_EXTENSIONS:
+                relative_path = file_path.relative_to(MUSIC_LIBRARY)
+                music_files.append({
+                    "filename": file_path.name,
+                    "path": str(relative_path).replace('\\', '/'),
+                    "size_mb": round(file_path.stat().st_size / (1024**2), 2),
+                    "extension": file_path.suffix.lower()
+                })
+        
+        music_files.sort(key=lambda x: x['filename'])
+        
+        return {
+            "success": True,
+            "files": music_files,
+            "count": len(music_files),
+            "library_path": str(MUSIC_LIBRARY),
+            "message": f"Tìm thấy {len(music_files)} bài hát"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def play_music(filename: str) -> dict:
+    """Phát nhạc từ music_library"""
+    try:
+        if not MUSIC_LIBRARY.exists():
+            return {"success": False, "error": "Thư mục music_library không tồn tại"}
+        
+        # Tìm file trong thư mục và các subfolder
+        music_path = None
+        for file_path in MUSIC_LIBRARY.rglob("*"):
+            if file_path.is_file() and file_path.name == filename:
+                music_path = file_path
+                break
+        
+        if not music_path or not music_path.exists():
+            return {"success": False, "error": f"Không tìm thấy file '{filename}'"}
+        
+        if music_path.suffix.lower() not in MUSIC_EXTENSIONS:
+            return {"success": False, "error": f"Định dạng file không được hỗ trợ: {music_path.suffix}"}
+        
+        # Mở file nhạc với Windows Media Player
+        import os
+        os.startfile(str(music_path))
+        
+        return {
+            "success": True,
+            "filename": filename,
+            "path": str(music_path.relative_to(MUSIC_LIBRARY)),
+            "size_mb": round(music_path.stat().st_size / (1024**2), 2),
+            "message": f"✅ Đang phát: {filename}"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def stop_music() -> dict:
+    """Dừng nhạc đang phát (đóng Windows Media Player)"""
+    try:
+        # Đóng tất cả các process Windows Media Player
+        ps_cmd = "Stop-Process -Name 'wmplayer' -Force -ErrorAction SilentlyContinue"
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(proc.wait(), timeout=3)
+        
+        return {
+            "success": True,
+            "message": "✅ Đã dừng phát nhạc"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def search_music(keyword: str) -> dict:
+    """Tìm kiếm nhạc theo tên"""
+    try:
+        if not MUSIC_LIBRARY.exists():
+            return {"success": False, "error": "Thư mục music_library không tồn tại"}
+        
+        keyword_lower = keyword.lower()
+        music_files = []
+        
+        for file_path in MUSIC_LIBRARY.rglob("*"):
+            if file_path.is_file() and file_path.suffix.lower() in MUSIC_EXTENSIONS:
+                if keyword_lower in file_path.name.lower():
+                    relative_path = file_path.relative_to(MUSIC_LIBRARY)
+                    music_files.append({
+                        "filename": file_path.name,
+                        "path": str(relative_path).replace('\\', '/'),
+                        "size_mb": round(file_path.stat().st_size / (1024**2), 2),
+                        "extension": file_path.suffix.lower()
+                    })
+        
+        music_files.sort(key=lambda x: x['filename'])
+        
+        return {
+            "success": True,
+            "files": music_files,
+            "count": len(music_files),
+            "keyword": keyword,
+            "message": f"Tìm thấy {len(music_files)} kết quả cho '{keyword}'"
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ============================================================
 # NEW TOOLS FROM XIAOZHI-MCPTOOLS REFERENCE
 # ============================================================
 
@@ -698,6 +824,12 @@ TOOLS = {
     "set_clipboard": {"handler": set_clipboard, "description": "Đặt clipboard", "parameters": {"text": {"type": "string", "description": "Nội dung", "required": True}}},
     "play_sound": {"handler": play_sound, "description": "Phát âm thanh", "parameters": {"frequency": {"type": "integer", "description": "Tần số Hz", "required": False}, "duration": {"type": "integer", "description": "Thời gian ms", "required": False}}},
     "get_disk_usage": {"handler": get_disk_usage, "description": "Thông tin đĩa", "parameters": {}},
+    
+    # MUSIC LIBRARY TOOLS
+    "list_music": {"handler": list_music, "description": "Liệt kê tất cả nhạc trong music_library", "parameters": {"subfolder": {"type": "string", "description": "Thư mục con (tùy chọn)", "required": False}}},
+    "play_music": {"handler": play_music, "description": "Phát nhạc từ music_library", "parameters": {"filename": {"type": "string", "description": "Tên file nhạc", "required": True}}},
+    "stop_music": {"handler": stop_music, "description": "Dừng nhạc đang phát", "parameters": {}},
+    "search_music": {"handler": search_music, "description": "Tìm kiếm nhạc theo tên", "parameters": {"keyword": {"type": "string", "description": "Từ khóa tìm kiếm", "required": True}}},
     
     # NEW TOOLS FROM REFERENCE
     "lock_computer": {"handler": lock_computer, "description": "Khóa máy tính", "parameters": {}},
