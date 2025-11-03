@@ -729,6 +729,72 @@ async def search_music(keyword: str, auto_play: bool = True) -> dict:
         return {"success": False, "error": str(e)}
 
 # ============================================================
+# QUICK WEBSITE ACCESS TOOLS
+# ============================================================
+
+async def open_youtube(search_query: str = "") -> dict:
+    """Mở YouTube với từ khóa tìm kiếm (nếu có)"""
+    try:
+        import webbrowser
+        if search_query:
+            url = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
+            message = f"Đã mở YouTube với tìm kiếm: '{search_query}'"
+        else:
+            url = "https://www.youtube.com"
+            message = "Đã mở YouTube"
+        webbrowser.open(url)
+        return {"success": True, "message": message, "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def open_facebook() -> dict:
+    """Mở Facebook"""
+    try:
+        import webbrowser
+        url = "https://www.facebook.com"
+        webbrowser.open(url)
+        return {"success": True, "message": "Đã mở Facebook", "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def open_google(search_query: str = "") -> dict:
+    """Mở Google với từ khóa tìm kiếm (nếu có)"""
+    try:
+        import webbrowser
+        if search_query:
+            url = f"https://www.google.com/search?q={search_query.replace(' ', '+')}"
+            message = f"Đã mở Google với tìm kiếm: '{search_query}'"
+        else:
+            url = "https://www.google.com"
+            message = "Đã mở Google"
+        webbrowser.open(url)
+        return {"success": True, "message": message, "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def open_tiktok() -> dict:
+    """Mở TikTok"""
+    try:
+        import webbrowser
+        url = "https://www.tiktok.com"
+        webbrowser.open(url)
+        return {"success": True, "message": "Đã mở TikTok", "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def open_website(url: str) -> dict:
+    """Mở trang web tùy chỉnh"""
+    try:
+        import webbrowser
+        # Thêm https:// nếu chưa có
+        if not url.startswith(('http://', 'https://')):
+            url = f"https://{url}"
+        webbrowser.open(url)
+        return {"success": True, "message": f"Đã mở trang web: {url}", "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ============================================================
 # NEW TOOLS FROM XIAOZHI-MCPTOOLS REFERENCE
 # ============================================================
 
@@ -990,6 +1056,51 @@ TOOLS = {
                 "type": "boolean",
                 "description": "Auto-play first found song? Default True. Set False to only search.",
                 "required": False
+            }
+        }
+    },
+    
+    # QUICK WEBSITE ACCESS TOOLS
+    "open_youtube": {
+        "handler": open_youtube, 
+        "description": "Mở YouTube trong browser. Có thể tìm kiếm video ngay bằng cách thêm từ khóa. Ví dụ: 'mở youtube' hoặc 'mở youtube tìm kiếm nhạc'", 
+        "parameters": {
+            "search_query": {
+                "type": "string", 
+                "description": "Từ khóa tìm kiếm trên YouTube (tùy chọn). Để trống để mở trang chủ YouTube.", 
+                "required": False
+            }
+        }
+    },
+    "open_facebook": {
+        "handler": open_facebook, 
+        "description": "Mở Facebook trong browser. Truy cập nhanh vào mạng xã hội phổ biến nhất.", 
+        "parameters": {}
+    },
+    "open_google": {
+        "handler": open_google, 
+        "description": "Mở Google trong browser. Có thể tìm kiếm ngay bằng cách thêm từ khóa. Ví dụ: 'mở google' hoặc 'mở google tìm kiếm AI'", 
+        "parameters": {
+            "search_query": {
+                "type": "string", 
+                "description": "Từ khóa tìm kiếm trên Google (tùy chọn). Để trống để mở trang chủ Google.", 
+                "required": False
+            }
+        }
+    },
+    "open_tiktok": {
+        "handler": open_tiktok, 
+        "description": "Mở TikTok trong browser. Xem video ngắn trending và giải trí.", 
+        "parameters": {}
+    },
+    "open_website": {
+        "handler": open_website, 
+        "description": "Mở trang web tùy chỉnh trong browser. Nhập URL đầy đủ hoặc tên miền.", 
+        "parameters": {
+            "url": {
+                "type": "string", 
+                "description": "URL của trang web (ví dụ: 'github.com' hoặc 'https://github.com/user/repo')", 
+                "required": True
             }
         }
     },
