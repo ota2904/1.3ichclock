@@ -12,10 +12,10 @@
     },
     {
       "name": "Thiết bị 3",
-      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjE0MDgwNiwiZXhwIjoxNzkzNjk4NDA2fQ.joBjURGcPN0T2uEblAFQfvnvhhPUl7Ace_IQIUAzKKSuhch9R8nLJh049emzTCvg6RzRN_nO-wLCJN7ZE12TuQ",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6NjQwNzMwLCJlbmRwb2ludElkIjoiYWdlbnRfNjQwNzMwIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjE0Njg3MSwiZXhwIjoxNzkzNzA0NDcxfQ.gQt_E1qlpRTQgPlyEr63nIq3kDHLF1GT3hOG-UOVNEkRKt8_IuANzzQIPMWyJmaxarmSrJZfqjGYt1k8N5iTmw",
       "enabled": true
     }
   ],
   "active_index": 2,
-  "last_updated": "2025-11-03T12:34:39.577841"
+  "last_updated": "2025-11-03T14:14:41.132992"
 }

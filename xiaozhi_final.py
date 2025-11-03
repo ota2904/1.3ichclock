@@ -447,7 +447,8 @@ async def get_clipboard() -> dict:
     try:
         proc = await asyncio.create_subprocess_exec("powershell", "-Command", "Get-Clipboard", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
         stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
-        return {"success": True, "content": stdout.decode('utf-8', errors='ignore').strip()}
+        content = stdout.decode('utf-8', errors='ignore').strip()
+        return {"success": True, "content": content}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -490,8 +491,12 @@ async def get_disk_usage() -> dict:
 MUSIC_LIBRARY = Path(__file__).parent / "music_library"
 MUSIC_EXTENSIONS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg', '.wma', '.aac'}
 
-async def list_music(subfolder: str = "") -> dict:
-    """Liệt kê tất cả file nhạc trong thư mục music_library"""
+async def list_music(subfolder: str = "", auto_play: bool = True) -> dict:
+    """
+    Liệt kê file nhạc trong music_library.
+    Theo mặc định TỰ ĐỘNG PHÁT bài đầu tiên (giống xinnan-tech/xiaozhi-esp32-server).
+    Set auto_play=False để chỉ liệt kê không phát.
+    """
     try:
         if not MUSIC_LIBRARY.exists():
             MUSIC_LIBRARY.mkdir(exist_ok=True)
@@ -515,40 +520,40 @@ async def list_music(subfolder: str = "") -> dict:
         
         music_files.sort(key=lambda x: x['filename'])
         
-        # Tạo message với hướng dẫn RẤT RÕ RÀNG cho AI - bao gồm cả example call
-        if len(music_files) > 0:
-            first_file = music_files[0]['filename']
-            filenames_list = [f['filename'] for f in music_files]
-            
-            # Message với example call cụ thể
-            instruction = f"Found {len(music_files)} song(s). NOW call play_music tool to play!"
-            example_call = f"\nNext step: call play_music(filename=\"{first_file}\")"
-            file_list = "\nAvailable files:"
-            message_parts = [instruction, example_call, file_list] + [f"  - {fname}" for fname in filenames_list[:10]]
-            
-            if len(music_files) > 10:
-                message_parts.append(f"  ... and {len(music_files) - 10} more")
-            
-            full_message = "\n".join(message_parts)
-            
-            # Thêm next_action để AI hiểu rõ
-            next_action = {
-                "tool": "play_music",
-                "parameters": {"filename": first_file},
-                "instruction": f"Call play_music with filename=\"{first_file}\" to play the first song"
+        if len(music_files) == 0:
+            return {
+                "success": True, 
+                "files": [], 
+                "count": 0,
+                "message": "No music files found. Please add music files to music_library folder."
             }
+        
+        # 🎵 AUTO-PLAY: Tự động phát bài đầu tiên (như code reference)
+        first_file = music_files[0]['filename']
+        play_result = None
+        
+        if auto_play:
+            print(f"🎵 [Auto-Play] list_music tự động phát: {first_file}")
+            play_result = await play_music(first_file)
+            
+            if play_result.get("success"):
+                message = f"✅ Auto-played: {first_file}\nTotal {len(music_files)} song(s) in library"
+            else:
+                message = f"❌ Found {len(music_files)} songs but failed to play: {play_result.get('error', 'Unknown error')}"
         else:
-            full_message = "No music files found. Please add music files to music_library folder."
-            next_action = None
+            filenames_list = [f['filename'] for f in music_files]
+            message = f"Found {len(music_files)} song(s):\n" + "\n".join([f"  - {fname}" for fname in filenames_list[:10]])
+            if len(music_files) > 10:
+                message += f"\n  ... and {len(music_files) - 10} more"
         
         return {
             "success": True,
             "files": music_files,
             "count": len(music_files),
             "library_path": str(MUSIC_LIBRARY),
-            "message": full_message,
-            "next_action": next_action,
-            "instruction": "MUST call play_music(filename) next with exact filename from files list"
+            "message": message,
+            "auto_played": auto_play,
+            "play_result": play_result if auto_play else None
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -665,8 +670,11 @@ async def stop_music() -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def search_music(keyword: str) -> dict:
-    """Tìm kiếm nhạc theo tên"""
+async def search_music(keyword: str, auto_play: bool = True) -> dict:
+    """
+    Tìm kiếm nhạc theo từ khóa và TỰ ĐỘNG PHÁT bài đầu tiên.
+    Set auto_play=False để chỉ tìm kiếm không phát.
+    """
     try:
         if not MUSIC_LIBRARY.exists():
             return {"success": False, "error": "Thư mục music_library không tồn tại"}
@@ -687,12 +695,35 @@ async def search_music(keyword: str) -> dict:
         
         music_files.sort(key=lambda x: x['filename'])
         
+        if len(music_files) == 0:
+            return {
+                "success": False,
+                "error": f"Không tìm thấy bài hát nào với từ khóa '{keyword}'"
+            }
+        
+        # 🎵 AUTO-PLAY: Tự động phát bài đầu tiên
+        first_file = music_files[0]['filename']
+        play_result = None
+        
+        if auto_play:
+            print(f"🔍 [Search Music] Tìm thấy '{keyword}', tự động phát: {first_file}")
+            play_result = await play_music(first_file)
+            
+            if play_result.get("success"):
+                message = f"✅ Found & playing: {first_file}\nTotal {len(music_files)} match(es) for '{keyword}'"
+            else:
+                message = f"❌ Found {len(music_files)} songs but failed to play: {play_result.get('error', 'Unknown error')}"
+        else:
+            message = f"Tìm thấy {len(music_files)} kết quả cho '{keyword}'"
+        
         return {
             "success": True,
             "files": music_files,
             "count": len(music_files),
             "keyword": keyword,
-            "message": f"Tìm thấy {len(music_files)} kết quả cho '{keyword}'"
+            "message": message,
+            "auto_played": auto_play,
+            "play_result": play_result if auto_play else None
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -916,39 +947,49 @@ TOOLS = {
     # MUSIC LIBRARY TOOLS
     "list_music": {
         "handler": list_music, 
-        "description": "Step 1 of 2: List music files. THIS DOES NOT PLAY MUSIC! After calling this, you MUST call play_music next. Response includes 'next_action' showing exactly how to call play_music. ALWAYS follow with play_music call using filename from response.", 
+        "description": "List and AUTO-PLAY music from music_library. By default, automatically plays the first song found (like xinnan-tech reference). Returns list of all songs + auto-play result. Set auto_play=False to only list without playing.", 
         "parameters": {
             "subfolder": {
                 "type": "string", 
                 "description": "Optional subfolder name (e.g., 'Pop', 'Rock'). Leave empty to list all.", 
+                "required": False
+            },
+            "auto_play": {
+                "type": "boolean",
+                "description": "Auto-play first song? Default is True (recommended). Set False to only list.",
                 "required": False
             }
         }
     },
     "play_music": {
         "handler": play_music, 
-        "description": "Step 2 of 2: ACTUALLY PLAY THE MUSIC! This is the tool that plays music. Call this immediately after list_music with the filename from list_music response.files[0].filename. Example: list_music returns filename='song.mp3' → call play_music(filename='song.mp3').", 
+        "description": "Play a specific music file by EXACT filename. Use this when you know the exact filename (e.g., from list_music or search_music results). Supports flexible matching: exact name, case-insensitive, path, or partial match. Example: play_music(filename='In Love.mp3') or play_music(filename='Pop/song.mp3')", 
         "parameters": {
             "filename": {
                 "type": "string", 
-                "description": "EXACT filename from list_music response.files[0].filename. Include file extension. Example: 'song.mp3'", 
+                "description": "Music filename or path. Can be: 1) Exact filename: 'song.mp3', 2) Path: 'Pop/song.mp3', 3) Case-insensitive: 'SONG.MP3', 4) Partial: 'love' matches 'In Love.mp3'", 
                 "required": True
             }
         }
     },
     "stop_music": {
         "handler": stop_music, 
-        "description": "Dừng phát nhạc hiện tại bằng cách đóng Windows Media Player. Use this tool to stop any currently playing music.", 
+        "description": "Stop currently playing music by closing Windows Media Player. Use when user wants to stop/pause music.", 
         "parameters": {}
     },
     "search_music": {
         "handler": search_music, 
-        "description": "Tìm kiếm file nhạc theo từ khóa trong tên file. Returns matching music files. Use this before play_music to find songs by keyword.", 
+        "description": "Search for songs by keyword and AUTO-PLAY first match (default). Perfect for: 'play songs with love', 'play rock music', 'find and play remix'. Returns matching files + auto-plays first result. Set auto_play=False to only search without playing.", 
         "parameters": {
             "keyword": {
                 "type": "string", 
-                "description": "Từ khóa để tìm trong tên file (ví dụ: 'love', 'rock', 'remix'). Case-insensitive search.", 
+                "description": "Keyword to search in filenames (e.g., 'love', 'rock', 'đa nghi'). Case-insensitive. Searches in all song names.", 
                 "required": True
+            },
+            "auto_play": {
+                "type": "boolean",
+                "description": "Auto-play first found song? Default True. Set False to only search.",
+                "required": False
             }
         }
     },
