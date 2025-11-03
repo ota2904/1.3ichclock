@@ -1066,6 +1066,169 @@ async def find_in_document(search_text: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+# ============================================================
+# NEWS SCRAPING TOOLS
+# ============================================================
+
+async def get_vnexpress_news(category: str = "home", max_articles: int = 5) -> dict:
+    """
+    Lấy tin tức từ VnExpress RSS feeds
+    category: home, thoi-su, goc-nhin, the-gioi, kinh-doanh, giai-tri, the-thao, phap-luat, giao-duc, suc-khoe, gia-dinh, du-lich, khoa-hoc, so-hoa, xe, cong-dong, tam-su, cuoi
+    """
+    try:
+        import feedparser
+        from bs4 import BeautifulSoup
+        import requests
+        
+        # RSS URL mapping
+        rss_urls = {
+            "home": "https://vnexpress.net/rss/tin-moi-nhat.rss",
+            "thoi-su": "https://vnexpress.net/rss/thoi-su.rss",
+            "the-gioi": "https://vnexpress.net/rss/the-gioi.rss",
+            "kinh-doanh": "https://vnexpress.net/rss/kinh-doanh.rss",
+            "giai-tri": "https://vnexpress.net/rss/giai-tri.rss",
+            "the-thao": "https://vnexpress.net/rss/the-thao.rss",
+            "phap-luat": "https://vnexpress.net/rss/phap-luat.rss",
+            "giao-duc": "https://vnexpress.net/rss/giao-duc.rss",
+            "suc-khoe": "https://vnexpress.net/rss/suc-khoe.rss",
+            "du-lich": "https://vnexpress.net/rss/du-lich.rss",
+            "khoa-hoc": "https://vnexpress.net/rss/khoa-hoc.rss",
+            "so-hoa": "https://vnexpress.net/rss/so-hoa.rss",
+            "xe": "https://vnexpress.net/rss/oto-xe-may.rss",
+        }
+        
+        rss_url = rss_urls.get(category, rss_urls["home"])
+        
+        print(f"📰 [News] Fetching news from: {rss_url}")
+        
+        # Parse RSS feed
+        feed = feedparser.parse(rss_url)
+        
+        if not feed.entries:
+            return {"success": False, "error": "Không thể lấy tin tức"}
+        
+        articles = []
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        
+        for i, entry in enumerate(feed.entries[:max_articles]):
+            try:
+                article = {
+                    "title": entry.get('title', 'No title'),
+                    "link": entry.get('link', ''),
+                    "published": entry.get('published', ''),
+                    "description": ""
+                }
+                
+                # Try to get description from RSS
+                if 'description' in entry:
+                    soup = BeautifulSoup(entry.description, 'html.parser')
+                    article["description"] = soup.get_text().strip()[:200] + "..."
+                
+                articles.append(article)
+                print(f"✅ [News] Article {i+1}: {article['title'][:50]}...")
+                
+            except Exception as e:
+                print(f"⚠️ [News] Error parsing article {i+1}: {e}")
+                continue
+        
+        result = {
+            "success": True,
+            "category": category,
+            "total": len(articles),
+            "articles": articles,
+            "message": f"Đã lấy {len(articles)} tin tức từ VnExpress ({category})"
+        }
+        
+        return result
+        
+    except Exception as e:
+        return {"success": False, "error": f"Lỗi: {str(e)}"}
+
+
+async def get_news_summary(category: str = "home") -> dict:
+    """
+    Lấy tóm tắt tin tức nhanh (chỉ tiêu đề)
+    """
+    try:
+        result = await get_vnexpress_news(category=category, max_articles=10)
+        
+        if not result.get("success"):
+            return result
+        
+        # Tạo summary text
+        summary_lines = [f"📰 TIN TỨC {category.upper()} - VnExpress"]
+        summary_lines.append("=" * 50)
+        
+        for i, article in enumerate(result["articles"], 1):
+            summary_lines.append(f"{i}. {article['title']}")
+        
+        summary_text = "\n".join(summary_lines)
+        
+        return {
+            "success": True,
+            "category": category,
+            "total": len(result["articles"]),
+            "summary": summary_text,
+            "articles": result["articles"],
+            "message": f"Tóm tắt {len(result['articles'])} tin tức"
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def search_news(keyword: str, max_results: int = 5) -> dict:
+    """
+    Tìm kiếm tin tức theo từ khóa trong các bài viết gần đây
+    """
+    try:
+        # Get recent news from multiple categories
+        categories = ["home", "thoi-su", "the-gioi", "kinh-doanh", "the-thao"]
+        all_articles = []
+        
+        for cat in categories:
+            result = await get_vnexpress_news(category=cat, max_articles=5)
+            if result.get("success"):
+                all_articles.extend(result["articles"])
+        
+        # Filter by keyword
+        keyword_lower = keyword.lower()
+        matched = []
+        
+        for article in all_articles:
+            title_lower = article["title"].lower()
+            desc_lower = article.get("description", "").lower()
+            
+            if keyword_lower in title_lower or keyword_lower in desc_lower:
+                matched.append(article)
+        
+        matched = matched[:max_results]
+        
+        if not matched:
+            return {
+                "success": True,
+                "keyword": keyword,
+                "total": 0,
+                "articles": [],
+                "message": f"Không tìm thấy tin tức về '{keyword}'"
+            }
+        
+        return {
+            "success": True,
+            "keyword": keyword,
+            "total": len(matched),
+            "articles": matched,
+            "message": f"Tìm thấy {len(matched)} tin tức về '{keyword}'"
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # ============================================================
 # TOOLS REGISTRY
 # ============================================================
@@ -1197,6 +1360,51 @@ TOOLS = {
                 "type": "string", 
                 "description": "Hành động điều khiển: play_pause, rewind_10, forward_10, rewind_5, forward_5, beginning, end, frame_back, frame_forward, volume_up, volume_down, mute_toggle", 
                 "required": True
+            }
+        }
+    },
+    
+    # NEWS TOOLS
+    "get_vnexpress_news": {
+        "handler": get_vnexpress_news,
+        "description": "Lấy tin tức mới nhất từ VnExpress theo chủ đề. Trả về danh sách bài viết với tiêu đề, link, mô tả. Categories: home (mới nhất), thoi-su, the-gioi, kinh-doanh, giai-tri, the-thao, phap-luat, giao-duc, suc-khoe, du-lich, khoa-hoc, so-hoa, xe",
+        "parameters": {
+            "category": {
+                "type": "string",
+                "description": "Chủ đề tin tức: home, thoi-su, the-gioi, kinh-doanh, giai-tri, the-thao, phap-luat, giao-duc, suc-khoe, du-lich, khoa-hoc, so-hoa, xe. Mặc định: home",
+                "required": False
+            },
+            "max_articles": {
+                "type": "integer",
+                "description": "Số lượng bài viết tối đa (1-20). Mặc định: 5",
+                "required": False
+            }
+        }
+    },
+    "get_news_summary": {
+        "handler": get_news_summary,
+        "description": "Lấy tóm tắt nhanh tin tức (chỉ tiêu đề) từ VnExpress. Tự động lấy 10 tin mới nhất và hiển thị dạng danh sách ngắn gọn.",
+        "parameters": {
+            "category": {
+                "type": "string",
+                "description": "Chủ đề: home, thoi-su, the-gioi, kinh-doanh, giai-tri, the-thao, etc. Mặc định: home",
+                "required": False
+            }
+        }
+    },
+    "search_news": {
+        "handler": search_news,
+        "description": "Tìm kiếm tin tức theo từ khóa trong các bài viết gần đây từ VnExpress. Tự động tìm trong nhiều chủ đề và trả về kết quả phù hợp nhất.",
+        "parameters": {
+            "keyword": {
+                "type": "string",
+                "description": "Từ khóa tìm kiếm (ví dụ: 'bóng đá', 'kinh tế', 'Covid', 'chính trị')",
+                "required": True
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Số kết quả tối đa (1-10). Mặc định: 5",
+                "required": False
             }
         }
     },
