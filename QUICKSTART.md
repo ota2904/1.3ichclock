@@ -1,153 +1,349 @@
-# ⚡ Quick Start - Hướng Dẫn Nhanh
+# ⚡ Quick Start Guide - Xiaozhi MCP Control Panel
 
-## 🚀 Cài Đặt & Chạy (3 Bước)
+Hướng dẫn nhanh để bắt đầu sử dụng Xiaozhi MCP Control Panel trong 5 phút!
 
-### Bước 1: Cài Đặt Tự Động
-```bash
-# Chạy file cài đặt (sẽ tự động cài tất cả)
-INSTALL.bat
+---
+
+## 📦 Bước 1: Cài đặt (2 phút)
+
+### Cài đặt tự động
+```
+Nhấp đúp vào INSTALL.bat
 ```
 
-**INSTALL.bat sẽ tự động:**
-- ✅ Kiểm tra Python
-- ✅ Cài đặt tất cả thư viện cần thiết
-- ✅ Khởi động server ngay sau khi cài xong
+Script sẽ tự động:
+1. ✅ Kiểm tra Python đã cài chưa
+2. ✅ Cài đặt tất cả dependencies
+3. ✅ Tạo thư mục music_library
+4. ✅ Sẵn sàng sử dụng
 
-### Bước 2: Lấy JWT Token
-1. Truy cập: https://dash.upx8.com
-2. Đăng nhập tài khoản Xiaozhi
-3. Tạo MCP Endpoint
-4. Copy JWT token (dạng: eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9...)
-
-### Bước 3: Cấu Hình Token
-1. Mở trình duyệt: http://localhost:8000
-2. Click tab **⚙️ Cấu Hình**
-3. Dán JWT token vào **Thiết bị 1**
-4. Click **💾 Lưu**
-5. ✅ Kết nối thành công!
-
----
-
-## 🔄 Sử Dụng Hàng Ngày
-
-### Khởi Động Nhanh
+### Cài đặt thủ công (nếu cần)
 ```bash
-START.bat
+pip install -r requirements.txt
 ```
 
-### Dừng Server
-Nhấn `Ctrl + C` trong terminal
-
-### Khởi Động Lại
-Đóng terminal và chạy lại `START.bat`
-
----
-
-## 🛠️ Các File Quan Trọng
-
-| File | Công Dụng |
-|------|-----------|
-| `INSTALL.bat` | Cài đặt lần đầu (chỉ chạy 1 lần) |
-| `START.bat` | Khởi động server (dùng hàng ngày) |
-| `xiaozhi_final.py` | File chính chứa code |
-| `requirements.txt` | Danh sách thư viện |
+Dependencies:
+- fastapi
+- uvicorn
+- websockets
+- beautifulsoup4
+- requests
+- feedparser
+- pyautogui
+- pillow
+- psutil
+- pycaw
+- comtypes
 
 ---
 
-## 📊 Dashboard
+## 🔑 Bước 2: Lấy Xiaozhi Token (1 phút)
 
-Sau khi khởi động, mở: **http://localhost:8000**
+1. Truy cập: https://xiaozhi.me
+2. Đăng nhập (Google/Email)
+3. Vào Profile → MCP Settings
+4. Copy JWT token (dạng: eyJhbGciOiJIUzI1NiIs...)
 
-### 4 Tab Chính:
-- **📊 Dashboard** - Tổng quan 30 tools
-- **🛠️ Công Cụ** - Chi tiết từng tool
-- **⚙️ Cấu Hình** - Quản lý thiết bị
-- **📜 Log** - Xem hoạt động
+**Lưu ý**: Token này là duy nhất và bảo mật. Không chia sẻ với người khác.
 
 ---
 
-## ❓ Xử Lý Lỗi
+## 🚀 Bước 3: Khởi động Server (30 giây)
 
-### Lỗi: "Python không tìm thấy"
-**Giải pháp:**
-1. Cài Python 3.13+ từ: https://python.org
-2. Tích chọn "Add Python to PATH" khi cài
-3. Khởi động lại máy tính
-4. Chạy lại `INSTALL.bat`
-
-### Lỗi: "Port 8000 đang được sử dụng"
-**Giải pháp:**
-```powershell
-# Tắt tiến trình đang dùng port 8000
-Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess -Force
-
-# Chạy lại
-START.bat
+```
+Nhấp đúp vào START.bat
 ```
 
-### Lỗi: "Không kết nối được Xiaozhi"
-**Giải pháp:**
-1. Kiểm tra JWT token còn hạn không (token hết hạn sau 1 năm)
-2. Lấy token mới từ https://dash.upx8.com
-3. Cập nhật token trong tab Cấu Hình
-4. Click Lưu
-
-### Lỗi: "Import Error"
-**Giải pháp:**
+Hoặc chạy thủ công:
 ```bash
-# Cài lại thư viện
+python xiaozhi_final.py
+```
+
+**Kết quả:**
+- ✅ Server khởi động tại: http://localhost:8000
+- ✅ Trình duyệt tự động mở Dashboard
+- ✅ Hiển thị 35 công cụ có sẵn
+
+---
+
+## ⚙️ Bước 4: Cấu hình Token (1 phút)
+
+### Cách 1: Qua Dashboard UI
+1. Mở http://localhost:8000
+2. Click icon ⚙️ ở góc phải trên
+3. Dán JWT token vào ô "Endpoint"
+4. Click "💾 Lưu"
+5. Đợi kết nối (status chuyển sang "Connected")
+
+### Cách 2: Qua file JSON (Advanced)
+Tạo/sửa file `xiaozhi_endpoints.json`:
+```json
+[
+  {
+    "name": "Thiết bị 1",
+    "token": "",
+    "enabled": false
+  },
+  {
+    "name": "Thiết bị 2",
+    "token": "",
+    "enabled": false
+  },
+  {
+    "name": "Thiết bị 3",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "enabled": true
+  }
+]
+```
+
+---
+
+## 🎉 Bước 5: Test thử (1 phút)
+
+### Test qua Dashboard
+1. Vào tab "📊 Dashboard"
+2. Click "🔊 Điều Chỉnh Âm Lượng"
+3. Đặt volume = 50
+4. Click "Đặt âm lượng"
+5. ✅ Âm lượng thay đổi thành công!
+
+### Test qua Xiaozhi AI
+Nói với Xiaozhi:
+- "Đặt âm lượng 70%"
+- "Chụp màn hình"
+- "Cho tôi biết thời gian"
+
+✅ Nếu thành công → Bạn đã sẵn sàng!
+
+---
+
+## 📚 Sử dụng nâng cao
+
+### 🎵 Thư viện nhạc
+
+#### Thêm nhạc
+1. Copy file nhạc vào: `music_library/`
+2. Phân loại theo thư mục (tùy chọn):
+   ```
+   music_library/
+   ├── Pop/
+   │   ├── song1.mp3
+   │   └── song2.mp3
+   ├── Rock/
+   │   └── song3.mp3
+   └── song4.mp3
+   ```
+
+#### Sử dụng
+**Qua AI:**
+- "Liệt kê nhạc" → Auto-play bài đầu
+- "Phát nhạc pop" → Phát từ folder Pop/
+- "Tìm nhạc có love" → Search và play
+- "Dừng nhạc"
+
+**Qua Dashboard:**
+- Tab "Công Cụ" → Tab thứ 2 (nếu có)
+- Hoặc dùng Quick Actions
+
+Chi tiết: [MUSIC_GUIDE.md](MUSIC_GUIDE.md)
+
+---
+
+### 📰 Tin tức VnExpress
+
+**Lấy tin tức:**
+- "Cho tôi tin tức mới nhất"
+- "Tin tức thể thao"
+- "Tin kinh doanh"
+
+**Chủ đề có sẵn:**
+- home (mới nhất)
+- thoi-su (thời sự)
+- the-gioi (thế giới)
+- kinh-doanh
+- giai-tri
+- the-thao
+- phap-luat
+- giao-duc
+- suc-khoe
+- du-lich
+- khoa-hoc
+- so-hoa
+- xe
+
+---
+
+### 💰 Giá vàng Real-time
+
+**Sử dụng:**
+- "Giá vàng hôm nay"
+- "Cho tôi biết giá vàng SJC"
+
+**Nguồn:** GiaVang.org (cập nhật real-time)
+
+**Loại vàng:**
+- Vàng SJC
+- Vàng DOJI
+- Vàng PNJ
+- Và nhiều loại khác...
+
+---
+
+### 🌐 YouTube & Website
+
+**Mở website:**
+- "Mở YouTube"
+- "Mở YouTube tìm nhạc remix"
+- "Mở Facebook"
+- "Mở Google"
+- "Mở github.com"
+
+**Điều khiển YouTube:**
+(Yêu cầu: tab YouTube phải đang active)
+- "Tạm dừng YouTube"
+- "Tua 10 giây"
+- "Tăng âm lượng YouTube"
+- "Tắt tiếng YouTube"
+
+---
+
+## 🛠️ Troubleshooting nhanh
+
+### ❌ Server không khởi động
+```bash
+# Kiểm tra Python
+python --version
+
+# Reinstall dependencies
 pip install -r requirements.txt --force-reinstall
+
+# Kiểm tra port 8000 có bị chiếm không
+netstat -ano | findstr :8000
 ```
 
----
+### ❌ Status "Disconnected"
+1. ✅ Kiểm tra token đã dán đúng chưa
+2. ✅ Kiểm tra internet
+3. ✅ Xem log trong tab "📋 Log"
+4. ✅ Thử token mới từ xiaozhi.me
 
-## 🎯 30 Tools Có Sẵn
+### ❌ Nhạc không phát
+1. ✅ Kiểm tra file nhạc trong `music_library/`
+2. ✅ Đảm bảo Windows Media Player đã cài
+3. ✅ Test mở file nhạc thủ công
+4. ✅ Kiểm tra định dạng file (.mp3, .wav, .flac, .m4a)
 
-### Hệ Thống (7)
-- Volume, Screenshot, Notification, Resources
-- Brightness, Lock, Shutdown Schedule
-
-### File & Process (7)
-- Open App, List/Kill Process
-- Create/Read/List Files, Disk Usage
-
-### Mạng & Web (3)
-- Network Info, Battery, Web Search
-
-### Tiện Ích (13)
-- Calculator, Time, Clipboard (Get/Set)
-- Sound, Desktop, Undo, Theme
-- Wallpaper, Desktop Path, Paste, Enter, Find
+### ❌ YouTube controls không hoạt động
+1. ✅ Tab YouTube phải đang active (focus)
+2. ✅ Đảm bảo đang phát video
+3. ✅ Thử lại với video khác
+4. ✅ Kiểm tra keyboard shortcuts của browser
 
 ---
 
-## 🔗 Links Hữu Ích
+## 📁 File quan trọng
 
-- 🌐 Xiaozhi Dashboard: https://dash.upx8.com
-- 📖 GitHub Repo: https://github.com/nguyenconghuy2904-source/miniz_pc_tool2
-- 📚 MCP Docs: https://modelcontextprotocol.io
+```
+📂 miniz_pctool/
+│
+├── 🚀 START.bat              # Khởi động nhanh
+├── 📦 INSTALL.bat            # Cài đặt
+├── ✅ CHECK.bat              # Kiểm tra cài đặt
+├── 🔗 CREATE_SHORTCUT.bat   # Tạo shortcut desktop
+│
+├── 🐍 xiaozhi_final.py      # Chương trình chính
+├── 📋 requirements.txt      # Dependencies
+├── ⚙️ xiaozhi_endpoints.json # Config token (tự tạo)
+│
+├── 📖 README.md             # Tài liệu chính
+├── ⚡ QUICKSTART.md         # File này
+├── 📝 CHANGELOG.md          # Lịch sử phiên bản
+├── 🎵 MUSIC_GUIDE.md        # Hướng dẫn nhạc
+└── 📜 LICENSE               # Giấy phép MIT
+```
 
 ---
 
 ## 💡 Tips & Tricks
 
-1. **Auto-start:** Tạo shortcut của `START.bat` vào thư mục Startup
-2. **Multi-device:** Có thể cấu hình tới 3 thiết bị khác nhau
-3. **Backup token:** Lưu JWT token vào file text để dùng lâu dài
-4. **Check logs:** Tab Log cho biết tool nào đang chạy
+### Tạo Shortcut Desktop
+```
+Nhấp đúp CREATE_SHORTCUT.bat
+```
+→ Tạo shortcut "Xiaozhi MCP" trên desktop để khởi động nhanh
+
+### Tự động khởi động cùng Windows
+1. Nhấn `Win + R`
+2. Gõ: `shell:startup`
+3. Copy shortcut "Xiaozhi MCP" vào folder này
+
+### Kiểm tra cài đặt
+```
+Nhấp đúp CHECK.bat
+```
+→ Kiểm tra Python, dependencies, và cấu hình
+
+### Multi-device support
+Bạn có thể cấu hình 3 thiết bị khác nhau:
+1. Máy tính cá nhân
+2. Máy tính công việc
+3. Laptop
+
+Chuyển đổi qua Dashboard → Tab "Cấu hình"
 
 ---
 
-## ✅ Checklist Cài Đặt
+## 🎯 Các lệnh hay dùng
 
-- [ ] Đã chạy `INSTALL.bat`
-- [ ] Python 3.13+ đã cài
-- [ ] Tất cả thư viện đã cài xong
-- [ ] Server khởi động thành công
-- [ ] Dashboard mở được ở localhost:8000
-- [ ] Đã có JWT token từ Xiaozhi
-- [ ] Đã lưu token trong tab Cấu Hình
-- [ ] Thấy message "✅ Connected!" trong terminal
-- [ ] Test thử 1 tool bất kỳ
+### Hệ thống
+- "Đặt âm lượng 50%"
+- "Chụp màn hình"
+- "Khóa máy tính"
+- "Tắt máy sau 60 giây"
+- "Độ sáng 70%"
+- "Đổi theme tối"
 
-🎉 **Hoàn thành! Bạn đã sẵn sàng sử dụng!**
+### File & Process
+- "Mở notepad"
+- "Mở calculator"
+- "Liệt kê tiến trình"
+- "Tắt tiến trình chrome"
+- "Tạo file test.txt"
+- "Đọc file test.txt"
+
+### Web & Media
+- "Mở YouTube tìm nhạc chill"
+- "Mở Facebook"
+- "Tìm Google về Python"
+- "Phát nhạc pop"
+- "Dừng nhạc"
+
+### Thông tin
+- "Thời gian hiện tại"
+- "Tin tức mới nhất"
+- "Giá vàng hôm nay"
+- "Trạng thái pin"
+- "Thông tin mạng"
+
+---
+
+## 📞 Hỗ trợ
+
+- **GitHub**: [Issues](https://github.com/nguyenconghuy2904-source/miniz_pc_toolfix/issues)
+- **Documentation**: [README.md](README.md)
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+
+---
+
+## 🎓 Tài nguyên
+
+- **Xiaozhi**: https://xiaozhi.me
+- **MCP Protocol**: https://modelcontextprotocol.io/
+- **FastAPI**: https://fastapi.tiangolo.com/
+
+---
+
+**🎉 Chúc bạn sử dụng Xiaozhi MCP Control Panel thành công!**
+
+*Nếu gặp vấn đề, hãy kiểm tra tab "Log" trong Dashboard hoặc mở issue trên GitHub.*
