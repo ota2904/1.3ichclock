@@ -2,6 +2,79 @@
 
 All notable changes to Xiaozhi MCP Control Panel will be documented in this file.
 
+## [4.2.0] - 2025-11-03
+
+### ✨ Audio Control Enhancement
+
+#### Added
+- **4 New Audio Control Commands**
+  - `mute_volume` - Tắt tiếng hệ thống 🔇
+  - `unmute_volume` - Bật lại tiếng 🔊
+  - `volume_up` - Tăng âm lượng (tùy chỉnh bước) 🔊
+  - `volume_down` - Giảm âm lượng (tùy chỉnh bước) 🔉
+
+#### Fixed
+- **Python 3.13 Compatibility**
+  - Replaced pycaw audio library with PowerShell SendKeys method
+  - Fixed `_compointer_base` error from comtypes incompatibility
+  - All audio controls now work on Python 3.13+
+
+#### Technical
+- PowerShell WScript.Shell SendKeys for volume control
+- Cross-version compatibility (Python 3.8 - 3.13)
+- No external audio library dependencies
+
+---
+
+## [4.1.0] - 2025-11-03
+
+### ✨ UI/UX Improvements & Playlist Manager
+
+#### Added
+- **YouTube Playlist Manager**
+  - Multi-playlist support with fuzzy search
+  - Add/remove playlists via UI
+  - Open playlists with voice commands
+  - Name-based quick access
+  - Stored in browser localStorage
+
+#### Changed
+- **Dashboard Optimization**
+  - Moved Log panel to bottom of Dashboard
+  - Removed redundant YouTube playlist banner
+  - Removed Log from sidebar menu
+  - Improved visibility and workflow
+
+#### Fixed
+- Volume and brightness controls functionality
+- Missing `/api/tool/set_volume` endpoint
+- Installed `screen-brightness-control` package
+
+---
+
+## [4.0.0] - 2025-11-03
+
+### 🎉 Production Release
+
+#### Added
+- **miniZ Branding**
+  - Compact corner footer with logo
+  - YouTube channel link
+  - Professional branding throughout UI
+
+#### Changed
+- **Documentation Cleanup**
+  - Removed all GitHub references from packaged docs
+  - Replaced with miniZ YouTube links
+  - Customer-ready documentation
+
+#### Technical
+- PyInstaller 6.16.0 for standalone .exe
+- 41.35 MB executable with all dependencies
+- No Python installation required
+
+---
+
 ## [1.0.0] - 2025-11-03
 
 ### 🎉 Initial Release
@@ -64,4 +137,4 @@ All notable changes to Xiaozhi MCP Control Panel will be documented in this file
 
 ---
 
-**Repository:** https://github.com/nguyenconghuy2904-source/miniz_pc_tool2
+**Phát triển bởi miniZ** | [YouTube Channel](https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU)

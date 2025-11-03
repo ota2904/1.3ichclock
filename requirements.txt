@@ -8,3 +8,6 @@ pyautogui==0.9.54
 pyperclip==1.8.2
 python-multipart==0.0.6
 httpx==0.25.1
+pycaw==20230407
+screen-brightness-control
+beautifulsoup4

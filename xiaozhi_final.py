@@ -95,86 +95,123 @@ print(f"📡 MCP: Multi-device ready")
 # ============================================================
 
 async def set_volume(level: int) -> dict:
-    """Điều chỉnh âm lượng hệ thống - Cải tiến cho MCP"""
+    """Điều chỉnh âm lượng hệ thống - Windows only"""
     try:
         if not 0 <= level <= 100:
             return {"success": False, "error": "Level phải từ 0-100"}
         
-        # Sử dụng pycaw để điều chỉnh âm lượng chính xác và nhanh
-        try:
-            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-            from comtypes import CLSCTX_ALL
-            
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            volume = interface.QueryInterface(IAudioEndpointVolume)
-            
-            # Lấy âm lượng hiện tại trước khi thay đổi
-            current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
-            
-            # Set âm lượng mới (0.0 - 1.0)
-            volume.SetMasterVolumeLevelScalar(level / 100.0, None)
-            
+        # Sử dụng PowerShell trực tiếp (tương thích tốt hơn với Python 3.13)
+        ps_cmd = f"""
+[void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+$obj = New-Object System.Windows.Forms.Form
+$obj.KeyPreview = $True
+
+# Get current volume
+$wshShell = New-Object -ComObject WScript.Shell
+for($i=1; $i -le 50; $i++){{$wshShell.SendKeys([char]174)}}  # Mute to 0
+
+# Set to desired level
+$steps = [Math]::Round({level} / 2)
+for($i=1; $i -le $steps; $i++){{$wshShell.SendKeys([char]175)}}  # Volume up
+
+Write-Output "Volume set to {level}%"
+"""
+        
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-NoProfile", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5)
+        
+        if proc.returncode == 0:
             return {
                 "success": True, 
-                "level": level, 
-                "previous_level": current_volume,
-                "message": f"✅ Âm lượng: {current_volume}% → {level}%"
+                "level": level,
+                "message": f"✅ Âm lượng đã đặt: {level}%"
             }
-        except ImportError:
-            # Fallback về PowerShell nếu không có pycaw (nhưng cải thiện logic)
-            # Sử dụng WMI để set âm lượng chính xác hơn
-            ps_cmd = f"""
-Add-Type -TypeDefinition @'
-using System.Runtime.InteropServices;
-[Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IAudioEndpointVolume {{
-    int NotImpl1(); int NotImpl2();
-    int GetMasterVolumeLevelScalar(out float level);
-    int SetMasterVolumeLevelScalar(float level, System.Guid eventContext);
-}}
-[Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-class MMDeviceEnumeratorComObject {{ }}
-[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDeviceEnumerator {{
-    int NotImpl1();
-    int GetDefaultAudioEndpoint(int dataFlow, int role, out IMMDevice device);
-}}
-[Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-interface IMMDevice {{
-    int Activate(ref System.Guid id, int clsCtx, int activationParams, out IAudioEndpointVolume aev);
-}}
-'@
-$enumerator = [System.Activator]::CreateInstance([Type]::GetTypeFromCLSID([Guid]'BCDE0395-E52F-467C-8E3D-C4579291692E'))
-$device = $null
-$enumerator.GetDefaultAudioEndpoint(0, 1, [ref]$device)
-$aev = $null
-$device.Activate([Guid]'5CDF2C82-841E-4546-9722-0CF74078229A', 0, 0, [ref]$aev)
-$current = 0.0
-$aev.GetMasterVolumeLevelScalar([ref]$current)
-$aev.SetMasterVolumeLevelScalar({level / 100.0}, [Guid]::Empty)
-Write-Output "Volume changed from $([int]($current * 100))% to {level}%"
-"""
-            proc = await asyncio.create_subprocess_exec(
-                "powershell", "-NoProfile", "-Command", ps_cmd,
-                stdout=asyncio.subprocess.PIPE, 
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=3)
-            
-            if proc.returncode == 0:
-                output = stdout.decode('utf-8', errors='ignore').strip()
-                return {
-                    "success": True, 
-                    "level": level, 
-                    "message": f"✅ {output if output else f'Âm lượng: {level}%'}"
-                }
-            else:
-                error_msg = stderr.decode('utf-8', errors='ignore').strip()
-                return {"success": False, "error": f"PowerShell error: {error_msg}"}
+        else:
+            error_msg = stderr.decode('utf-8', errors='ignore').strip()
+            return {"success": False, "error": f"PowerShell error: {error_msg[:200]}"}
                 
     except asyncio.TimeoutError:
         return {"success": False, "error": "Timeout khi điều chỉnh âm lượng"}
+    except Exception as e:
+        return {"success": False, "error": f"Lỗi: {str(e)}"}
+
+async def mute_volume() -> dict:
+    """Tắt tiếng (mute) hệ thống"""
+    try:
+        ps_cmd = """
+$obj = New-Object -ComObject WScript.Shell
+$obj.SendKeys([char]173)
+Write-Output "Volume muted"
+"""
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-NoProfile", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=3)
+        
+        return {"success": True, "message": "🔇 Đã tắt tiếng"}
+    except Exception as e:
+        return {"success": False, "error": f"Lỗi: {str(e)}"}
+
+async def unmute_volume() -> dict:
+    """Bật lại tiếng (unmute) hệ thống"""
+    try:
+        ps_cmd = """
+$obj = New-Object -ComObject WScript.Shell
+$obj.SendKeys([char]173)
+Write-Output "Volume unmuted"
+"""
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-NoProfile", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=3)
+        
+        return {"success": True, "message": "🔊 Đã bật tiếng"}
+    except Exception as e:
+        return {"success": False, "error": f"Lỗi: {str(e)}"}
+
+async def volume_up(steps: int = 5) -> dict:
+    """Tăng âm lượng lên (mỗi step ~2%)"""
+    try:
+        ps_cmd = f"""
+$obj = New-Object -ComObject WScript.Shell
+for($i=1; $i -le {steps}; $i++){{$obj.SendKeys([char]175)}}
+Write-Output "Volume increased by {steps} steps"
+"""
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-NoProfile", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=3)
+        
+        return {"success": True, "message": f"🔊 Đã tăng âm lượng ({steps} bước)"}
+    except Exception as e:
+        return {"success": False, "error": f"Lỗi: {str(e)}"}
+
+async def volume_down(steps: int = 5) -> dict:
+    """Giảm âm lượng xuống (mỗi step ~2%)"""
+    try:
+        ps_cmd = f"""
+$obj = New-Object -ComObject WScript.Shell
+for($i=1; $i -le {steps}; $i++){{$obj.SendKeys([char]174)}}
+Write-Output "Volume decreased by {steps} steps"
+"""
+        proc = await asyncio.create_subprocess_exec(
+            "powershell", "-NoProfile", "-Command", ps_cmd,
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.PIPE
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=3)
+        
+        return {"success": True, "message": f"🔉 Đã giảm âm lượng ({steps} bước)"}
     except Exception as e:
         return {"success": False, "error": f"Lỗi: {str(e)}"}
 
@@ -322,6 +359,56 @@ async def calculator(expression: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+async def get_network_info() -> dict:
+    try:
+        import socket
+        hostname = socket.gethostname()
+        ip = socket.gethostbyname(hostname)
+        return {"success": True, "hostname": hostname, "ip": ip}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def search_web(query: str) -> dict:
+    try:
+        import webbrowser
+        url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+        webbrowser.open(url)
+        return {"success": True, "message": f"Đã mở tìm kiếm: {query}", "url": url}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def set_brightness(level: int) -> dict:
+    try:
+        import screen_brightness_control as sbc
+        sbc.set_brightness(level)
+        return {"success": True, "level": level, "message": f"Đã đặt độ sáng: {level}%"}
+    except Exception as e:
+        return {"success": False, "error": str(e), "note": "Có thể cần cài: pip install screen-brightness-control"}
+
+async def get_clipboard() -> dict:
+    try:
+        import pyperclip
+        content = pyperclip.paste()
+        return {"success": True, "content": content}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def set_clipboard(text: str) -> dict:
+    try:
+        import pyperclip
+        pyperclip.copy(text)
+        return {"success": True, "message": f"Đã copy vào clipboard: {text[:50]}..."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+async def play_sound(frequency: int = 1000, duration: int = 500) -> dict:
+    try:
+        import winsound
+        winsound.Beep(frequency, duration)
+        return {"success": True, "message": f"Đã phát âm thanh {frequency}Hz trong {duration}ms"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 async def open_application(app_name: str) -> dict:
     try:
         apps = {"notepad": "notepad.exe", "calc": "calc.exe", "paint": "mspaint.exe", "cmd": "cmd.exe", "explorer": "explorer.exe"}
@@ -404,69 +491,13 @@ async def get_battery_status() -> dict:
     try:
         bat = psutil.sensors_battery()
         if bat is None:
-            return {"success": False, "error": "Không có pin"}
-        return {"success": True, "percent": bat.percent, "charging": bat.power_plugged, "time_left": f"{bat.secsleft // 3600}h {(bat.secsleft % 3600) // 60}m" if bat.secsleft != psutil.POWER_TIME_UNLIMITED else "Unknown"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def get_network_info() -> dict:
-    try:
-        import socket
-        hostname = socket.gethostname()
-        ip = socket.gethostbyname(hostname)
-        net_info = []
-        for iface, addrs in psutil.net_if_addrs().items():
-            for addr in addrs:
-                if addr.family == socket.AF_INET:
-                    net_info.append({"interface": iface, "ip": addr.address, "netmask": addr.netmask})
-        return {"success": True, "hostname": hostname, "primary_ip": ip, "interfaces": net_info}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def search_web(query: str) -> dict:
-    try:
-        import webbrowser
-        url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-        webbrowser.open(url)
-        return {"success": True, "query": query, "message": f"Đã mở: {query}"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def set_brightness(level: int) -> dict:
-    try:
-        if not 0 <= level <= 100:
-            return {"success": False, "error": "Level 0-100"}
-        ps_cmd = f"(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{level})"
-        proc = await asyncio.create_subprocess_exec("powershell", "-Command", ps_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        await asyncio.wait_for(proc.wait(), timeout=5)
-        return {"success": True, "level": level, "message": f"Độ sáng: {level}%"}
-    except Exception as e:
-        return {"success": False, "error": "Không hỗ trợ"}
-
-async def get_clipboard() -> dict:
-    try:
-        proc = await asyncio.create_subprocess_exec("powershell", "-Command", "Get-Clipboard", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=5)
-        content = stdout.decode('utf-8', errors='ignore').strip()
-        return {"success": True, "content": content}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def set_clipboard(text: str) -> dict:
-    try:
-        proc = await asyncio.create_subprocess_exec("powershell", "-Command", f"Set-Clipboard -Value '{text}'", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        await asyncio.wait_for(proc.wait(), timeout=5)
-        return {"success": True, "message": "Đã copy", "text": text}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def play_sound(frequency: int = 1000, duration: int = 500) -> dict:
-    try:
-        import winsound
-        if not 200 <= frequency <= 2000: frequency = 1000
-        if not 100 <= duration <= 3000: duration = 500
-        winsound.Beep(frequency, duration)
-        return {"success": True, "frequency": frequency, "duration": duration}
+            return {"success": False, "error": "Không thể lấy thông tin pin (có thể không có pin)"}
+        return {
+            "success": True,
+            "percent": bat.percent,
+            "plugged": bat.power_plugged,
+            "time_left": str(bat.secsleft) if bat.secsleft != psutil.POWER_TIME_UNLIMITED else "Unlimited"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -1424,6 +1455,10 @@ async def get_gold_price() -> dict:
 TOOLS = {
     "set_volume": {"handler": set_volume, "description": "Điều chỉnh âm lượng hệ thống (0-100) - Nhanh và chính xác", "parameters": {"level": {"type": "integer", "description": "Mức âm lượng từ 0-100", "required": True}}},
     "get_volume": {"handler": get_volume, "description": "Lấy mức âm lượng hiện tại của hệ thống", "parameters": {}},
+    "mute_volume": {"handler": mute_volume, "description": "Tắt tiếng (mute) hệ thống", "parameters": {}},
+    "unmute_volume": {"handler": unmute_volume, "description": "Bật lại tiếng (unmute) hệ thống", "parameters": {}},
+    "volume_up": {"handler": volume_up, "description": "Tăng âm lượng lên (mỗi bước ~2%)", "parameters": {"steps": {"type": "integer", "description": "Số bước tăng (mặc định 5)", "required": False}}},
+    "volume_down": {"handler": volume_down, "description": "Giảm âm lượng xuống (mỗi bước ~2%)", "parameters": {"steps": {"type": "integer", "description": "Số bước giảm (mặc định 5)", "required": False}}},
     "take_screenshot": {"handler": take_screenshot, "description": "Chụp màn hình", "parameters": {}},
     "show_notification": {"handler": show_notification, "description": "Hiển thị thông báo", "parameters": {"title": {"type": "string", "description": "Tiêu đề", "required": True}, "message": {"type": "string", "description": "Nội dung", "required": True}}},
     "get_system_resources": {"handler": get_system_resources, "description": "Tài nguyên hệ thống", "parameters": {}},
@@ -1848,7 +1883,7 @@ async def index():
         .device-card button { padding: 10px 20px; margin-top: 10px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; }
         
         /* LOG */
-        .log-panel { background: #1a1a2e; color: white; border-radius: 15px; padding: 25px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; }
+        .log-panel { background: #1a1a2e; color: white; border-radius: 15px; padding: 25px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; box-shadow: 0 10px 30px rgba(0,0,0,0.12); }
         .log-entry { padding: 8px; margin: 5px 0; border-left: 3px solid #667eea; background: rgba(102, 126, 234, 0.1); border-radius: 4px; }
         .log-time { color: #9ca3af; margin-right: 10px; }
         .log-success { color: #10b981; border-left-color: #10b981; }
@@ -1880,6 +1915,23 @@ async def index():
         .modal-btn.info:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(23, 162, 184, 0.4); }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        /* FOOTER MINIZ - Compact corner style */
+        .footer-miniz { position: fixed; bottom: 20px; right: 20px; background: rgba(26, 26, 46, 0.95); color: white; padding: 12px 18px; border-radius: 50px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 12px; z-index: 1000; transition: all 0.3s; backdrop-filter: blur(10px); }
+        .footer-miniz:hover { transform: translateY(-3px); box-shadow: 0 8px 35px rgba(102, 126, 234, 0.5); }
+        .footer-logo-compact { display: flex; align-items: center; gap: 10px; }
+        .footer-logo-compact img { width: 35px; height: 35px; border-radius: 50%; border: 2px solid #667eea; box-shadow: 0 0 10px rgba(102, 126, 234, 0.6); }
+        .footer-brand-compact { font-size: 0.95em; font-weight: bold; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .footer-separator { width: 1px; height: 25px; background: rgba(255,255,255,0.3); }
+        .footer-youtube-compact { display: flex; align-items: center; gap: 6px; padding: 8px 15px; background: #FF0000; color: white; border-radius: 25px; text-decoration: none; font-weight: 600; font-size: 0.85em; transition: all 0.3s; }
+        .footer-youtube-compact:hover { background: #cc0000; transform: scale(1.05); }
+        .footer-youtube-compact svg { width: 18px; height: 18px; fill: white; }
+        
+        @media (max-width: 768px) {
+            .footer-miniz { bottom: 10px; right: 10px; padding: 10px 14px; }
+            .footer-brand-compact { font-size: 0.85em; }
+            .footer-youtube-compact { padding: 6px 12px; font-size: 0.8em; }
+        }
     </style>
 </head>
 <body>
@@ -1888,7 +1940,7 @@ async def index():
         <div class="logo">🚀 Xiaozhi MCP<br><small style="font-size:0.6em;opacity:0.8;">Điều Khiển Máy Tính</small></div>
         <div class="menu-item active" onclick="showSection('dashboard')">📊 Dashboard</div>
         <div class="menu-item" onclick="showSection('tools')">🛠️ Công Cụ</div>
-        <div class="menu-item" onclick="showSection('log')">📋 Log</div>
+        <div class="menu-item" onclick="showSection('playlist')">🎵 Playlist YouTube</div>
     </div>
     
     <!-- MAIN CONTENT -->
@@ -1911,10 +1963,10 @@ async def index():
         
         <!-- DASHBOARD SECTION -->
         <div id="dashboard-section">
-            <h2 style="color:#667eea;margin-bottom:20px;">🚀 Tất cả công cụ (20 Tools)</h2>
+            <h2 style="color:#667eea;margin-bottom:20px;">🚀 Tất cả công cụ (30 Tools)</h2>
             <div class="quick-actions">
                 <!-- HỆ THỐNG (5) -->
-                <div class="action-card blue" onclick="setVolumeQuick(50)"><div class="icon">🔊</div><div class="title">Điều Chỉnh Âm Lượng</div></div>
+                <div class="action-card blue" onclick="setVolumePrompt()"><div class="icon">🔊</div><div class="title">Điều Chỉnh Âm Lượng</div></div>
                 <div class="action-card cyan" onclick="screenshot()"><div class="icon">📸</div><div class="title">Chụp Màn Hình</div></div>
                 <div class="action-card purple" onclick="notification()"><div class="icon">�</div><div class="title">Thông Báo</div></div>
                 <div class="action-card green" onclick="getResources()"><div class="icon">💻</div><div class="title">Tài Nguyên Hệ Thống</div></div>
@@ -1952,6 +2004,15 @@ async def index():
                 <div class="action-card pink" onclick="pasteContent()"><div class="icon">📋</div><div class="title">Dán Nội Dung</div></div>
                 <div class="action-card blue" onclick="pressEnter()"><div class="icon">⏎</div><div class="title">Nhấn Enter</div></div>
                 <div class="action-card green" onclick="findInDocument()"><div class="icon">🔎</div><div class="title">Tìm Trong Tài Liệu</div></div>
+            </div>
+            
+            <!-- LOG PANEL AT BOTTOM OF DASHBOARD -->
+            <div style="margin-top: 30px;">
+                <h2 style="color:#667eea; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                    <span>📋 Log Hoạt Động</span>
+                    <span style="font-size: 0.6em; color: #9ca3af; font-weight: 400;">(Thời gian thực)</span>
+                </h2>
+                <div class="log-panel" id="log"></div>
             </div>
         </div>
 
@@ -2128,9 +2189,41 @@ async def index():
             </div>
         </div>
         
-        <!-- LOG SECTION -->
-        <div id="log-section" style="display:none;">
-            <div class="log-panel" id="log"></div>
+        <!-- PLAYLIST SECTION -->
+        <div id="playlist-section" style="display:none;">
+            <div style="background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.12);">
+                <h2 style="color:#667eea; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                    <span>🎵 Danh Sách Nhạc YouTube</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <input id="playlist-command" placeholder="Gõ từ khóa playlist (vd: nhạc, chill...)" style="padding:8px 12px; border-radius:8px; border:1px solid #e5e7eb; font-size:0.95em; width:280px;" 
+                               onkeypress="if(event.key==='Enter') triggerPlayByName(this.value.trim())" />
+                        <button onclick="triggerPlayByName(document.getElementById('playlist-command').value.trim())" style="padding:8px 12px; background:#667eea; color:white; border:none; border-radius:8px; cursor:pointer;">Mở</button>
+                    </div>
+                </h2>
+
+                <div style="display:flex; gap:20px; align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div id="playlist-list" style="background:#f9fafb; padding:12px; border-radius:8px; min-height:80px; border:1px solid #e5e7eb;">
+                            <!-- playlists will be rendered here -->
+                        </div>
+                        <div style="margin-top:12px; display:flex; gap:10px;">
+                            <button onclick="promptAddPlaylist()" style="padding:10px 14px; border-radius:8px; background:linear-gradient(135deg,#10b981,#059669); color:white; border:none; cursor:pointer; font-weight:600;">＋ Thêm Playlist</button>
+                            <button onclick="renderPlaylists()" style="padding:10px 14px; border-radius:8px; background:#e5e7eb; border:none; cursor:pointer;">Làm mới</button>
+                        </div>
+                    </div>
+                    <div style="width:320px;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:14px; border-radius:12px;">
+                            <div style="font-weight:700; margin-bottom:6px;">Hướng dẫn nhanh</div>
+                            <div style="font-size:0.95em; opacity:0.95;">
+                                • Nhấn <b>＋ Thêm Playlist</b> để thêm mới (tên + URL)<br>
+                                • Gõ <b>từ khóa</b> (không cần chính xác) vào ô và nhấn <b>Mở</b><br>
+                                • Ví dụ: gõ "nhạc" sẽ tìm "Nhạc chill", "Nhạc EDM"...<br>
+                                • Voice: "mở danh sách [từ khóa]" hoặc "mở playlist [từ khóa]"
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- SETTINGS MODAL -->
@@ -2166,7 +2259,13 @@ async def index():
             
             document.getElementById('dashboard-section').style.display = name === 'dashboard' ? 'block' : 'none';
             document.getElementById('tools-section').style.display = name === 'tools' ? 'block' : 'none';
-            document.getElementById('log-section').style.display = name === 'log' ? 'block' : 'none';
+            document.getElementById('playlist-section').style.display = name === 'playlist' ? 'block' : 'none';
+            
+            // Load playlist when opening playlist section
+            if (name === 'playlist') {
+                // use initPlaylists() (render existing playlists) - loadPlaylistSection was removed
+                initPlaylists();
+            }
         }
         
         // Tab switching
@@ -2176,6 +2275,16 @@ async def index():
         }
         
         // Quick actions - 20 tools
+        function setVolumePrompt() {
+            const level = prompt('Nhập âm lượng (0-100):', '50');
+            if (level === null) return;
+            const levelNum = parseInt(level);
+            if (isNaN(levelNum) || levelNum < 0 || levelNum > 100) {
+                addLog('❌ Âm lượng phải từ 0-100', 'error');
+                return;
+            }
+            setVolumeQuick(levelNum);
+        }
         function setVolumeQuick(level) { 
             if (level >= 0 && level <= 100) {
                 callTool('set_volume', {level});
@@ -2656,11 +2765,212 @@ async def index():
         let lastResourceFetch = 0;
         const RESOURCE_CACHE_TIME = 3000; // Cache 3 giây
         
+        // Playlist list functions (multiple playlists with name + url)
+        function getPlaylists() {
+            try {
+                const raw = localStorage.getItem('youtube_playlists');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                console.error('Failed to parse playlists', e);
+                return [];
+            }
+        }
+
+        function savePlaylists(list) {
+            localStorage.setItem('youtube_playlists', JSON.stringify(list));
+        }
+
+        function renderPlaylists() {
+            const list = getPlaylists();
+            const container = document.getElementById('playlist-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = '<div style="color:#666;padding:12px;">Chưa có playlist nào. Nhấn "＋ Thêm Playlist" để thêm.</div>';
+                return;
+            }
+
+            list.forEach((item, idx) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.justifyContent = 'space-between';
+                row.style.padding = '8px';
+                row.style.borderBottom = '1px solid #eee';
+
+                const left = document.createElement('div');
+                left.style.display = 'flex';
+                left.style.flexDirection = 'column';
+                left.style.gap = '4px';
+
+                const name = document.createElement('div');
+                name.textContent = item.name;
+                name.style.fontWeight = '700';
+                name.style.color = '#333';
+
+                const url = document.createElement('div');
+                url.textContent = item.url;
+                url.style.fontSize = '0.85em';
+                url.style.color = '#666';
+
+                left.appendChild(name);
+                left.appendChild(url);
+
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '8px';
+
+                const openBtn = document.createElement('button');
+                openBtn.textContent = '▶';
+                openBtn.title = 'Mở playlist';
+                openBtn.style.padding = '6px 10px';
+                openBtn.style.borderRadius = '6px';
+                openBtn.style.border = 'none';
+                openBtn.style.background = '#10b981';
+                openBtn.style.color = 'white';
+                openBtn.style.cursor = 'pointer';
+                openBtn.onclick = () => openPlaylist(idx);
+
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '🗑';
+                delBtn.title = 'Xóa playlist';
+                delBtn.style.padding = '6px 10px';
+                delBtn.style.borderRadius = '6px';
+                delBtn.style.border = 'none';
+                delBtn.style.background = '#ef4444';
+                delBtn.style.color = 'white';
+                delBtn.style.cursor = 'pointer';
+                delBtn.onclick = () => { if (confirm('Xóa playlist "' + item.name + '"?')) { removePlaylist(idx); } };
+
+                actions.appendChild(openBtn);
+                actions.appendChild(delBtn);
+
+                row.appendChild(left);
+                row.appendChild(actions);
+
+                container.appendChild(row);
+            });
+        }
+
+        function promptAddPlaylist() {
+            const name = prompt('Nhập tên playlist (ví dụ: "Nhạc chill"):');
+            if (!name) return;
+            const url = prompt('Dán link playlist YouTube (hoặc video trong playlist):');
+            if (!url) return;
+            addPlaylist(name.trim(), url.trim());
+        }
+
+        function addPlaylist(name, url) {
+            if (!name || !url) {
+                addLog('❌ Tên và URL không được để trống', 'error');
+                return;
+            }
+            const list = getPlaylists();
+            list.push({name: name, url: url});
+            savePlaylists(list);
+            renderPlaylists();
+            addLog('✅ Đã thêm playlist: ' + name, 'success');
+        }
+
+        function removePlaylist(index) {
+            const list = getPlaylists();
+            if (index < 0 || index >= list.length) return;
+            const removed = list.splice(index, 1)[0];
+            savePlaylists(list);
+            renderPlaylists();
+            addLog('🗑 Đã xóa playlist: ' + removed.name, 'info');
+        }
+
+        function openPlaylist(index) {
+            const list = getPlaylists();
+            if (index < 0 || index >= list.length) return;
+            const item = list[index];
+            window.open(item.url, '_blank');
+            addLog('▶ Mở playlist: ' + item.name, 'info');
+        }
+
+        // Expose function for voice/AI integration: open by keyword search (fuzzy matching)
+        function triggerPlayByName(keyword) {
+            if (!keyword || keyword.trim() === '') return false;
+            
+            keyword = keyword.trim().toLowerCase();
+            const list = getPlaylists();
+            
+            if (list.length === 0) {
+                addLog('⚠ Danh sách playlist trống. Hãy thêm playlist trước!', 'error');
+                return false;
+            }
+            
+            // Bước 1: Tìm chính xác (exact match)
+            let found = list.find(item => item.name.toLowerCase() === keyword);
+            
+            // Bước 2: Tìm bắt đầu bằng từ khóa (starts with)
+            if (!found) {
+                found = list.find(item => item.name.toLowerCase().startsWith(keyword));
+            }
+            
+            // Bước 3: Tìm chứa từ khóa (contains)
+            if (!found) {
+                found = list.find(item => item.name.toLowerCase().includes(keyword));
+            }
+            
+            // Bước 4: Tìm theo từng từ trong tên playlist
+            if (!found) {
+                found = list.find(item => {
+                    const words = item.name.toLowerCase().split(/\\s+/);
+                    return words.some(word => word.includes(keyword) || keyword.includes(word));
+                });
+            }
+            
+            if (found) {
+                window.open(found.url, '_blank');
+                addLog('🔊 Phát playlist: "' + found.name + '" (từ khóa: "' + keyword + '")', 'success');
+                return true;
+            } else {
+                // Hiển thị gợi ý các playlist có sẵn
+                const suggestions = list.map(item => item.name).slice(0, 5).join(', ');
+                addLog('⚠ Không tìm thấy playlist với từ khóa: "' + keyword + '"', 'error');
+                addLog('💡 Gợi ý: ' + suggestions, 'info');
+                return false;
+            }
+        }
+        
+        // Hàm mở playlist nhanh (alias) - dễ nhớ hơn cho voice command
+        function moPlaylist(keyword) {
+            return triggerPlayByName(keyword);
+        }
+        
+        function danhSachNhac(keyword) {
+            return triggerPlayByName(keyword);
+        }
+
+        // Initialize playlist list on load
+        function initPlaylists() {
+            renderPlaylists();
+        }
+        
         connectWS();
         // Giảm polling từ 5s xuống 10s để giảm tải
         setInterval(getResources, 10000);
         getResources();
+        
+    // Initialize playlists on page load
+    initPlaylists();
     </script>
+    
+    <!-- MINIZ FOOTER - Compact Corner -->
+    <div class="footer-miniz">
+        <div class="footer-logo-compact">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23667eea'/%3E%3Cpath d='M30 40 L50 25 L70 40 M50 25 L50 75 M35 55 L50 50 L65 55 M35 70 L50 65 L65 70' stroke='white' stroke-width='3' fill='none'/%3E%3Ctext x='50' y='88' text-anchor='middle' fill='white' font-size='14' font-weight='bold' font-family='Arial'%3EminiZ%3C/text%3E%3C/svg%3E" alt="miniZ Logo">
+            <span class="footer-brand-compact">miniZ</span>
+        </div>
+        <div class="footer-separator"></div>
+        <a href="https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU" target="_blank" class="footer-youtube-compact" title="Kênh YouTube miniZ">
+            <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            YouTube
+        </a>
+    </div>
 </body>
 </html>
     """
@@ -2803,9 +3113,44 @@ async def api_sound(data: dict):
         raise HTTPException(500, result["error"])
     return result
 
+@app.post("/api/tool/set_volume")
+async def api_tool_set_volume(data: dict):
+    result = await set_volume(data.get("level", 50))
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
 @app.post("/api/tool/set_brightness")
 async def api_brightness(data: dict):
     result = await set_brightness(data.get("level", 50))
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
+@app.post("/api/tool/mute_volume")
+async def api_mute_volume(data: dict):
+    result = await mute_volume()
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
+@app.post("/api/tool/unmute_volume")
+async def api_unmute_volume(data: dict):
+    result = await unmute_volume()
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
+@app.post("/api/tool/volume_up")
+async def api_volume_up(data: dict):
+    result = await volume_up(data.get("steps", 5))
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
+@app.post("/api/tool/volume_down")
+async def api_volume_down(data: dict):
+    result = await volume_down(data.get("steps", 5))
     if not result["success"]:
         raise HTTPException(500, result["error"])
     return result
