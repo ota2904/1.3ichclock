@@ -515,12 +515,24 @@ async def list_music(subfolder: str = "") -> dict:
         
         music_files.sort(key=lambda x: x['filename'])
         
+        # Tạo message với hướng dẫn rõ ràng cho AI
+        if len(music_files) > 0:
+            filenames_list = [f['filename'] for f in music_files]
+            instruction = f"Tìm thấy {len(music_files)} bài hát. To play music, use play_music tool with exact filename from the list below:"
+            message_parts = [instruction] + [f"  - {fname}" for fname in filenames_list[:10]]  # Show first 10
+            if len(music_files) > 10:
+                message_parts.append(f"  ... and {len(music_files) - 10} more")
+            full_message = "\n".join(message_parts)
+        else:
+            full_message = "No music files found. Please add music files to music_library folder."
+        
         return {
             "success": True,
             "files": music_files,
             "count": len(music_files),
             "library_path": str(MUSIC_LIBRARY),
-            "message": f"Tìm thấy {len(music_files)} bài hát"
+            "message": full_message,
+            "instruction": "Use play_music(filename) with exact filename from files list"
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -888,22 +900,22 @@ TOOLS = {
     # MUSIC LIBRARY TOOLS
     "list_music": {
         "handler": list_music, 
-        "description": "Liệt kê tất cả file nhạc trong thư viện music_library. Sử dụng tool này để xem danh sách nhạc có sẵn trước khi phát. Returns list of music files with filename, path, and size.", 
+        "description": "Liệt kê file nhạc trong music_library. REQUIRED: Call this FIRST before play_music! Returns list with 'files' array containing objects with 'filename' field. Use the exact 'filename' value from response to call play_music next. Example workflow: 1) call list_music(), 2) get filename from response.files[0].filename, 3) call play_music(filename=that_filename).", 
         "parameters": {
             "subfolder": {
                 "type": "string", 
-                "description": "Tên thư mục con để lọc (ví dụ: 'Pop', 'Rock', 'Classical'). Để trống để liệt kê tất cả.", 
+                "description": "Optional subfolder name (e.g., 'Pop', 'Rock'). Leave empty to list all.", 
                 "required": False
             }
         }
     },
     "play_music": {
         "handler": play_music, 
-        "description": "Phát file nhạc từ thư viện music_library bằng Windows Media Player. ALWAYS use 'list_music' tool first to get the exact filename, then use this tool to play. Accepts filename (e.g., 'song.mp3') or path (e.g., 'Pop/song.mp3'). The search is case-insensitive and supports partial matching.", 
+        "description": "Play music file from music_library. MUST call list_music FIRST to get exact filename! After calling list_music, copy the 'filename' value from response.files[0].filename and pass it here. Example: if list_music returns files[0].filename='song.mp3', then call play_music(filename='song.mp3'). DO NOT make up filename - ALWAYS use exact value from list_music response!", 
         "parameters": {
             "filename": {
                 "type": "string", 
-                "description": "Tên file nhạc CHÍNH XÁC từ kết quả list_music (ví dụ: 'my_song.mp3' hoặc 'Pop/my_song.mp3'). Use exact filename from list_music result.", 
+                "description": "EXACT filename from list_music response (e.g., response.files[0].filename). Copy the complete filename including extension. Example: 'my_song.mp3' or 'Pop/my_song.mp3'", 
                 "required": True
             }
         }
