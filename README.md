@@ -188,7 +188,7 @@ pip install fastapi uvicorn websockets beautifulsoup4 requests feedparser pyauto
 
 ## 📞 Hỗ trợ
 
-- **Issues**: [GitHub Issues](https://github.com/nguyenconghuy2904-source/miniz_pc_toolfix/issues)
+- **Kênh YouTube**: [miniZ Channel](https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU)
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 - **Quick Start**: [QUICKSTART.md](QUICKSTART.md)
 
@@ -200,16 +200,17 @@ MIT License - Xem [LICENSE](LICENSE) để biết thêm chi tiết.
 
 ---
 
-## 🎯 Phiên bản hiện tại: v4.0.0
+## 🎯 Phiên bản hiện tại: v4.2.0
 
 **Cập nhật mới nhất:**
+- 🆕 4 lệnh điều khiển âm thanh mới (mute, unmute, volume_up, volume_down)
+- 🐛 Fix Python 3.13 compatibility (_compointer_base error)
 - ✅ 35+ công cụ điều khiển máy tính
 - ✅ Thư viện nhạc tự động với auto-play
 - ✅ Giá vàng real-time từ GiaVang.org
 - ✅ Dashboard UI hiện đại với sidebar
 - ✅ Multi-device endpoint support
 - ✅ YouTube controls với keyboard shortcuts
-- ✅ Tin tức VnExpress theo chủ đề
 
 ---
 

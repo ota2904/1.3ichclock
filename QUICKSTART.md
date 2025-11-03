@@ -330,7 +330,7 @@ Chuyển đổi qua Dashboard → Tab "Cấu hình"
 
 ## 📞 Hỗ trợ
 
-- **GitHub**: [Issues](https://github.com/nguyenconghuy2904-source/miniz_pc_toolfix/issues)
+- **Kênh YouTube miniZ**: [https://youtube.com/@minizjp](https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU)
 - **Documentation**: [README.md](README.md)
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -346,4 +346,4 @@ Chuyển đổi qua Dashboard → Tab "Cấu hình"
 
 **🎉 Chúc bạn sử dụng Xiaozhi MCP Control Panel thành công!**
 
-*Nếu gặp vấn đề, hãy kiểm tra tab "Log" trong Dashboard hoặc mở issue trên GitHub.*
+*Nếu gặp vấn đề, hãy kiểm tra tab "Log" trong Dashboard hoặc liên hệ qua kênh YouTube miniZ.*
