@@ -1,0 +1,148 @@
+================================================================================
+                    THỎA THUẬN LICENSE - miniZ MCP Professional
+                              Phiên bản 4.3.0
+================================================================================
+
+                         BẢN QUYỀN VÀ ĐIỀU KHOẢN SỬ DỤNG
+
+Copyright (c) 2025 miniZ Software. Bảo lưu mọi quyền.
+
+================================================================================
+                      1. CHẤP NHẬN ĐIỀU KHOẢN
+================================================================================
+
+Bằng việc cài đặt, sao chép hoặc sử dụng phần mềm miniZ MCP Professional 
+("Phần mềm"), bạn đồng ý bị ràng buộc bởi các điều khoản của Thỏa thuận này.
+Nếu bạn không đồng ý với các điều khoản này, không cài đặt hoặc sử dụng 
+Phần mềm.
+
+================================================================================
+                      2. CẤP PHÉP SỬ DỤNG
+================================================================================
+
+miniZ Software cấp cho bạn quyền sử dụng Phần mềm không độc quyền, không 
+chuyển nhượng, có thể thu hồi, với các điều kiện:
+
+a) Chỉ sử dụng trên một (1) máy tính được kích hoạt bằng License Key
+b) Không được sao chép, phân phối lại mà không có sự cho phép
+c) Không được dịch ngược, giải mã hoặc sửa đổi mã nguồn
+d) Không được sử dụng cho mục đích bất hợp pháp
+
+================================================================================
+              3. MIỄN TRỪ TRÁCH NHIỆM VỀ DỮ LIỆU NGƯỜI DÙNG
+================================================================================
+
+*** QUAN TRỌNG - VUI LÒNG ĐỌC KỸ ***
+
+3.1. KHÔNG CHỊU TRÁCH NHIỆM VỀ DỮ LIỆU:
+     miniZ Software KHÔNG chịu trách nhiệm về bất kỳ dữ liệu nào của người 
+     dùng, bao gồm nhưng không giới hạn:
+     
+     - Dữ liệu cá nhân, tài liệu, hình ảnh, video
+     - Thông tin đăng nhập, mật khẩu, tài khoản
+     - Dữ liệu kinh doanh, tài chính
+     - API Keys, tokens, credentials
+     - Lịch sử chat, tin nhắn với AI
+     - Bất kỳ thông tin nhạy cảm nào khác
+
+3.2. NGƯỜI DÙNG TỰ CHỊU TRÁCH NHIỆM:
+     - Sao lưu dữ liệu quan trọng trước khi sử dụng
+     - Bảo vệ thông tin đăng nhập và API keys của mình
+     - Không chia sẻ License Key với người khác
+     - Tuân thủ quy định về bảo mật thông tin
+
+3.3. KHÔNG BẢO ĐẢM PHỤC HỒI:
+     Trong trường hợp mất dữ liệu do bất kỳ nguyên nhân nào (lỗi phần mềm,
+     lỗi phần cứng, virus, hành động người dùng...), miniZ Software KHÔNG
+     có nghĩa vụ phục hồi hoặc bồi thường.
+
+================================================================================
+                      4. QUYỀN RIÊNG TƯ VÀ THU THẬP DỮ LIỆU
+================================================================================
+
+4.1. DỮ LIỆU THU THẬP:
+     Phần mềm có thể thu thập thông tin kỹ thuật để cải thiện dịch vụ:
+     - Hardware ID (chỉ dùng để xác thực license)
+     - Thông tin lỗi và crash logs (ẩn danh)
+     - Thống kê sử dụng cơ bản (ẩn danh)
+
+4.2. DỮ LIỆU KHÔNG THU THẬP:
+     Phần mềm KHÔNG thu thập, lưu trữ hoặc gửi đi:
+     - Nội dung chat với AI
+     - API Keys của bên thứ ba (OpenAI, Google, etc.)
+     - Mật khẩu hoặc thông tin đăng nhập
+     - Tài liệu hoặc file cá nhân
+
+4.3. DỮ LIỆU LƯU TẠI MÁY:
+     Tất cả dữ liệu nhạy cảm chỉ được lưu trữ cục bộ trên máy tính của bạn.
+
+================================================================================
+                      5. GIỚI HẠN TRÁCH NHIỆM
+================================================================================
+
+5.1. PHẦN MỀM ĐƯỢC CUNG CẤP "NGUYÊN TRẠNG" (AS IS):
+     Không có bất kỳ bảo đảm nào, dù rõ ràng hay ngụ ý, bao gồm nhưng không
+     giới hạn ở các bảo đảm về tính phù hợp thương mại, phù hợp cho mục đích
+     cụ thể và không vi phạm quyền của bên thứ ba.
+
+5.2. TRONG MỌI TRƯỜNG HỢP, miniZ Software KHÔNG CHỊU TRÁCH NHIỆM VỀ:
+     - Mất mát dữ liệu hoặc lợi nhuận
+     - Gián đoạn kinh doanh
+     - Thiệt hại gián tiếp, ngẫu nhiên, đặc biệt hoặc hậu quả
+     - Bất kỳ yêu cầu bồi thường nào vượt quá số tiền đã thanh toán
+       cho Phần mềm
+
+5.3. RỦI RO SỬ DỤNG:
+     Việc sử dụng Phần mềm hoàn toàn thuộc rủi ro của người dùng.
+
+================================================================================
+                      6. TÍCH HỢP BÊN THỨ BA
+================================================================================
+
+6.1. Phần mềm tích hợp với các dịch vụ AI của bên thứ ba (OpenAI, Google
+     Gemini, v.v.). Việc sử dụng các dịch vụ này phải tuân theo điều khoản
+     riêng của từng nhà cung cấp.
+
+6.2. miniZ Software không chịu trách nhiệm về:
+     - Nội dung được tạo bởi AI
+     - Chi phí sử dụng API của bên thứ ba
+     - Thay đổi chính sách hoặc giá của bên thứ ba
+     - Sự cố hoặc ngừng hoạt động của dịch vụ bên thứ ba
+
+================================================================================
+                      7. CHẤM DỨT
+================================================================================
+
+License này có hiệu lực cho đến khi bị chấm dứt. Quyền của bạn sẽ tự động
+chấm dứt nếu vi phạm bất kỳ điều khoản nào. Khi chấm dứt, bạn phải gỡ bỏ
+tất cả các bản sao của Phần mềm.
+
+================================================================================
+                      8. LUẬT ÁP DỤNG
+================================================================================
+
+Thỏa thuận này được điều chỉnh bởi pháp luật Việt Nam. Mọi tranh chấp sẽ
+được giải quyết tại Tòa án có thẩm quyền tại Việt Nam.
+
+================================================================================
+                      9. LIÊN HỆ
+================================================================================
+
+Nếu có câu hỏi về Thỏa thuận này, vui lòng liên hệ:
+- Email: support@miniz-mcp.com
+- Website: https://miniz-mcp.com
+
+================================================================================
+
+BẰNG VIỆC NHẤN "I ACCEPT" HOẶC CÀI ĐẶT PHẦN MỀM, BẠN XÁC NHẬN RẰNG:
+
+1. Bạn đã đọc và hiểu tất cả các điều khoản trên
+2. Bạn đồng ý với việc MIỄN TRỪ TRÁCH NHIỆM VỀ DỮ LIỆU
+3. Bạn chấp nhận mọi rủi ro khi sử dụng Phần mềm
+4. Bạn có đủ năng lực pháp lý để đồng ý với Thỏa thuận này
+
+================================================================================
+                    miniZ MCP Professional v4.3.0
+                    Copyright (c) 2025 miniZ Software
+                         All Rights Reserved
+================================================================================
