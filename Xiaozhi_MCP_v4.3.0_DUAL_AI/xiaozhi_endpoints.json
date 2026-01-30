@@ -1,0 +1,55 @@
+{
+  "endpoints": [
+    {
+      "name": "Thiết bị 1",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 2",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 3",
+      "token": "",
+      "enabled": false
+    }
+  ],
+  "active_index": 0,
+  "gemini_api_key": "AIzaSyAtCj0zF25IfsOJr9NBzgRpRpwHFScSXFQ",
+  "openai_api_key": "",
+  "serper_api_key": "",
+  "connection_stats": {
+    "0": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    },
+    "1": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    },
+    "2": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    }
+  },
+  "auto_connect_on_start": true,
+  "remember_last_endpoint": true,
+  "last_saved": "2026-01-31T06:17:42.258303"
+}

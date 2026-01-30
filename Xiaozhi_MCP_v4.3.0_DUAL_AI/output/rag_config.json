@@ -1,0 +1,37 @@
+{
+  "serper_api_key": "",
+  "_serper_note": "Đăng ký miễn phí tại https://serper.dev - 2500 queries/tháng miễn phí. Google Search chính xác hơn DuckDuckGo cho tiếng Việt.",
+  "web_search": {
+    "enabled": true,
+    "max_results": 8,
+    "cache_ttl_minutes": 15,
+    "timeout_seconds": 15,
+    "region": "vn-vi",
+    "safe_search": "moderate"
+  },
+  "knowledge_base": {
+    "enabled": true,
+    "folder_path": "F:\\thư viện kiến thức",
+    "max_results": 5,
+    "chunk_size": 500,
+    "chunk_overlap": 100
+  },
+  "hybrid": {
+    "web_weight": 0.4,
+    "local_weight": 0.6,
+    "rerank_enabled": true
+  },
+  "auto_detect": {
+    "local_keywords": [
+      "tài liệu", "file", "document", "hợp đồng", "báo cáo",
+      "ghi chú", "notes", "dự án", "project", "nội bộ",
+      "của tôi", "my", "our", "công ty", "company"
+    ],
+    "web_keywords": [
+      "tin tức", "news", "mới nhất", "latest", "hôm nay", "today",
+      "giá", "price", "thời tiết", "weather", "tỷ giá", "exchange",
+      "wiki", "wikipedia", "google", "search", "tra cứu online",
+      "olympia", "vô địch", "cuộc thi", "giải thưởng", "năm 2025"
+    ]
+  }
+}

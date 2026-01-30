@@ -1,0 +1,135 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   miniZ MCP Professional v4.3.4 - Installation Information
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thank you for choosing miniZ MCP Professional - The Ultimate AI-Powered
+Multi-Tool Platform with 141 Professional Tools!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 NEW IN VERSION 4.3.4:
+
+• 🔑 DEDICATED API QUOTAS PAGE
+  - Sidebar menu with purple gradient design
+  - 2 large cards: Gemini AI + Serper Search
+  - Real-time status monitoring
+  - Quick action buttons: Refresh, Test Gemini, Test Serper
+  - Usage tips and best practices
+
+• ⚡ 600% PERFORMANCE BOOST
+  - Conversation history save: 6-7x faster
+  - Reduced disk I/O by 85%
+  - Save frequency: 20 messages (vs 3 before)
+  - Removed duplicate endpoints
+  - Disabled heavy user profiling
+
+• 🌐 ENHANCED NETWORK SCANNING
+  - Improved device detection (IP, MAC, Hostname)
+  - Better UI with color-coded device types
+  - Response time: 2-3 seconds
+
+• 📝 BETTER LOGGING SYSTEM
+  - Cleaner UI logs
+  - Improved error tracking
+  - Conversation history load improvements
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 SYSTEM REQUIREMENTS:
+
+• Operating System: Windows 10/11 (64-bit)
+• Processor: Intel Core i5 or equivalent
+• RAM: 8 GB minimum (16 GB recommended)
+• Storage: 500 MB free space
+• Internet: Required for AI features
+• Administrator: Required for installation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 LICENSE ACTIVATION:
+
+⚠️ IMPORTANT: This software requires a valid license key to install.
+
+Your license key format: MINIZ-XXXX-XXXX-XXXX-XXXX
+
+• License is hardware-locked (CPU/MAC/Serial)
+• One license per machine
+• Contact support for multiple machines
+• Keep your license key safe for reinstallation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 WHAT WILL BE INSTALLED:
+
+• Main Application (xiaozhi_final.py)
+• 141 AI-Powered Tools
+• Web-Based User Interface
+• Music Player & Library System
+• Network Device Scanner
+• API Management Dashboard
+• Python 3.13.9 Runtime
+• All Required Dependencies
+• Documentation & User Guides
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 INSTALLATION PROCESS:
+
+1. Accept the License Agreement
+2. Enter your License Key (REQUIRED)
+3. Choose installation directory
+4. Wait for file extraction
+5. Launch the application
+
+⏱️ Estimated Time: 2-3 minutes
+💾 Required Space: ~500 MB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📖 AFTER INSTALLATION:
+
+• Desktop shortcut will be created
+• Access via: http://localhost:8000
+• Default browser will open automatically
+• Check README.md for detailed instructions
+• View RELEASE_NOTES_v4.3.4.txt for changes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 KEY FEATURES:
+
+✅ 141 Professional AI Tools
+✅ Gemini 2.0 Flash Integration
+✅ Google Search via Serper API
+✅ Music Player with Library
+✅ Network Device Scanner
+✅ API Quotas Management
+✅ Conversation History
+✅ Knowledge Base System
+✅ Hardware-Locked Security
+✅ Automatic Updates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 SUPPORT:
+
+• Email: support@minizmcp.com
+• Website: https://www.minizmcp.com/
+• Documentation: README.md
+• Guides: QUICKSTART.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANT NOTES:
+
+• Keep your license key secure
+• Installation requires administrator privileges
+• Firewall may prompt for network access (allow it)
+• Antivirus may scan files (this is normal)
+• Internet required for AI features
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ready to Install? Click "Next" to continue...
+
+© 2025 miniZ MCP Team. All rights reserved.

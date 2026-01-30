@@ -1,0 +1,25 @@
+{
+  "endpoints": [
+    {
+      "name": "Thiết bị 1",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 2",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 3",
+      "token": "",
+      "enabled": false
+    }
+  ],
+  "active_index": 0,
+  "gemini_api_key": "",
+  "openai_api_key": "",
+  "serper_api_key": "",
+  "_note": "API keys sẽ được nhập trong giao diện Settings",
+  "last_updated": "2025-12-16T18:57:15.530179"
+}

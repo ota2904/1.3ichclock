@@ -1,0 +1,813 @@
+﻿══
+   DANH SÁCH LICENSE KEYS - miniZ MCP v4.3.0 PROFESSIONAL
+═
+
+ TỔNG SỐ: 100 licenses
+� CREATED: 2025-11-28T15:00:47.178436
+ TYPE: Professional License (Lifetime)
+
+═
+
+  1. LICENSE KEY: ////////////////////////////////////////////
+     Customer: miniZ License #60
+     Type: professional
+     Created: 2025-11-28T15:00:47.177866
+     Expires: 2125-11-04T15:00:47.177867
+     Max Devices: 1
+     Status: active
+
+  2. LICENSE KEY: 2KV9-KNU8-6LY8-D8C4
+     Customer: miniZ License #75
+     Type: professional
+     Created: 2025-11-28T15:00:47.178080
+     Expires: 2125-11-04T15:00:47.178081
+     Max Devices: 1
+     Status: active
+
+  3. LICENSE KEY: 2WSL-CMCF-S7B5-QH9J
+     Customer: miniZ License #23
+     Type: professional
+     Created: 2025-11-28T15:00:47.177337
+     Expires: 2125-11-04T15:00:47.177337
+     Max Devices: 1
+     Status: active
+
+  4. LICENSE KEY: 3K78-KM5M-GBUP-QU44
+     Customer: miniZ License #92
+     Type: professional
+     Created: 2025-11-28T15:00:47.178327
+     Expires: 2125-11-04T15:00:47.178327
+     Max Devices: 1
+     Status: active
+
+  5. LICENSE KEY: 4MRH-R2YF-X6A7-7LDD
+     Customer: miniZ License #48
+     Type: professional
+     Created: 2025-11-28T15:00:47.177698
+     Expires: 2125-11-04T15:00:47.177698
+     Max Devices: 1
+     Status: active
+
+  6. LICENSE KEY: 4N84-MXVR-AWJB-D34U
+     Customer: miniZ License #52
+     Type: professional
+     Created: 2025-11-28T15:00:47.177756
+     Expires: 2125-11-04T15:00:47.177757
+     Max Devices: 1
+     Status: active
+
+  7. LICENSE KEY: 5BG6-2UWA-QNLC-BR45
+     Customer: miniZ License #54
+     Type: professional
+     Created: 2025-11-28T15:00:47.177783
+     Expires: 2125-11-04T15:00:47.177784
+     Max Devices: 1
+     Status: active
+
+  8. LICENSE KEY: 5MFS-D2RE-VXFZ-G6FY
+     Customer: miniZ License #97
+     Type: professional
+     Created: 2025-11-28T15:00:47.178391
+     Expires: 2125-11-04T15:00:47.178392
+     Max Devices: 1
+     Status: active
+
+  9. LICENSE KEY: 5QHM-78GZ-V3RY-TDJU
+     Customer: miniZ License #90
+     Type: professional
+     Created: 2025-11-28T15:00:47.178296
+     Expires: 2125-11-04T15:00:47.178297
+     Max Devices: 1
+     Status: active
+
+ 10. LICENSE KEY: 67FF-XAPA-CWAG-4DSN
+     Customer: miniZ License #77
+     Type: professional
+     Created: 2025-11-28T15:00:47.178110
+     Expires: 2125-11-04T15:00:47.178111
+     Max Devices: 1
+     Status: active
+
+ 11. LICENSE KEY: 68NN-28TH-C56B-U445
+     Customer: miniZ License #64
+     Type: professional
+     Created: 2025-11-28T15:00:47.177923
+     Expires: 2125-11-04T15:00:47.177923
+     Max Devices: 1
+     Status: active
+
+ 12. LICENSE KEY: 6NPE-XA2J-TF4Q-FL4Q
+     Customer: miniZ License #66
+     Type: professional
+     Created: 2025-11-28T15:00:47.177952
+     Expires: 2125-11-04T15:00:47.177953
+     Max Devices: 1
+     Status: active
+
+ 13. LICENSE KEY: 6T2T-A4RR-AMME-CTP5
+     Customer: miniZ License #5
+     Type: professional
+     Created: 2025-11-28T15:00:47.177072
+     Expires: 2125-11-04T15:00:47.177073
+     Max Devices: 1
+     Status: active
+
+ 14. LICENSE KEY: 7P8K-NABW-98WE-5AW8
+     Customer: miniZ License #71
+     Type: professional
+     Created: 2025-11-28T15:00:47.178022
+     Expires: 2125-11-04T15:00:47.178022
+     Max Devices: 1
+     Status: active
+
+ 15. LICENSE KEY: 88LW-4FSR-3YYC-KPU8
+     Customer: miniZ License #69
+     Type: professional
+     Created: 2025-11-28T15:00:47.177995
+     Expires: 2125-11-04T15:00:47.177995
+     Max Devices: 1
+     Status: active
+
+ 16. LICENSE KEY: 89FL-QZ3B-4HED-55KX
+     Customer: miniZ License #72
+     Type: professional
+     Created: 2025-11-28T15:00:47.178036
+     Expires: 2125-11-04T15:00:47.178037
+     Max Devices: 1
+     Status: active
+
+ 17. LICENSE KEY: 9B8J-NQ68-VBGR-PPMX
+     Customer: miniZ License #57
+     Type: professional
+     Created: 2025-11-28T15:00:47.177826
+     Expires: 2125-11-04T15:00:47.177826
+     Max Devices: 1
+     Status: active
+
+ 18. LICENSE KEY: 9LSC-CFTM-59NS-AQNQ
+     Customer: miniZ License #93
+     Type: professional
+     Created: 2025-11-28T15:00:47.178340
+     Expires: 2125-11-04T15:00:47.178341
+     Max Devices: 1
+     Status: active
+
+ 19. LICENSE KEY: ABPN-DVMS-UVWN-3J2S
+     Customer: miniZ License #24
+     Type: professional
+     Created: 2025-11-28T15:00:47.177351
+     Expires: 2125-11-04T15:00:47.177352
+     Max Devices: 1
+     Status: active
+
+ 20. LICENSE KEY: AQRH-B34P-8LMM-QCUE
+     Customer: miniZ License #25
+     Type: professional
+     Created: 2025-11-28T15:00:47.177365
+     Expires: 2125-11-04T15:00:47.177365
+     Max Devices: 1
+     Status: active
+
+ 21. LICENSE KEY: AXC4-D7KA-S3U2-4A8Y
+     Customer: miniZ License #18
+     Type: professional
+     Created: 2025-11-28T15:00:47.177265
+     Expires: 2125-11-04T15:00:47.177266
+     Max Devices: 1
+     Status: active
+
+ 22. LICENSE KEY: B98J-ME87-YLDJ-85TW
+     Customer: miniZ License #67
+     Type: professional
+     Created: 2025-11-28T15:00:47.177965
+     Expires: 2125-11-04T15:00:47.177965
+     Max Devices: 1
+     Status: active
+
+ 23. LICENSE KEY: BN6A-NKQY-EFN9-E4FX
+     Customer: miniZ License #3
+     Type: professional
+     Created: 2025-11-28T15:00:47.177043
+     Expires: 2125-11-04T15:00:47.177044
+     Max Devices: 1
+     Status: active
+
+ 24. LICENSE KEY: C3Z4-3M5J-NSYF-9FNK
+     Customer: miniZ License #39
+     Type: professional
+     Created: 2025-11-28T15:00:47.177568
+     Expires: 2125-11-04T15:00:47.177568
+     Max Devices: 1
+     Status: active
+
+ 25. LICENSE KEY: CK4A-N267-FQQL-NH5B
+     Customer: miniZ License #46
+     Type: professional
+     Created: 2025-11-28T15:00:47.177669
+     Expires: 2125-11-04T15:00:47.177669
+     Max Devices: 1
+     Status: active
+
+ 26. LICENSE KEY: CL2Z-HR82-3L96-6XEN
+     Customer: miniZ License #87
+     Type: professional
+     Created: 2025-11-28T15:00:47.178252
+     Expires: 2125-11-04T15:00:47.178252
+     Max Devices: 1
+     Status: active
+
+ 27. LICENSE KEY: CRKM-5KGK-M9EL-PHF2
+     Customer: miniZ License #12
+     Type: professional
+     Created: 2025-11-28T15:00:47.177173
+     Expires: 2125-11-04T15:00:47.177174
+     Max Devices: 1
+     Status: active
+
+ 28. LICENSE KEY: D3KG-Y5LZ-4SYZ-S4DB
+     Customer: miniZ License #82
+     Type: professional
+     Created: 2025-11-28T15:00:47.178181
+     Expires: 2125-11-04T15:00:47.178181
+     Max Devices: 1
+     Status: active
+
+ 29. LICENSE KEY: DG3E-RS88-3GBP-PYBK
+     Customer: miniZ License #9
+     Type: professional
+     Created: 2025-11-28T15:00:47.177129
+     Expires: 2125-11-04T15:00:47.177130
+     Max Devices: 1
+     Status: active
+
+ 30. LICENSE KEY: DJRE-Y9NZ-Z2BE-VDL2
+     Customer: miniZ License #83
+     Type: professional
+     Created: 2025-11-28T15:00:47.178197
+     Expires: 2125-11-04T15:00:47.178198
+     Max Devices: 1
+     Status: active
+
+ 31. LICENSE KEY: E9MA-NPT8-53Z6-6747
+     Customer: miniZ License #14
+     Type: professional
+     Created: 2025-11-28T15:00:47.177207
+     Expires: 2125-11-04T15:00:47.177207
+     Max Devices: 1
+     Status: active
+
+ 32. LICENSE KEY: EDVF-QXZR-9UBG-WBZQ
+     Customer: miniZ License #84
+     Type: professional
+     Created: 2025-11-28T15:00:47.178210
+     Expires: 2125-11-04T15:00:47.178211
+     Max Devices: 1
+     Status: active
+
+ 33. LICENSE KEY: EYAC-NCE8-P828-PJA7
+     Customer: miniZ License #15
+     Type: professional
+     Created: 2025-11-28T15:00:47.177220
+     Expires: 2125-11-04T15:00:47.177221
+     Max Devices: 1
+     Status: active
+
+ 34. LICENSE KEY: F2YG-T6H6-DS9E-7DMD
+     Customer: miniZ License #98
+     Type: professional
+     Created: 2025-11-28T15:00:47.178404
+     Expires: 2125-11-04T15:00:47.178405
+     Max Devices: 1
+     Status: active
+
+ 35. LICENSE KEY: F54M-AQVN-7YDZ-32VV
+     Customer: miniZ License #51
+     Type: professional
+     Created: 2025-11-28T15:00:47.177741
+     Expires: 2125-11-04T15:00:47.177742
+     Max Devices: 1
+     Status: active
+
+ 36. LICENSE KEY: FJW4-863D-UEXT-UBLL
+     Customer: miniZ License #36
+     Type: professional
+     Created: 2025-11-28T15:00:47.177530
+     Expires: 2125-11-04T15:00:47.177531
+     Max Devices: 1
+     Status: active
+
+ 37. LICENSE KEY: FLPK-ZJ2E-U5QD-PAB2
+     Customer: miniZ License #50
+     Type: professional
+     Created: 2025-11-28T15:00:47.177726
+     Expires: 2125-11-04T15:00:47.177726
+     Max Devices: 1
+     Status: active
+
+ 38. LICENSE KEY: FM9P-XKH3-UPWY-57EE
+     Customer: miniZ License #37
+     Type: professional
+     Created: 2025-11-28T15:00:47.177541
+     Expires: 2125-11-04T15:00:47.177542
+     Max Devices: 1
+     Status: active
+
+ 39. LICENSE KEY: FZ34-49JS-5ZM9-FC8H
+     Customer: miniZ License #56
+     Type: professional
+     Created: 2025-11-28T15:00:47.177812
+     Expires: 2125-11-04T15:00:47.177812
+     Max Devices: 1
+     Status: active
+
+ 40. LICENSE KEY: G2JB-ZUAS-PZTK-DP7L
+     Customer: miniZ License #62
+     Type: professional
+     Created: 2025-11-28T15:00:47.177892
+     Expires: 2125-11-04T15:00:47.177893
+     Max Devices: 1
+     Status: active
+
+ 41. LICENSE KEY: G86A-RTLH-2K5G-6LKV
+     Customer: miniZ License #49
+     Type: professional
+     Created: 2025-11-28T15:00:47.177710
+     Expires: 2125-11-04T15:00:47.177711
+     Max Devices: 1
+     Status: active
+
+ 42. LICENSE KEY: GCSM-DGN2-3WBS-S5X8
+     Customer: miniZ License #55
+     Type: professional
+     Created: 2025-11-28T15:00:47.177797
+     Expires: 2125-11-04T15:00:47.177798
+     Max Devices: 1
+     Status: active
+
+ 43. LICENSE KEY: GSH3-G4YU-CHSP-KUSF
+     Customer: miniZ License #43
+     Type: professional
+     Created: 2025-11-28T15:00:47.177623
+     Expires: 2125-11-04T15:00:47.177624
+     Max Devices: 1
+     Status: active
+
+ 44. LICENSE KEY: GV62-DZEE-7AUG-KV35
+     Customer: miniZ License #78
+     Type: professional
+     Created: 2025-11-28T15:00:47.178124
+     Expires: 2125-11-04T15:00:47.178124
+     Max Devices: 1
+     Status: active
+
+ 45. LICENSE KEY: H72L-RCBA-3J2E-U74H
+     Customer: miniZ License #32
+     Type: professional
+     Created: 2025-11-28T15:00:47.177469
+     Expires: 2125-11-04T15:00:47.177470
+     Max Devices: 1
+     Status: active
+
+ 46. LICENSE KEY: H89T-T2K8-WN24-K9UD
+     Customer: miniZ License #11
+     Type: professional
+     Created: 2025-11-28T15:00:47.177160
+     Expires: 2125-11-04T15:00:47.177161
+     Max Devices: 1
+     Status: active
+
+ 47. LICENSE KEY: HB39-QCCV-DWAQ-YV9D
+     Customer: miniZ License #95
+     Type: professional
+     Created: 2025-11-28T15:00:47.178366
+     Expires: 2125-11-04T15:00:47.178367
+     Max Devices: 1
+     Status: active
+
+ 48. LICENSE KEY: HED7-GB62-RAT4-U2AN
+     Customer: miniZ License #96
+     Type: professional
+     Created: 2025-11-28T15:00:47.178379
+     Expires: 2125-11-04T15:00:47.178379
+     Max Devices: 1
+     Status: active
+
+ 49. LICENSE KEY: HN7P-Z3NP-XM22-RCYQ
+     Customer: miniZ License #28
+     Type: professional
+     Created: 2025-11-28T15:00:47.177410
+     Expires: 2125-11-04T15:00:47.177411
+     Max Devices: 1
+     Status: active
+
+ 50. LICENSE KEY: J9F2-M4GE-9SQD-RWT8
+     Customer: miniZ License #17
+     Type: professional
+     Created: 2025-11-28T15:00:47.177249
+     Expires: 2125-11-04T15:00:47.177250
+     Max Devices: 1
+     Status: active
+
+ 51. LICENSE KEY: JSGT-N95U-5ZW8-6SMP
+     Customer: miniZ License #94
+     Type: professional
+     Created: 2025-11-28T15:00:47.178354
+     Expires: 2125-11-04T15:00:47.178354
+     Max Devices: 1
+     Status: active
+
+ 52. LICENSE KEY: JWN6-K9TB-WUK4-T9LH
+     Customer: miniZ License #30
+     Type: professional
+     Created: 2025-11-28T15:00:47.177440
+     Expires: 2125-11-04T15:00:47.177441
+     Max Devices: 1
+     Status: active
+
+ 53. LICENSE KEY: JZVX-GD4A-E82A-9HV6
+     Customer: miniZ License #31
+     Type: professional
+     Created: 2025-11-28T15:00:47.177454
+     Expires: 2125-11-04T15:00:47.177455
+     Max Devices: 1
+     Status: active
+
+ 54. LICENSE KEY: KKKJ-8NN4-RAGB-JNA5
+     Customer: miniZ License #2
+     Type: professional
+     Created: 2025-11-28T15:00:47.177025
+     Expires: 2125-11-04T15:00:47.177026
+     Max Devices: 1
+     Status: active
+
+ 55. LICENSE KEY: KZUZ-9UQN-PFSM-68HT
+     Customer: miniZ License #33
+     Type: professional
+     Created: 2025-11-28T15:00:47.177485
+     Expires: 2125-11-04T15:00:47.177486
+     Max Devices: 1
+     Status: active
+
+ 56. LICENSE KEY: L3VD-87QE-PSA9-4359
+     Customer: miniZ License #26
+     Type: professional
+     Created: 2025-11-28T15:00:47.177380
+     Expires: 2125-11-04T15:00:47.177380
+     Max Devices: 1
+     Status: active
+
+ 57. LICENSE KEY: L9BA-TVGE-ZGBE-MEYD
+     Customer: miniZ License #41
+     Type: professional
+     Created: 2025-11-28T15:00:47.177595
+     Expires: 2125-11-04T15:00:47.177595
+     Max Devices: 1
+     Status: active
+
+ 58. LICENSE KEY: LBDZ-MA7M-33AN-RG7G
+     Customer: miniZ License #70
+     Type: professional
+     Created: 2025-11-28T15:00:47.178008
+     Expires: 2125-11-04T15:00:47.178008
+     Max Devices: 1
+     Status: active
+
+ 59. LICENSE KEY: LXN8-JY8J-SEW5-GBFW
+     Customer: miniZ License #29
+     Type: professional
+     Created: 2025-11-28T15:00:47.177424
+     Expires: 2125-11-04T15:00:47.177425
+     Max Devices: 1
+     Status: active
+
+ 60. LICENSE KEY: M2CB-7NXN-H57L-XXYD
+     Customer: miniZ License #35
+     Type: professional
+     Created: 2025-11-28T15:00:47.177512
+     Expires: 2125-11-04T15:00:47.177513
+     Max Devices: 1
+     Status: active
+
+ 61. LICENSE KEY: M447-CZKY-W4MP-4DLN
+     Customer: miniZ License #45
+     Type: professional
+     Created: 2025-11-28T15:00:47.177656
+     Expires: 2125-11-04T15:00:47.177656
+     Max Devices: 1
+     Status: active
+
+ 62. LICENSE KEY: MK6K-L95T-E945-YYH2
+     Customer: miniZ License #91
+     Type: professional
+     Created: 2025-11-28T15:00:47.178313
+     Expires: 2125-11-04T15:00:47.178313
+     Max Devices: 1
+     Status: active
+
+ 63. LICENSE KEY: MT9B-VP9S-QBS5-DGUA
+     Customer: miniZ License #47
+     Type: professional
+     Created: 2025-11-28T15:00:47.177683
+     Expires: 2125-11-04T15:00:47.177684
+     Max Devices: 1
+     Status: active
+
+ 64. LICENSE KEY: NE65-DB8V-SYMJ-VV3G
+     Customer: miniZ License #79
+     Type: professional
+     Created: 2025-11-28T15:00:47.178136
+     Expires: 2125-11-04T15:00:47.178137
+     Max Devices: 1
+     Status: active
+
+ 65. LICENSE KEY: NSRB-2C4X-9ZCP-VFCK
+     Customer: miniZ License #85
+     Type: professional
+     Created: 2025-11-28T15:00:47.178222
+     Expires: 2125-11-04T15:00:47.178223
+     Max Devices: 1
+     Status: active
+
+ 66. LICENSE KEY: P7E6-AQZ5-49KZ-RX9J
+     Customer: miniZ License #58
+     Type: professional
+     Created: 2025-11-28T15:00:47.177839
+     Expires: 2125-11-04T15:00:47.177839
+     Max Devices: 1
+     Status: active
+
+ 67. LICENSE KEY: PB34-A6QU-4HAC-DTGJ
+     Customer: miniZ License #68
+     Type: professional
+     Created: 2025-11-28T15:00:47.177982
+     Expires: 2125-11-04T15:00:47.177982
+     Max Devices: 1
+     Status: active
+
+ 68. LICENSE KEY: PWA8-U8EU-A8MN-6E82
+     Customer: miniZ License #38
+     Type: professional
+     Created: 2025-11-28T15:00:47.177554
+     Expires: 2125-11-04T15:00:47.177554
+     Max Devices: 1
+     Status: active
+
+ 69. LICENSE KEY: PWYZ-Y5XR-MFAC-GEW8
+     Customer: miniZ License #20
+     Type: professional
+     Created: 2025-11-28T15:00:47.177293
+     Expires: 2125-11-04T15:00:47.177294
+     Max Devices: 1
+     Status: active
+
+ 70. LICENSE KEY: QAB9-9WXR-Q23K-T5FJ
+     Customer: miniZ License #8
+     Type: professional
+     Created: 2025-11-28T15:00:47.177116
+     Expires: 2125-11-04T15:00:47.177116
+     Max Devices: 1
+     Status: active
+
+ 71. LICENSE KEY: QT9F-KEEF-XL4U-WP93
+     Customer: miniZ License #1
+     Type: professional
+     Created: 2025-11-28T15:00:47.177001
+     Expires: 2125-11-04T15:00:47.177004
+     Max Devices: 1
+     Status: active
+
+ 72. LICENSE KEY: R3T8-ZZW6-MQB6-AT9R
+     Customer: miniZ License #10
+     Type: professional
+     Created: 2025-11-28T15:00:47.177144
+     Expires: 2125-11-04T15:00:47.177145
+     Max Devices: 1
+     Status: active
+
+ 73. LICENSE KEY: R992-LXGK-6UT8-LZ4K
+     Customer: miniZ License #16
+     Type: professional
+     Created: 2025-11-28T15:00:47.177234
+     Expires: 2125-11-04T15:00:47.177235
+     Max Devices: 1
+     Status: active
+
+ 74. LICENSE KEY: RAQ9-4R2X-RT8N-D286
+     Customer: miniZ License #99
+     Type: professional
+     Created: 2025-11-28T15:00:47.178420
+     Expires: 2125-11-04T15:00:47.178420
+     Max Devices: 1
+     Status: active
+
+ 75. LICENSE KEY: RXPH-RM6W-Z75F-XRSC
+     Customer: miniZ License #21
+     Type: professional
+     Created: 2025-11-28T15:00:47.177309
+     Expires: 2125-11-04T15:00:47.177309
+     Max Devices: 1
+     Status: active
+
+ 76. LICENSE KEY: S8FX-L3YD-QDVN-SS5A
+     Customer: miniZ License #19
+     Type: professional
+     Created: 2025-11-28T15:00:47.177279
+     Expires: 2125-11-04T15:00:47.177279
+     Max Devices: 1
+     Status: active
+
+ 77. LICENSE KEY: SEDJ-97Q9-37GP-FMQN
+     Customer: miniZ License #63
+     Type: professional
+     Created: 2025-11-28T15:00:47.177907
+     Expires: 2125-11-04T15:00:47.177908
+     Max Devices: 1
+     Status: active
+
+ 78. LICENSE KEY: SGYS-WGKM-VPVQ-7ELA
+     Customer: miniZ License #44
+     Type: professional
+     Created: 2025-11-28T15:00:47.177643
+     Expires: 2125-11-04T15:00:47.177643
+     Max Devices: 1
+     Status: active
+
+ 79. LICENSE KEY: TETG-QBLY-JAPL-7AFF
+     Customer: miniZ License #27
+     Type: professional
+     Created: 2025-11-28T15:00:47.177395
+     Expires: 2125-11-04T15:00:47.177395
+     Max Devices: 1
+     Status: active
+
+ 80. LICENSE KEY: TFSL-VQ82-XBRX-FLEL
+     Customer: miniZ License #74
+     Type: professional
+     Created: 2025-11-28T15:00:47.178067
+     Expires: 2125-11-04T15:00:47.178067
+     Max Devices: 1
+     Status: active
+
+ 81. LICENSE KEY: TY9C-RNYM-LRJN-FCEU
+     Customer: miniZ License #59
+     Type: professional
+     Created: 2025-11-28T15:00:47.177852
+     Expires: 2125-11-04T15:00:47.177852
+     Max Devices: 1
+     Status: active
+
+ 82. LICENSE KEY: U2TV-7G8H-K783-2MPG
+     Customer: miniZ License #81
+     Type: professional
+     Created: 2025-11-28T15:00:47.178167
+     Expires: 2125-11-04T15:00:47.178167
+     Max Devices: 1
+     Status: active
+
+ 83. LICENSE KEY: UC2K-FRZW-6SCR-DJLM
+     Customer: miniZ License #65
+     Type: professional
+     Created: 2025-11-28T15:00:47.177936
+     Expires: 2125-11-04T15:00:47.177937
+     Max Devices: 1
+     Status: active
+
+ 84. LICENSE KEY: UK8X-2FN3-LX9V-7BYG
+     Customer: miniZ License #42
+     Type: professional
+     Created: 2025-11-28T15:00:47.177609
+     Expires: 2125-11-04T15:00:47.177609
+     Max Devices: 1
+     Status: active
+
+ 85. LICENSE KEY: V2BE-HHZS-3YEY-8AT5
+     Customer: miniZ License #53
+     Type: professional
+     Created: 2025-11-28T15:00:47.177769
+     Expires: 2125-11-04T15:00:47.177770
+     Max Devices: 1
+     Status: active
+
+ 86. LICENSE KEY: V4CJ-CUFB-4W8S-SFUQ
+     Customer: miniZ License #22
+     Type: professional
+     Created: 2025-11-28T15:00:47.177321
+     Expires: 2125-11-04T15:00:47.177321
+     Max Devices: 1
+     Status: active
+
+ 87. LICENSE KEY: W2KA-8CTD-YN8T-KM4Y
+     Customer: miniZ License #73
+     Type: professional
+     Created: 2025-11-28T15:00:47.178052
+     Expires: 2125-11-04T15:00:47.178052
+     Max Devices: 1
+     Status: active
+
+ 88. LICENSE KEY: W7MC-TKLP-RYKV-VEDU
+     Customer: miniZ License #86
+     Type: professional
+     Created: 2025-11-28T15:00:47.178236
+     Expires: 2125-11-04T15:00:47.178236
+     Max Devices: 1
+     Status: active
+
+ 89. LICENSE KEY: W8TH-SSFP-6P4C-VFYC
+     Customer: miniZ License #34
+     Type: professional
+     Created: 2025-11-28T15:00:47.177498
+     Expires: 2125-11-04T15:00:47.177499
+     Max Devices: 1
+     Status: active
+
+ 90. LICENSE KEY: WSYS-KUAJ-QZR4-HQP4
+     Customer: miniZ License #88
+     Type: professional
+     Created: 2025-11-28T15:00:47.178266
+     Expires: 2125-11-04T15:00:47.178267
+     Max Devices: 1
+     Status: active
+
+ 91. LICENSE KEY: WTAT-2Y36-GGTE-PXDV
+     Customer: miniZ License #80
+     Type: professional
+     Created: 2025-11-28T15:00:47.178153
+     Expires: 2125-11-04T15:00:47.178154
+     Max Devices: 1
+     Status: active
+
+ 92. LICENSE KEY: XCYA-NULD-ZYBH-6KSX
+     Customer: miniZ License #40
+     Type: professional
+     Created: 2025-11-28T15:00:47.177582
+     Expires: 2125-11-04T15:00:47.177582
+     Max Devices: 1
+     Status: active
+
+ 93. LICENSE KEY: XKT5-M44K-DL24-5RMY
+     Customer: miniZ License #7
+     Type: professional
+     Created: 2025-11-28T15:00:47.177100
+     Expires: 2125-11-04T15:00:47.177101
+     Max Devices: 1
+     Status: active
+
+ 94. LICENSE KEY: XMME-ERZB-R6MF-YQAD
+     Customer: miniZ License #89
+     Type: professional
+     Created: 2025-11-28T15:00:47.178281
+     Expires: 2125-11-04T15:00:47.178282
+     Max Devices: 1
+     Status: active
+
+ 95. LICENSE KEY: Y2Q9-7YWV-4NTZ-J6HE
+     Customer: miniZ License #6
+     Type: professional
+     Created: 2025-11-28T15:00:47.177085
+     Expires: 2125-11-04T15:00:47.177086
+     Max Devices: 1
+     Status: active
+
+ 96. LICENSE KEY: YUN7-YMHT-DXKP-KGS8
+     Customer: miniZ License #100
+     Type: professional
+     Created: 2025-11-28T15:00:47.178432
+     Expires: 2125-11-04T15:00:47.178433
+     Max Devices: 1
+     Status: active
+
+ 97. LICENSE KEY: Z9P5-HQ4Z-H3XP-WGZU
+     Customer: miniZ License #4
+     Type: professional
+     Created: 2025-11-28T15:00:47.177058
+     Expires: 2125-11-04T15:00:47.177059
+     Max Devices: 1
+     Status: active
+
+ 98. LICENSE KEY: ZCUJ-KXJ4-NAA6-V7XZ
+     Customer: miniZ License #13
+     Type: professional
+     Created: 2025-11-28T15:00:47.177194
+     Expires: 2125-11-04T15:00:47.177194
+     Max Devices: 1
+     Status: active
+
+ 99. LICENSE KEY: ZL7A-LQUP-TX4Z-8YZ2
+     Customer: miniZ License #61
+     Type: professional
+     Created: 2025-11-28T15:00:47.177879
+     Expires: 2125-11-04T15:00:47.177880
+     Max Devices: 1
+     Status: active
+
+100. LICENSE KEY: ZQQA-YNNU-ANVB-F3VW
+     Customer: miniZ License #76
+     Type: professional
+     Created: 2025-11-28T15:00:47.178095
+     Expires: 2125-11-04T15:00:47.178095
+     Max Devices: 1
+     Status: active
+
+═
+END OF LICENSE LIST
+══

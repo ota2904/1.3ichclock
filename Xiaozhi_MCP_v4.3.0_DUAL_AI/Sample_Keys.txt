@@ -1,0 +1,231 @@
+===============================================================
+📋 SAMPLE LICENSE KEYS - miniZ MCP Professional v4.3.0
+===============================================================
+
+⚠️ IMPORTANT NOTES:
+- These are SAMPLE keys for TESTING purposes
+- Your purchased key will be different and unique
+- Each key can only be activated on specified number of devices
+- Keys are hardware-locked (cannot be transferred easily)
+
+===============================================================
+📦 STANDARD TIER - Sample Keys (1 Device Each)
+===============================================================
+
+Key Format: MINIZ-XXXX-XXXX-XXXX-XXXX
+
+1. MINIZ-STD5-G3YE-7L5J-57ND
+2. MINIZ-STDD-NF2L-4Z3N-PXCV
+3. MINIZ-STD4-QKJT-8JF5-HVVJ
+4. MINIZ-STD3-48VG-LQXT-YZWP
+5. MINIZ-STDX-E5FB-W49N-CEJR
+
+Features:
+✅ Lifetime validity
+✅ 1 device activation
+✅ Full AI features (GPT-4 + Gemini)
+✅ Music library management
+✅ All core functionalities
+
+===============================================================
+💎 PRO TIER - Sample Keys (2 Devices Each)
+===============================================================
+
+1. MINIZ-PRO6-D8SM-J3NK-G7R4
+2. MINIZ-PROB-ZDFC-LDS7-UB32
+3. MINIZ-PROC-MHWY-5RTG-QVLX
+
+Features:
+✅ All STANDARD features
+✅ 2 device activations
+✅ Priority support
+✅ Advanced configuration options
+
+===============================================================
+🏆 ENTERPRISE TIER - Sample Keys (5 Devices Each)
+===============================================================
+
+1. MINIZ-ENTJ-VFTV-K6VQ-8UZD
+2. MINIZ-ENTU-6KYR-UYX8-CN99
+
+Features:
+✅ All PRO features
+✅ 5 device activations
+✅ Team management
+✅ Custom API endpoints
+✅ Dedicated support channel
+
+===============================================================
+🔐 ACTIVATION INSTRUCTIONS
+===============================================================
+
+Step 1: Launch Application
+   Run: miniZ_MCP_Professional.exe
+
+Step 2: Enter License Key
+   - Copy ONE key from above
+   - Paste into activation dialog
+   - Format: MINIZ-XXXX-XXXX-XXXX-XXXX
+   - No spaces, all uppercase
+
+Step 3: Confirm Activation
+   - App will verify key format
+   - Bind key to your hardware ID
+   - Create encrypted license file
+   - Show success message
+
+Step 4: Restart Application
+   - License auto-validates on startup
+   - No need to enter key again
+   - Use app normally
+
+===============================================================
+📂 LICENSE FILE LOCATION
+===============================================================
+
+After activation, license stored at:
+%LOCALAPPDATA%\miniZ_MCP\.license\license.enc
+
+Full path example:
+C:\Users\YourName\AppData\Local\miniZ_MCP\.license\license.enc
+
+⚠️ DO NOT DELETE THIS FILE
+⚠️ DO NOT SHARE THIS FILE (hardware-locked)
+
+===============================================================
+🔧 HARDWARE BINDING
+===============================================================
+
+License bound to:
+- CPU Processor ID
+- Motherboard Serial Number
+
+Result:
+✅ Cannot copy license.enc to another PC
+✅ Secure against unauthorized sharing
+❌ Must re-activate if hardware changes
+
+===============================================================
+❓ TESTING WORKFLOW
+===============================================================
+
+Test 1: STANDARD Key Activation
+   1. Use: MINIZ-STD5-G3YE-7L5J-57ND
+   2. Verify activation success
+   3. Check license.enc created
+   4. Restart app → auto-validates
+
+Test 2: PRO Key Activation
+   1. Delete: %LOCALAPPDATA%\miniZ_MCP\.license\license.enc
+   2. Use: MINIZ-PRO6-D8SM-J3NK-G7R4
+   3. Verify PRO tier detected
+   4. Check 2-device limit
+
+Test 3: ENTERPRISE Key Activation
+   1. Delete old license.enc
+   2. Use: MINIZ-ENTJ-VFTV-K6VQ-8UZD
+   3. Verify ENTERPRISE tier
+   4. Check 5-device limit
+
+Test 4: Invalid Key Rejection
+   1. Try: MINIZ-INVALID-KEY-TEST-FAIL
+   2. Should reject: "License key format không hợp lệ"
+   3. Try: MINIZ-ABCD-EFGH-IJKL-MNOP (valid format but not in database)
+   4. Should reject: "License key không tồn tại"
+
+Test 5: Hardware Mismatch
+   1. Copy license.enc from PC1 to PC2
+   2. Run app on PC2
+   3. Should reject: "License không khớp với máy này"
+   4. Must re-activate on PC2
+
+===============================================================
+📊 KEY STATISTICS
+===============================================================
+
+Total Sample Keys Provided: 10
+- STANDARD: 5 keys
+- PRO: 3 keys
+- ENTERPRISE: 2 keys
+
+Total Keys in Database: 150
+- STANDARD: 100 keys
+- PRO: 40 keys
+- ENTERPRISE: 10 keys
+
+===============================================================
+📞 SUPPORT INFORMATION
+===============================================================
+
+Need Help?
+- See: LICENSE_ACTIVATION_GUIDE.md (Complete documentation)
+- See: CUSTOMER_README.md (Quick start guide)
+
+Get Your Hardware ID:
+   Run: python -c "from license_system import get_hardware_id; print(get_hardware_id())"
+   Example output: E7AC0786668E0FF0F02B62BD04F45FF6
+
+Contact Support:
+- Email: support@example.com (Update with actual email)
+- Include: Hardware ID + License Key + Error message
+
+===============================================================
+⚖️ TERMS & CONDITIONS
+===============================================================
+
+By using these license keys, you agree to:
+1. Use only for authorized testing/purchase
+2. Not share keys with unauthorized users
+3. Not attempt to crack or bypass license system
+4. Report any security vulnerabilities to support
+
+License Validity: LIFETIME (no expiration)
+Refund Policy: Within 30 days of purchase (see terms)
+Support Period: 1 year included, extendable
+
+===============================================================
+🎓 ADDITIONAL RESOURCES
+===============================================================
+
+Documentation:
+├── LICENSE_ACTIVATION_GUIDE.md (Full technical guide)
+├── CUSTOMER_README.md (User quick start)
+└── Sample_Keys.txt (This file)
+
+Test Scripts:
+├── TEST_LICENSE_EXE.bat (Automated test)
+├── show_keys.py (Display all 150 keys)
+└── license_system.py (Source code)
+
+===============================================================
+💡 TIPS FOR SUCCESS
+===============================================================
+
+✅ DO:
+- Keep license key secure and private
+- Back up your license key (not license.enc file)
+- Contact support before major hardware upgrades
+- Use sample keys for testing before purchase
+
+❌ DON'T:
+- Share license keys publicly
+- Attempt to copy license.enc between PCs
+- Modify or tamper with license files
+- Use cracks or keygens (illegal and unsafe)
+
+===============================================================
+🌟 THANK YOU!
+===============================================================
+
+Thank you for choosing miniZ MCP Professional!
+
+For questions, support, or purchasing additional licenses:
+- Documentation: See LICENSE_ACTIVATION_GUIDE.md
+- Website: [Update with your website]
+- Email: [Update with support email]
+
+Version: 4.3.0
+Build Date: 2025-01-08
+License System: Hardware-locked AES-256
+
+===============================================================

@@ -1,0 +1,70 @@
+========================================
+miniZ MCP v4.3.0 PROFESSIONAL
+LICENSE KEY THÔNG TIN
+========================================
+
+🔑 LICENSE KEY
+----------------------------------------
+KSBE-TDPV-P7K3-N1IP
+
+
+📋 THÔNG TIN LICENSE
+----------------------------------------
+Customer:        Customer - Test Install
+License Type:    Professional
+Duration:        365 days (1 năm)
+Max Devices:     1 máy tính
+Created:         November 27, 2025
+Expires:         November 27, 2026
+Status:          Active
+
+
+🖥️ HARDWARE ID (ĐÃ LIÊN KẾT)
+----------------------------------------
+ECA8CBFBB21D3486071BF46ECCB7FA3C
+
+
+✅ HƯỚNG DẪN KÍCH HOẠT
+----------------------------------------
+1. Cài đặt phần mềm:
+   - Chạy: miniZ_MCP_v4.3.0_Professional_Setup.exe
+
+2. Khi cửa sổ Activation hiện ra:
+   - Hardware ID sẽ hiển thị: ECA8CBFBB21D3486071BF46ECCB7FA3C
+   - Nhập License Key: KSBE-TDPV-P7K3-N1IP
+   - Nhấn "Activate"
+
+3. Kích hoạt thành công!
+   - Phần mềm sẽ tự động mở Web UI
+   - Truy cập: http://localhost:8000
+
+
+💎 TÍNH NĂNG PROFESSIONAL
+----------------------------------------
+✓ Sử dụng 1 năm (đến 27/11/2026)
+✓ Tất cả tính năng đầy đủ
+✓ Dual AI (Gemini + GPT-4)
+✓ Music Player với VLC
+✓ PC Control Tools
+✓ Priority Support
+
+
+⚠️ LƯU Ý
+----------------------------------------
+• License chỉ hoạt động trên 1 máy tính
+• Không chia sẻ License Key cho người khác
+• Hardware ID đã được bind với license này
+• Muốn chuyển máy → Liên hệ support để deactivate
+
+
+📞 HỖ TRỢ KỸ THUẬT
+----------------------------------------
+Email:   support@miniz-mcp.com
+Hotline: 1900-xxxx
+Website: https://miniz-mcp.com
+
+
+========================================
+Generated: November 27, 2025
+miniZ Software © 2025
+========================================

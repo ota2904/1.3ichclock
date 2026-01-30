@@ -1,0 +1,46 @@
+═
+                                                            
+     miniZ MCP Professional v4.3.0 - Installation Info      
+                                                            
+═
+
+Thank you for choosing miniZ MCP Professional Edition!
+
+This installer will guide you through the installation process.
+
+ WHAT YOU NEED:
+
+ A valid license key (Format: MINIZ-XXXX-XXXX-XXXX-XXXX)
+ Windows 10/11 (64-bit)
+ At least 500 MB free disk space
+ Internet connection (for AI features)
+
+ LICENSE SYSTEM:
+
+This software uses a hardware-locked license system:
+ License bound to your computer (CPU + Motherboard)
+ Lifetime validity (no expiration)
+ 3 tiers: STANDARD (1 device), PRO (2 devices), ENTERPRISE (5 devices)
+ AES-256 encryption for maximum security
+
+ INSTALLATION STEPS:
+═
+1. Read and accept the License Agreement
+2. Choose installation directory
+3. Enter your license key (or activate later)
+4. Complete installation
+5. Launch application
+
+ IMPORTANT NOTES:
+
+ Keep your license key safe and secure
+ Do NOT share your license key with others
+ Hardware changes may require re-activation
+ Contact support before major hardware upgrades
+
+ SUPPORT:
+
+Email: support@example.com
+Documentation: Included in installation folder
+
+Let's get started! Click Next to continue...

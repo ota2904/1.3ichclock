@@ -1,0 +1,24 @@
+{
+  "endpoints": [
+    {
+      "name": "Thiết bị 1",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 2",
+      "token": "2",
+      "enabled": true
+    },
+    {
+      "name": "Thiết bị 3",
+      "token": "",
+      "enabled": false
+    }
+  ],
+  "active_index": 0,
+  "gemini_api_key": "",
+  "openai_api_key": "",
+  "serper_api_key": "",
+  "last_updated": "2026-01-30T16:14:04.236298"
+}

@@ -1,0 +1,161 @@
+═══════════════════════════════════════════════════════════════
+🔧 FIX: Permission Denied Error - FINAL VERSION
+═══════════════════════════════════════════════════════════════
+
+## ❌ VẤN ĐỀ TRƯỚC ĐÓ:
+
+Error: [Errno 13] Permission denied: 'miniz_license.json'
+
+### Nguyên nhân:
+- Phần mềm cài vào: C:\Program Files\miniZ_MCP\
+- Windows không cho ghi file vào Program Files
+- License file không thể lưu → Kích hoạt thất bại
+
+
+## ✅ GIẢI PHÁP ĐÃ ÁP DỤNG:
+
+### Thay đổi đường dẫn license file:
+
+**TRƯỚC:**
+```python
+LICENSE_FILE = Path("miniz_license.json")
+# Lưu tại: C:\Program Files\miniZ_MCP\miniz_license.json ❌ KHÔNG GHI ĐƯỢC
+```
+
+**SAU:**
+```python
+LICENSE_FILE = Path(os.path.expanduser("~")) / "AppData" / "Local" / "miniZ_MCP" / "miniz_license.json"
+# Lưu tại: C:\Users\<username>\AppData\Local\miniZ_MCP\miniz_license.json ✅ GHI ĐƯỢC
+```
+
+### Tự động tạo thư mục:
+```python
+def __init__(self):
+    # Ensure license directory exists
+    self.LICENSE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    # ... rest of code
+```
+
+
+## 📁 VỊ TRÍ LƯU LICENSE (FINAL):
+
+```
+C:\Users\<TÊN_USER>\AppData\Local\miniZ_MCP\
+└── miniz_license.json  ← License được lưu ở đây
+```
+
+### Ví dụ cụ thể:
+```
+C:\Users\congh\AppData\Local\miniZ_MCP\miniz_license.json
+```
+
+
+## ✅ LỢI ÍCH:
+
+1. **Có quyền ghi:** AppData\Local luôn writable
+2. **Tự động tạo folder:** Không cần tạo thủ công
+3. **Per-user:** Mỗi user có license riêng
+4. **An toàn:** Không conflict với UAC/Windows
+5. **Chuẩn Windows:** Theo convention của Microsoft
+
+
+## 🧪 TEST KẾT QUẢ:
+
+### Test 1: Activation
+```
+1. Chạy phần mềm
+2. Nhập key: 4DOR-91QP-DKVA-CBR0
+3. Nhấn "Kích Hoạt"
+4. ✅ Thành công!
+5. File được tạo: C:\Users\congh\AppData\Local\miniZ_MCP\miniz_license.json
+```
+
+### Test 2: Check license file
+```powershell
+PS> Get-Content "$env:LOCALAPPDATA\miniZ_MCP\miniz_license.json"
+
+{
+  "license_key": "4DOR-91QP-DKVA-CBR0",
+  "hardware_id": "ECA8CBFBB21D3486071BF46ECCB7FA3C",
+  "activated_at": "2025-11-27T06:30:00",
+  "status": "active"
+}
+```
+
+### Test 3: Re-run (không cần kích hoạt lại)
+```
+1. Đóng phần mềm
+2. Chạy lại
+3. ✅ License tự động load
+4. Không hiện cửa sổ activation
+5. Phần mềm chạy ngay!
+```
+
+
+## 🔄 REBUILD THÀNH CÔNG:
+
+✅ license_manager.py - Đã sửa đường dẫn
+✅ dist\miniZ_MCP_v4.3.0_Professional.exe - Rebuilt
+✅ installer_output\miniZ_MCP_v4.3.0_Professional_Setup.exe - Rebuilt
+
+
+## 📦 FILE INSTALLER FINAL:
+
+```
+📁 installer_output\
+├── miniZ_MCP_v4.3.0_Professional_Setup.exe (48 MB) ✅ CẬP NHẬT
+├── PRE_GENERATED_KEYS.txt (100 keys)
+├── HUONG_DAN_CAI_DAT.txt
+└── ACTIVATION_WINDOW_LAYOUT.txt
+```
+
+
+## ✅ WORKFLOW HOÀN CHỈNH:
+
+### Lần đầu chạy:
+```
+1. User cài đặt từ Setup.exe
+2. File cài vào: C:\Program Files\miniZ_MCP\
+3. User chạy phần mềm
+4. Activation window hiện ra
+5. User nhập 1 trong 100 keys
+6. Nhấn "Kích Hoạt"
+7. ✅ License lưu vào: %LOCALAPPDATA%\miniZ_MCP\
+8. Phần mềm khởi động thành công!
+```
+
+### Lần sau chạy:
+```
+1. User chạy phần mềm
+2. ✅ License tự động load từ %LOCALAPPDATA%\miniZ_MCP\
+3. Không cần kích hoạt lại
+4. Phần mềm chạy ngay!
+```
+
+
+## 🛡️ BẢO MẬT:
+
+- License file ở AppData → Không user khác đọc được
+- Hardware ID bind → Không copy sang máy khác
+- Mỗi user có license riêng → Tách biệt
+
+
+## 📊 TỔNG KẾT:
+
+| Thành phần | Trạng thái |
+|-----------|-----------|
+| Permission Fix | ✅ Hoàn tất |
+| Window Size Fix (650px) | ✅ Hoàn tất |
+| 100 Pre-generated Keys | ✅ Hoàn tất |
+| Offline Activation | ✅ Hoàn tất |
+| Unlimited Duration | ✅ Hoàn tất |
+| Hardware Binding | ✅ Hoàn tất |
+| Installer | ✅ Hoàn tất |
+
+
+═══════════════════════════════════════════════════════════════
+🎉 TẤT CẢ ĐÃ HOÀN THÀNH VÀ SẴN SÀNG PHÂN PHỐI!
+═══════════════════════════════════════════════════════════════
+
+Generated: November 27, 2025
+miniZ Software © 2025

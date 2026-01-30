@@ -1,0 +1,24 @@
+{
+  "endpoints": [
+    {
+      "name": "Thiết bị 1",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjA4NTI1OSwiZXhwIjoxNzkzNjQyODU5fQ.GK91-17mqarpETPwz7N6rZj5DaT7bJkpK7EM6lO0Rdmfztv_KeOTBP9R4Lvy3uXKMCJn3gwucvelCur95GAn5Q",
+      "enabled": true
+    },
+    {
+      "name": "Thiết bị 2",
+      "token": "",
+      "enabled": false
+    },
+    {
+      "name": "Thiết bị 3",
+      "token": "",
+      "enabled": false
+    }
+  ],
+  "active_index": 0,
+  "gemini_api_key": "AIzaSyDZxpqCuctj3Y3VSHlFXesmep8iC8nPQyg",
+  "openai_api_key": "",
+  "serper_api_key": "e9d089f7862faf88a4659e0eb1325df8ba256d22",
+  "last_updated": "2025-12-16T01:03:59.829722"
+}

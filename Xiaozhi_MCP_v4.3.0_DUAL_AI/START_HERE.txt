@@ -1,0 +1,272 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║   🎁 CHÀO MỪNG ĐÃ DOWNLOAD XIAOZHI MCP v4.3.0 PORTABLE EDITION          ║
+║                                                                           ║
+║      Điều Khiển Máy Tính Thông Minh Qua AI - Package Hoàn Chỉnh         ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+
+             🔴🔴🔴 ĐỌC FILE NÀY TRƯỚC KHI LÀM BẤT CỨ ĐIỀU GÌ 🔴🔴🔴
+
+
+───────────────────────────────────────────────────────────────────────────
+📋 FILE NÀY LÀM GÌ?
+───────────────────────────────────────────────────────────────────────────
+
+Đây là FILE HƯỚNG DẪN ĐẦU TIÊN bạn cần đọc sau khi giải nén package.
+
+Mục đích: Giúp bạn hiểu cách cài đặt và sử dụng phần mềm một cách NHANH NHẤT
+          và AN TOÀN NHẤT.
+
+
+───────────────────────────────────────────────────────────────────────────
+⚠️ QUAN TRỌNG - ĐỌC NGAY!
+───────────────────────────────────────────────────────────────────────────
+
+🔴 TRƯỚC KHI CÀI ĐẶT, BẠN PHẢI:
+
+   1. ĐỌC FILE: DISCLAIMER.md
+      → Điều khoản miễn trách nhiệm (BẮT BUỘC)
+      
+   2. ĐỌC FILE: PORTABLE_README.md
+      → Giới thiệu package và tính năng
+      
+   3. ĐỌC FILE: README.md
+      → Hướng dẫn chi tiết đầy đủ
+
+🔴 SAU ĐÓ MỚI CHẠY: INSTALL.bat
+
+
+───────────────────────────────────────────────────────────────────────────
+🚀 QUY TRÌNH CÀI ĐẶT (5 BƯỚC - 5 PHÚT)
+───────────────────────────────────────────────────────────────────────────
+
+BƯỚC 1: ĐỌC ĐIỀU KHOẢN ⚠️
+   • Mở file: DISCLAIMER.md
+   • Đọc toàn bộ (quan trọng!)
+   • Hiểu rõ trách nhiệm của bạn
+
+BƯỚC 2: KIỂM TRA HỆ THỐNG ✅
+   • Windows 10/11 (64-bit)
+   • Python 3.8+ đã cài đặt
+   • RAM 4GB trở lên
+   • Kết nối Internet
+
+BƯỚC 3: CÀI ĐẶT DEPENDENCIES 📦
+   • Nhấp đúp: INSTALL.bat
+   • Đợi 1-2 phút
+   • Xem thông báo "Hoàn tất"
+
+BƯỚC 4: LẤY XIAOZHI TOKEN 🔑
+   • Truy cập: https://xiaozhi.me
+   • Đăng nhập (tạo tài khoản nếu chưa có)
+   • Profile → Copy JWT token
+
+BƯỚC 5: KHỞI ĐỘNG & CẤU HÌNH 🚀
+   • Nhấp đúp: START.bat
+   • Browser mở: http://localhost:8000
+   • Click ⚙️ → Dán token → Lưu
+
+🎉 XOG! Bắt đầu ra lệnh cho AI!
+
+
+───────────────────────────────────────────────────────────────────────────
+📁 CẤU TRÚC PACKAGE
+───────────────────────────────────────────────────────────────────────────
+
+📦 Xiaozhi_MCP_v4.3.0_DUAL_AI/
+│
+├── 🔴 START_HERE.txt             ← BẠN ĐANG ĐỌC FILE NÀY
+│
+├── ⚠️  TÀI LIỆU BẮT BUỘC ĐỌC:
+│   ├── DISCLAIMER.md             ← Điều khoản miễn trách nhiệm
+│   ├── PORTABLE_README.md        ← Giới thiệu package
+│   └── README.md                 ← Hướng dẫn chi tiết
+│
+├── 📘 TÀI LIỆU THAM KHẢO:
+│   ├── PACKAGE_README.txt        ← Quick reference
+│   ├── QUICKSTART.md             ← Hướng dẫn nhanh
+│   ├── MUSIC_GUIDE.md            ← Thư viện nhạc
+│   ├── GEMINI_GUIDE.md           ← Gemini AI (FREE)
+│   ├── GPT4_GUIDE.md             ← GPT-4 (PAID)
+│   ├── CHANGELOG.md              ← Lịch sử phiên bản
+│   └── DELIVERY_CHECKLIST.md     ← Checklist giao hàng
+│
+├── 🚀 SCRIPT CÀI ĐẶT & KHỞI ĐỘNG:
+│   ├── INSTALL.bat               ← Cài đặt dependencies
+│   ├── START.bat                 ← Khởi động phần mềm
+│   ├── CHECK.bat                 ← Kiểm tra cài đặt
+│   └── CREATE_SHORTCUT.bat       ← Tạo shortcut desktop
+│
+├── 🐍 MÃ NGUỒN:
+│   ├── xiaozhi_final.py          ← Code chính (4000+ dòng)
+│   └── requirements.txt          ← Dependencies
+│
+├── ⚙️  CẤU HÌNH:
+│   ├── xiaozhi_endpoints.json    ← File cấu hình (rỗng)
+│   └── LICENSE                   ← Giấy phép MIT
+│
+└── 🎵 THƯ VIỆN NHẠC:
+    └── music_library/            ← Thêm file .mp3 vào đây
+
+
+───────────────────────────────────────────────────────────────────────────
+🎯 TÍNH NĂNG NỔI BẬT
+───────────────────────────────────────────────────────────────────────────
+
+✅ 38 CÔNG CỤ ĐIỀU KHIỂN WINDOWS
+   • Hệ thống: Volume, Screenshot, Lock, Shutdown, Theme
+   • File: Create, Read, List, Delete
+   • Process: List, Kill
+   • Web: YouTube, Facebook, Google
+   • Nhạc: Auto-play, Search, Stop
+   • AI: Hỏi Gemini (FREE), Hỏi GPT-4 (PAID)
+
+✅ 2 AI ENGINES
+   • Google Gemini (MIỄN PHÍ) - 1500 requests/ngày
+   • OpenAI GPT-4 (TRẢ PHÍ) - Chất lượng cao nhất
+
+✅ DASHBOARD WEB UI
+   • Giao diện hiện đại, dễ sử dụng
+   • Tất cả 38 công cụ trong 1 trang
+   • Log hoạt động real-time
+
+✅ THƯ VIỆN NHẠC
+   • Auto-play khi liệt kê
+   • Tìm kiếm fuzzy matching
+   • Hỗ trợ .mp3, .wav, .flac, .m4a
+
+
+───────────────────────────────────────────────────────────────────────────
+⚠️ LƯU Ý BẢO MẬT
+───────────────────────────────────────────────────────────────────────────
+
+🔒 PACKAGE NÀY KHÔNG CHỨA:
+   ✅ Token JWT thật
+   ✅ Gemini API key thật
+   ✅ OpenAI API key thật
+   ✅ Bất kỳ thông tin nhạy cảm nào
+
+🔑 BẠN SẼ CẦN TỰ CẤU HÌNH:
+   1. JWT Token từ xiaozhi.me (BẮT BUỘC)
+   2. Gemini API key (TÙY CHỌN - MIỄN PHÍ)
+   3. OpenAI API key (TÙY CHỌN - TRẢ PHÍ)
+
+🚨 KHÔNG CHIA SẺ:
+   ❌ File xiaozhi_endpoints.json sau khi đã cấu hình
+   ❌ JWT Token của bạn
+   ❌ API keys của bạn
+
+
+───────────────────────────────────────────────────────────────────────────
+📞 HỖ TRỢ
+───────────────────────────────────────────────────────────────────────────
+
+🎥 Kênh YouTube miniZ:
+   https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU
+
+📧 Email hỗ trợ:
+   (Xem trong video YouTube)
+
+📝 Báo lỗi:
+   Comment trên video hoặc gửi email
+
+⚠️  Hỗ trợ miễn phí, không cam kết thời gian phản hồi
+
+
+───────────────────────────────────────────────────────────────────────────
+📜 ĐIỀU KHOẢN TÓM TẮT
+───────────────────────────────────────────────────────────────────────────
+
+✅ ĐƯỢC PHÉP:
+   • Sử dụng cá nhân, phi thương mại
+   • Chỉnh sửa code cho mục đích cá nhân
+   • Chia sẻ với bạn bè (phi thương mại)
+
+❌ KHÔNG ĐƯỢC PHÉP:
+   • Bán lại hoặc sử dụng thương mại
+   • Xóa credit/logo miniZ
+   • Phân phối dưới tên người khác
+
+⚠️  TRÁCH NHIỆM:
+   • Người dùng tự chịu trách nhiệm về việc sử dụng
+   • Nhà phát triển KHÔNG chịu trách nhiệm về thiệt hại
+   • Phần mềm cung cấp "AS IS" không bảo hành
+
+📄 Chi tiết đầy đủ: Xem DISCLAIMER.md
+
+
+───────────────────────────────────────────────────────────────────────────
+🎓 TÀI LIỆU NÊN ĐỌC THEO THỨ TỰ
+───────────────────────────────────────────────────────────────────────────
+
+1. ✅ START_HERE.txt              (File này - đã đọc)
+2. ⚠️  DISCLAIMER.md              (BẮT BUỘC)
+3. 📘 PORTABLE_README.md          (Giới thiệu)
+4. 📖 README.md                   (Hướng dẫn chi tiết)
+5. 🚀 QUICKSTART.md               (Hướng dẫn nhanh)
+6. 🎵 MUSIC_GUIDE.md              (Thư viện nhạc)
+7. 🤖 GEMINI_GUIDE.md             (Gemini AI)
+8. 🧠 GPT4_GUIDE.md               (GPT-4 AI)
+
+
+───────────────────────────────────────────────────────────────────────────
+🆘 TROUBLESHOOTING NHANH
+───────────────────────────────────────────────────────────────────────────
+
+❌ Python not found:
+   → Cài Python: https://www.python.org/downloads/
+   → Check "Add to PATH" khi cài
+   → Khởi động lại máy
+
+❌ Server không khởi động:
+   → Chạy CHECK.bat để xem lỗi
+   → Cài lại: pip install -r requirements.txt --force-reinstall
+   → Kiểm tra port 8000 có bị chiếm không
+
+❌ Không kết nối Xiaozhi:
+   → Kiểm tra JWT token có đúng không
+   → Kiểm tra Internet
+   → Xem log trong Dashboard
+
+❌ Nhạc không phát:
+   → Kiểm tra file nhạc trong music_library/
+   → Cài Windows Media Player
+   → Thử mở file nhạc thủ công
+
+Chi tiết: Xem README.md phần Troubleshooting
+
+
+───────────────────────────────────────────────────────────────────────────
+🎯 BƯỚC TIẾP THEO
+───────────────────────────────────────────────────────────────────────────
+
+Bây giờ hãy:
+
+   1. 📖 Đọc DISCLAIMER.md (BẮT BUỘC)
+   
+   2. 📘 Đọc PORTABLE_README.md (Giới thiệu package)
+   
+   3. 🚀 Chạy INSTALL.bat (Cài đặt)
+   
+   4. 🔑 Lấy token tại xiaozhi.me
+   
+   5. 🎉 Chạy START.bat và bắt đầu sử dụng!
+
+
+───────────────────────────────────────────────────────────────────────────
+
+                    🎁 CHÚC BẠN SỬ DỤNG VUI VẺ! 🎁
+
+                      Made with ❤️ by miniZ Team
+                   
+                v4.3.0 Dual AI Edition | 16/11/2025
+
+───────────────────────────────────────────────────────────────────────────
+
+
+            ⚡ Điều khiển máy tính bằng AI chưa bao giờ dễ đến thế! ⚡
+
+
+───────────────────────────────────────────────────────────────────────────

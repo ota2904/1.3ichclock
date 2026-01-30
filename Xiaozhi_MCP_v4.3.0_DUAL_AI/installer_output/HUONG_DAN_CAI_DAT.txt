@@ -1,0 +1,169 @@
+========================================
+miniZ MCP v4.3.0 PROFESSIONAL EDITION
+HƯỚNG DẪN CÀI ĐẶT VÀ KÍCH HOẠT
+========================================
+
+📦 FILE CÀI ĐẶT
+----------------------------------------
+✓ miniZ_MCP_v4.3.0_Professional_Setup.exe (48 MB)
+✓ PRE_GENERATED_KEYS.txt (100 license keys)
+
+
+🔧 BƯỚC 1: CÀI ĐẶT PHẦN MỀM
+----------------------------------------
+1. Chạy file: miniZ_MCP_v4.3.0_Professional_Setup.exe
+
+2. Đọc License Agreement → Next
+
+3. Chọn thư mục cài đặt (hoặc để mặc định):
+   C:\Program Files\miniZ_MCP\
+
+4. Chọn tạo Desktop shortcut (khuyên dùng) → Next
+
+5. Nhấn "Install" để bắt đầu cài đặt
+
+6. Đợi cài đặt hoàn tất (~30 giây)
+
+7. Nhấn "Finish" (có thể tick "Launch miniZ MCP")
+
+
+🔑 BƯỚC 2: KÍCH HOẠT LICENSE (QUAN TRỌNG!)
+----------------------------------------
+1. Lần đầu chạy phần mềm, cửa sổ "License Activation" sẽ hiện ra
+
+2. MỞ FILE "PRE_GENERATED_KEYS.txt" - Chọn 1 trong 100 keys
+
+3. NHẬP LICENSE KEY vào cửa sổ activation
+   (Format: XXXX-XXXX-XXXX-XXXX)
+   
+   ⚠️ LƯU Ý: 
+   - MỖI KEY CHỈ DÙNG ĐƯỢC 1 LẦN (1 máy)
+   - Sau khi nhập key, nó sẽ bị bind với Hardware ID của máy
+   - Không thể dùng lại key đó trên máy khác
+
+4. Nhấn "Activate" → Kích hoạt TỰ ĐỘNG (không cần internet)
+
+5. Phần mềm tự động khởi động!
+
+
+🌐 BƯỚC 3: SỬ DỤNG
+----------------------------------------
+Sau khi kích hoạt thành công:
+
+- Trình duyệt tự động mở: http://localhost:8000
+- Nếu không tự động mở, vào Start Menu:
+  "miniZ MCP Professional" → Click để chạy
+
+- Giao diện Web UI sẽ hiện ra
+- Sử dụng để điều khiển PC, phát nhạc, AI chat...
+
+
+📋 THÔNG TIN LICENSE
+----------------------------------------
+✓ Tổng số keys có sẵn: 100 keys
+✓ Loại license: Unlimited (Vô thời hạn - 100 năm)
+✓ Mỗi key: 1 máy tính duy nhất
+✓ Kích hoạt: Tự động offline (không cần internet)
+✓ Xác thực: Tức thì (không cần chờ admin)
+
+
+⚠️ LƯU Ý QUAN TRỌNG VỀ LICENSE
+----------------------------------------
+✓ Chọn 1 key từ file PRE_GENERATED_KEYS.txt
+✓ Mỗi key CHỈ DÙNG 1 LẦN cho 1 máy
+✓ Key sẽ bị bind với Hardware ID của máy
+✓ Không chia sẻ key cho người khác
+✓ Key đã dùng KHÔNG THỂ dùng lại
+✓ Muốn cài nhiều máy → Dùng nhiều keys khác nhau
+✓ 100 keys = Có thể cài trên 100 máy khác nhau
+
+
+📊 QUẢN LÝ KEYS
+----------------------------------------
+• Mở file: PRE_GENERATED_KEYS.txt
+• Chọn 1 key chưa dùng
+• Đánh dấu key đã dùng (để khỏi nhầm)
+• Còn lại bao nhiêu keys chưa dùng
+
+VÍ DỤ:
+[001] 4DOR-91QP-DKVA-CBR0 ← Dùng cho máy 1
+[002] IPC8-A79V-TUKC-WDSG ← Dùng cho máy 2
+[003] P7O3-A6JF-P3JC-WN94 ← Còn trống
+...
+
+
+⚠️ NẾU GẶP LỖI
+----------------------------------------
+❌ "License không hợp lệ"
+   → Key đã được dùng trên máy khác
+   → Chọn key khác từ danh sách
+
+❌ "License đã kích hoạt"
+   → Key này đã bind với máy khác
+   → Chọn key mới từ 100 keys
+
+❌ "Không tìm thấy key"  
+   → Nhập sai format
+   → Đảm bảo format: XXXX-XXXX-XXXX-XXXX
+
+
+🔧 GỠ CÀI ĐẶT
+----------------------------------------
+Nếu cần gỡ phần mềm:
+
+1. Vào Start Menu → miniZ MCP Professional
+2. Chọn "Uninstall miniZ MCP Professional"  
+3. Hoặc: Settings → Apps → miniZ MCP → Uninstall
+
+⚠️ Lưu ý:
+- Key đã dùng VẪN bị bind với Hardware ID
+- Cài lại trên cùng máy → Không cần key mới
+- Cài trên máy khác → Cần key mới từ danh sách
+
+
+💼 PHÂN PHỐI CHO NHIỀU MÁY
+----------------------------------------
+Nếu bạn cần cài cho nhiều máy:
+
+1. File Setup.exe: Copy sang các máy
+2. File PRE_GENERATED_KEYS.txt: Giữ bí mật
+3. Mỗi máy cài đặt → Dùng 1 key khác nhau
+4. Ghi chú key nào dùng cho máy nào
+
+VÍ DỤ:
+- Máy văn phòng 1: Key [001] 4DOR-91QP-DKVA-CBR0
+- Máy văn phòng 2: Key [002] IPC8-A79V-TUKC-WDSG  
+- Máy nhà: Key [003] P7O3-A6JF-P3JC-WN94
+
+
+📖 TÀI LIỆU THAM KHẢO
+----------------------------------------
+Sau khi cài đặt, xem thêm tài liệu tại:
+
+C:\Program Files\miniZ_MCP\
+├── LICENSE_SYSTEM_README.md  (Chi tiết license)
+├── QUICKSTART.md             (Hướng dẫn nhanh)
+└── README.md                 (Tài liệu đầy đủ)
+
+
+✅ CHECKLIST
+----------------------------------------
+□ Đã cài đặt phần mềm thành công
+□ Đã mở file PRE_GENERATED_KEYS.txt
+□ Đã chọn 1 key chưa dùng
+□ Đã nhập key vào cửa sổ activation
+□ Đã nhấn "Activate"
+□ Kích hoạt thành công tự động
+□ Phần mềm đã chạy được
+□ Web UI đã mở được (localhost:8000)
+□ Đã đánh dấu key đã dùng trong file
+
+
+========================================
+🎉 CHÚC BẠN SỬ DỤNG HIỆU QUẢ!
+========================================
+
+miniZ Software © 2025
+Version: 4.3.0 Professional Edition - Unlimited
+Build Date: November 27, 2025
+License: Pre-generated (100 keys included)

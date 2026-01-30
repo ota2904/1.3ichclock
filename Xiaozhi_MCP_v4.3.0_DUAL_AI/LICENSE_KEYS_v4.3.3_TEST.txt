@@ -1,0 +1,125 @@
+════════════════════════════════════════════════════════════════════════
+    miniZ MCP v4.3.3 - LICENSE KEYS FOR TESTING
+    Generated: December 14, 2025
+════════════════════════════════════════════════════════════════════════
+
+⚠️ QUAN TRỌNG - IMPORTANT:
+   • Keys này CHỈ dùng để TEST installer
+   • KHÔNG phân phối cho khách hàng
+   • Production keys phải generate riêng
+
+════════════════════════════════════════════════════════════════════════
+    STANDARD LICENSE KEYS (365 days)
+════════════════════════════════════════════════════════════════════════
+
+Key #001: TEST-0001-STD1-2025
+  Type: STANDARD
+  Valid: 365 days (until Dec 14, 2026)
+  Status: available
+  Use: Testing only
+
+Key #002: TEST-0002-STD2-2025
+  Type: STANDARD
+  Valid: 365 days (until Dec 14, 2026)
+  Status: available
+  Use: Testing only
+
+Key #003: TEST-0003-STD3-2025
+  Type: STANDARD
+  Valid: 365 days (until Dec 14, 2026)
+  Status: available
+  Use: Testing only
+
+════════════════════════════════════════════════════════════════════════
+    PRO LICENSE KEYS (730 days)
+════════════════════════════════════════════════════════════════════════
+
+Key #101: TEST-0101-PRO1-2025
+  Type: PRO
+  Valid: 730 days (until Dec 14, 2027)
+  Status: available
+  Use: Testing only
+
+Key #102: TEST-0102-PRO2-2025
+  Type: PRO
+  Valid: 730 days (until Dec 14, 2027)
+  Status: available
+  Use: Testing only
+
+Key #103: TEST-0103-PRO3-2025
+  Type: PRO
+  Valid: 730 days (until Dec 14, 2027)
+  Status: available
+  Use: Testing only
+
+════════════════════════════════════════════════════════════════════════
+    ENTERPRISE LICENSE KEYS (1825 days)
+════════════════════════════════════════════════════════════════════════
+
+Key #201: TEST-0201-ENT1-2025
+  Type: ENTERPRISE
+  Valid: 1825 days (until Dec 14, 2030)
+  Status: available
+  Use: Testing only
+
+Key #202: TEST-0202-ENT2-2025
+  Type: ENTERPRISE
+  Valid: 1825 days (until Dec 14, 2030)
+  Status: available
+  Use: Testing only
+
+Key #203: TEST-0203-ENT3-2025
+  Type: ENTERPRISE
+  Valid: 1825 days (until Dec 14, 2030)
+  Status: available
+  Use: Testing only
+
+════════════════════════════════════════════════════════════════════════
+    HƯỚNG DẪN SỬ DỤNG - USAGE GUIDE
+════════════════════════════════════════════════════════════════════════
+
+1. CÁCH TEST INSTALLER:
+   • Chạy installer: miniZ_MCP_v4.3.3_Secure_Setup.exe
+   • Khi được hỏi license key, nhập 1 trong các key trên
+   • Format: XXXX-XXXX-XXXX-XXXX (19 ký tự)
+
+2. KEYS HỢP LỆ ĐỂ TEST:
+   ✅ TEST-0001-STD1-2025 (Standard)
+   ✅ TEST-0101-PRO1-2025 (Pro)
+   ✅ TEST-0201-ENT1-2025 (Enterprise)
+
+3. KEYS KHÔNG HỢP LỆ (để test validation):
+   ❌ 1234-5678-9012-3456 (không có trong database)
+   ❌ TEST-0001-STD (thiếu phần cuối)
+   ❌ TEST0001STD12025 (không có dấu gạch ngang)
+
+4. SAU KHI CÀI ĐẶT:
+   • License được lưu tại: %LOCALAPPDATA%\miniZ_MCP\miniz_license.json
+   • Format:
+     {
+       "license_key": "TEST-0001-STD1-2025",
+       "activated_at": "2025-12-14 22:30:00",
+       "machine_id": "COMPUTERNAME",
+       "version": "4.3.3",
+       "status": "activated"
+     }
+
+════════════════════════════════════════════════════════════════════════
+    LƯU Ý BẢO MẬT - SECURITY NOTES
+════════════════════════════════════════════════════════════════════════
+
+⚠️ KHÔNG bao gồm file này trong installer package!
+⚠️ KHÔNG commit file này lên Git/GitHub public!
+⚠️ KHÔNG chia sẻ keys với unauthorized users!
+
+✅ Production keys phải:
+   • Generate từ hệ thống license riêng
+   • Lưu trữ an toàn trong database
+   • Track activation status
+   • Có expiration date thực tế
+
+════════════════════════════════════════════════════════════════════════
+
+© 2025 miniZ MCP Team
+Last Updated: December 14, 2025
+Version: 4.3.3

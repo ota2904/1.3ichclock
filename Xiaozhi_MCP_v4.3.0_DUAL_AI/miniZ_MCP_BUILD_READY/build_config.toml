@@ -1,0 +1,11 @@
+# miniZ MCP - Build EXE Installer Script
+# Sử dụng PyInstaller để tạo file .exe
+
+[build-system]
+requires = ["pyinstaller>=5.13.0"]
+
+[tool.pyinstaller]
+name = "miniZ_MCP_Installer"
+onefile = true
+windowed = true
+icon = "icon.ico"

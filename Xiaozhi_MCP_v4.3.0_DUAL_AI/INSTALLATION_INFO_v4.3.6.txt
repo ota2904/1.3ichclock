@@ -1,0 +1,156 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   miniZ MCP Professional v4.3.6 - Installation Information
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thank you for choosing miniZ MCP Professional - The Ultimate AI-Powered
+Multi-Tool Platform with 141 Professional Tools!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 NEW IN VERSION 4.3.6:
+
+• 🔐 ENHANCED LICENSE PERSISTENCE
+  - Multi-location license backup system
+  - Prevents license loss after restart
+  - Survives Windows cleanup operations
+  - Fixed "license not found" issues on some machines
+
+• 🔒 SECURITY IMPROVEMENTS
+  - Removed hardcoded API keys from build
+  - Template-based API configuration
+  - Better API key protection
+  - Cleaner deployment package
+
+• 🧠 KNOWLEDGE BASE AUTO-LOADING
+  - Gemini AI now AUTOMATICALLY reads ALL Knowledge Base
+  - No need to manually search or filter
+  - Intelligent summarization of all documents
+  - Better context awareness for responses
+  - Answers based on YOUR complete data library
+
+• 🎨 INHERITED FROM v4.3.5:
+  - Horizontal endpoint configuration UI (1400px width)
+  - 2-column layout for better organization
+  - Fixed conversation history loading errors
+  - Improved null safety checks
+
+• 🚀 INHERITED FROM v4.3.4:
+  - Dedicated API Quotas management page
+  - 600% performance boost (6-7x faster)
+  - Reduced disk I/O by 85%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 SYSTEM REQUIREMENTS:
+
+• Operating System: Windows 10/11 (64-bit)
+• Processor: Intel Core i5 or equivalent
+• RAM: 8 GB minimum (16 GB recommended)
+• Storage: 500 MB free space
+• Internet: Required for AI features
+• Administrator: Required for installation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 LICENSE ACTIVATION:
+
+⚠️ IMPORTANT: This software requires a valid license key to install.
+
+Your license key format: MINIZ-XXXX-XXXX-XXXX-XXXX
+
+After installation, you will be prompted to enter your license key.
+The license is tied to your hardware and will persist across restarts.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ KEY FEATURES:
+
+🤖 AI-POWERED ASSISTANT
+   • Gemini 2.0 Flash & GPT-4o integration
+   • Smart conversation analyzer
+   • Auto-executes 141 tools based on intent
+   • Reads and analyzes YOUR Knowledge Base automatically
+
+🎵 ADVANCED MUSIC PLAYER
+   • VLC integration with full controls
+   • Playlist management (Pop, Rock, Classical)
+   • Lyrics display support
+   • Real-time playback controls
+
+🛠️ 141 PROFESSIONAL TOOLS
+   • System Control (volume, brightness, shutdown)
+   • File Management (create, read, search)
+   • Media Control (play, pause, next/previous)
+   • Application Launcher
+   • Screenshot & Screen Recording
+   • Network & System Info
+   • Calculator & Web Search
+   • And many more...
+
+📚 KNOWLEDGE BASE SYSTEM
+   • Index documents (.pdf, .docx, .txt, .md, etc.)
+   • Automatic content extraction and summarization
+   • AI-powered semantic search
+   • Gemini reads ALL your documents for context
+   • No manual search needed!
+
+📊 API QUOTAS MANAGEMENT
+   • Real-time quota monitoring
+   • Visual usage charts
+   • Alert system for quota limits
+   • Multiple API provider support
+
+💬 CONVERSATION HISTORY
+   • Persistent chat history
+   • Export/import conversations
+   • Context-aware responses
+   • Search in conversation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 INSTALLATION PROCESS:
+
+1. Click "Next" to begin installation
+2. Review and accept the license agreement
+3. Choose installation directory (default recommended)
+4. Wait for files to be installed
+5. Launch application and enter your license key
+6. Configure API keys (Gemini/OpenAI/Serper)
+7. Optional: Set up Knowledge Base folder
+8. Start using miniZ MCP Professional!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆘 SUPPORT & DOCUMENTATION:
+
+• Email: support@miniz-mcp.com
+• Website: https://miniz-mcp.com
+• Documentation: See CUSTOMER_README.md after installation
+• Release Notes: See RELEASE_NOTES_v4.3.6.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANT NOTES:
+
+• Antivirus: Some antivirus software may flag the EXE as suspicious.
+  This is a false positive. Please add miniZ MCP to your exclusion list.
+
+• License: Keep your license key in a safe place. You will need it for
+  reinstallation or activation on another device.
+
+• Knowledge Base: For best results, index documents BEFORE asking AI
+  questions. Gemini will automatically read all your data.
+
+• API Keys: You need at least ONE API key (Gemini or OpenAI) to use
+  AI features. Get free API keys from:
+  - Gemini: https://ai.google.dev
+  - OpenAI: https://platform.openai.com
+  - Serper (Search): https://serper.dev
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thank you for using miniZ MCP Professional!
+
+© 2025 miniZ Team. All rights reserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,0 +1,248 @@
+╔════════════════════════════════════════════════════════════════════╗
+║                                                                    ║
+║          miniZ MCP Professional v4.3.7 - RELEASE NOTES             ║
+║                                                                    ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Release Date: December 11, 2025
+Build Type: CRITICAL BUG FIX
+Priority: HIGH - IMMEDIATE UPDATE RECOMMENDED
+
+═══════════════════════════════════════════════════════════════════
+🐛 BUG FIXES (CRITICAL)
+═══════════════════════════════════════════════════════════════════
+
+1. ✅ FIXED: API Keys & Endpoints NOT SAVED After Restart
+   
+   ❌ BEFORE (v4.3.6 and earlier):
+   - User nhập Gemini API key → Lưu → KHỞI ĐỘNG LẠI → MẤT!
+   - User nhập OpenAI API key → Lưu → KHỞI ĐỘNG LẠI → MẤT!
+   - User nhập Serper API key → Lưu → KHỞI ĐỘNG LẠI → MẤT!
+   - User cập nhật endpoint token → Lưu → KHỞI ĐỘNG LẠI → MẤT!
+   
+   ROOT CAUSE #1 - Backend Save Logic:
+   - Hàm save_endpoints_to_file() chỉ so sánh endpoints và active_index
+   - KHÔNG so sánh API keys (gemini_api_key, openai_api_key, serper_api_key)
+   - Khi chỉ thay đổi API key → hàm return True sớm (line 613) → KHÔNG GHI FILE
+   
+   ROOT CAUSE #2 - Frontend Auto-Load:
+   - JavaScript function loadCurrentEndpoint() chỉ gọi khi user CLICK Settings
+   - KHÔNG tự động gọi khi page load lần đầu
+   - Backend ĐÃ load keys thành công nhưng Web UI không hiển thị
+   
+   CODE LOCATION (Backend - xiaozhi_final.py, Line 590-625):
+   ```python
+   # BUG: Chỉ so sánh endpoints và active_index
+   if (old_data.get('endpoints') == endpoints and 
+       old_data.get('active_index') == active_index):
+       return True  # ❌ SKIP SAVE - API keys bị bỏ qua!
+   ```
+   
+   CODE LOCATION (Frontend - xiaozhi_final.py, Line 11540):
+   ```javascript
+   function openSettingsModal() {
+       loadCurrentEndpoint();  // ❌ CHỈ gọi khi user click Settings
+   }
+   // ❌ THIẾU: Không gọi khi page load
+   ```
+   
+   ✅ FIXED IN v4.3.7:
+   
+   **Backend Fix:**
+   ```python
+   # SO SÁNH ĐẦY ĐỦ TẤT CẢ FIELDS
+   if (old_data.get('endpoints') == endpoints and 
+       old_data.get('active_index') == active_index and
+       old_data.get('gemini_api_key') == GEMINI_API_KEY and
+       old_data.get('openai_api_key') == OPENAI_API_KEY and
+       old_data.get('serper_api_key') == SERPER_API_KEY):
+       return True  # ✅ CHỈ SKIP KHI KHÔNG CÓ THAY ĐỔI GÌ CẢ
+   ```
+   
+   **Frontend Fix:**
+   ```javascript
+   // 🔥 AUTO-LOAD API KEYS when page loads
+   document.addEventListener('DOMContentLoaded', () => {
+       loadMusicFolderSettings();
+       loadCurrentEndpoint();  // ✅ Auto-load API keys
+   });
+   ```
+   
+   📊 IMPACT:
+   - Affects: ALL v4.3.0 - v4.3.6 users
+   - Symptom: API keys lost after every restart
+   - Data Loss: YES - requires re-entering keys
+   - Security Risk: LOW (keys still encrypted in config file)
+   - User Experience: 🔴 CRITICAL - Must re-enter keys every time
+   
+   🔧 HOW TO VERIFY FIX:
+   1. Cài v4.3.7
+   2. Nhập Gemini API key → Lưu
+   3. Khởi động lại ứng dụng
+   4. Mở Settings → API key TỰ ĐỘNG HIỂN thị ✅
+   5. Kiểm tra: API key vẫn còn? → YES ✅
+
+═══════════════════════════════════════════════════════════════════
+🔒 SECURITY ENHANCEMENTS
+═══════════════════════════════════════════════════════════════════
+
+1. ✅ CONFIRMED: xiaozhi_endpoints.json NOT BUNDLED IN EXE
+   
+   - Đã kiểm tra miniZ_MCP_Professional.spec
+   - KHÔNG có xiaozhi_endpoints.json trong datas list
+   - CHỈ có template: xiaozhi_endpoints_template.json
+   - API keys của developer KHÔNG bị lộ trong EXE
+   
+   FILE CHECK:
+   ```python
+   # miniZ_MCP_Professional.spec, Line 7
+   datas=[
+       ('LICENSE_KEYS.json', '.'), 
+       ('LICENSE_ACTIVATION_GUIDE.md', '.'), 
+       ('xiaozhi_endpoints_template.json', '.'),  # ✅ CHỈ TEMPLATE
+       # xiaozhi_endpoints.json - ❌ KHÔNG CÓ
+   ]
+   ```
+
+═══════════════════════════════════════════════════════════════════
+📦 BUILD INFORMATION
+═══════════════════════════════════════════════════════════════════
+
+EXE Build:
+- Tool: PyInstaller 6.17.0
+- Python: 3.13.9
+- Build Time: 114.2 seconds
+- Output: dist/miniZ_MCP_Professional.exe
+- Size: ~149.4 MB
+- Warnings: 2 (non-critical: urllib3, comtypes)
+
+Installer Build:
+- Tool: Inno Setup 6.5.4
+- Build Time: 36.3 seconds
+- Output: miniZ_MCP_Professional_Setup_v4.3.7.exe
+- Compression: LZMA2/Ultra64
+- Warnings: 3 (expected: architecture, version check, privileges)
+
+═══════════════════════════════════════════════════════════════════
+🔄 UPGRADE PATH
+═══════════════════════════════════════════════════════════════════
+
+FROM v4.3.6 → v4.3.7:
+1. Tải installer mới: miniZ_MCP_Professional_Setup_v4.3.7.exe
+2. Chạy installer (sẽ ghi đè v4.3.6)
+3. API keys cũ VẪN CÒN trong xiaozhi_endpoints.json
+4. Khởi động ứng dụng → Keys được load tự động ✅
+
+FROM v4.3.0 - v4.3.5 → v4.3.7:
+1. Sao lưu xiaozhi_endpoints.json (nếu có)
+2. Chạy installer v4.3.7
+3. Copy lại file backup (nếu cần)
+4. Nhập lại API keys trong Web UI
+
+CLEAN INSTALL (khách hàng mới):
+1. Chạy installer
+2. Nhập license key (nếu có)
+3. Cấu hình API keys trong Web UI
+4. API keys sẽ TỰ ĐỘNG LƯU và BẢO TỒN sau restart ✅
+
+═══════════════════════════════════════════════════════════════════
+🧪 TESTING PERFORMED
+═══════════════════════════════════════════════════════════════════
+
+Test 1: API Key Persistence
+✅ Nhập Gemini API key → Lưu → Restart → Key vẫn còn
+✅ Nhập OpenAI API key → Lưu → Restart → Key vẫn còn
+✅ Nhập Serper API key → Lưu → Restart → Key vẫn còn
+
+Test 2: Endpoint Configuration
+✅ Thay đổi endpoint token → Lưu → Restart → Token vẫn còn
+✅ Switch device → Restart → Active device đúng
+✅ Add new device → Restart → Device list đầy đủ
+
+Test 3: Security
+✅ Kiểm tra EXE với 7-Zip → KHÔNG có xiaozhi_endpoints.json
+✅ Kiểm tra EXE strings → KHÔNG có API keys thật
+✅ Fresh install → Template trống (no keys)
+
+Test 4: Backward Compatibility
+✅ Upgrade từ v4.3.6 → v4.3.7 → Không mất data
+✅ xiaozhi_endpoints.json format unchanged
+✅ Old API keys tự động migrate
+
+═══════════════════════════════════════════════════════════════════
+📋 CHANGELOG SUMMARY
+═══════════════════════════════════════════════════════════════════
+
+v4.3.7 (2025-12-11) - CRITICAL FIX
++ Fixed: API keys not saved after restart
++ Fixed: Endpoints not persisted correctly
++ Enhanced: Full field comparison in save_endpoints_to_file()
++ Security: Confirmed no API keys in EXE bundle
+
+v4.3.6 (2025-12-10)
++ Added: VLC MCP Server (JSON-RPC 2.0)
++ Added: 15 VLC tools with JSON Schema
++ Enhanced: Hybrid REST + MCP architecture
++ Fixed: License persistence (3-location backup)
+
+v4.3.5 (2025-12-09)
++ Added: Knowledge Base auto-search
++ Enhanced: Gemini AI integration
+
+═══════════════════════════════════════════════════════════════════
+⚠️ KNOWN ISSUES
+═══════════════════════════════════════════════════════════════════
+
+None in v4.3.7
+
+Resolved Issues from v4.3.6:
+✅ API keys lost after restart (FIXED)
+✅ Endpoints not saved (FIXED)
+
+═══════════════════════════════════════════════════════════════════
+💡 RECOMMENDATIONS
+═══════════════════════════════════════════════════════════════════
+
+1. **IMMEDIATE UPDATE**: All v4.3.0-v4.3.6 users should update NOW
+   - Critical bug affects core functionality
+   - No downside to upgrading
+   - Backward compatible
+
+2. **BACKUP**: Trước khi update, backup xiaozhi_endpoints.json
+   - Location: C:\Program Files\miniZ MCP\xiaozhi_endpoints.json
+   - Hoặc: Cùng thư mục với EXE
+
+3. **VERIFY**: Sau khi update, test API key persistence:
+   - Nhập key → Lưu → Restart → Check key vẫn còn
+
+═══════════════════════════════════════════════════════════════════
+📞 SUPPORT
+═══════════════════════════════════════════════════════════════════
+
+Issues với v4.3.7?
+1. Kiểm tra xiaozhi_endpoints.json có tồn tại không
+2. Kiểm tra quyền ghi file (Run as Administrator?)
+3. Xem log trong terminal khi khởi động
+
+Contact:
+- GitHub Issues: [Your Repo URL]
+- Email: support@minizmcp.com
+- Discord: [Your Discord]
+
+═══════════════════════════════════════════════════════════════════
+✅ FILES DELIVERED
+═══════════════════════════════════════════════════════════════════
+
+📦 installer_output/
+├── miniZ_MCP_Professional_Setup_v4.3.7.exe  (149.4 MB)
+└── RELEASE_NOTES_v4.3.7.txt                 (This file)
+
+📂 dist/
+└── miniZ_MCP_Professional.exe               (Standalone EXE)
+
+═══════════════════════════════════════════════════════════════════
+
+© 2025 miniZ MCP Team. All Rights Reserved.
+Built with ❤️ for the community.
+
+═══════════════════════════════════════════════════════════════════

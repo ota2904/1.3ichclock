@@ -1,0 +1,127 @@
+ĐIỀU KHOẢN SỬ DỤNG PHẦN MỀM miniZ MCP
+======================================
+
+Phiên bản: 4.3.0
+Ngày có hiệu lực: 01/12/2024
+Cập nhật lần cuối: 07/12/2025
+
+============================================================
+1. GIỚI THIỆU
+============================================================
+
+Chào mừng bạn đến với miniZ MCP ("Phần mềm"). Bằng việc cài đặt, 
+sao chép, hoặc sử dụng Phần mềm này, bạn đồng ý tuân thủ các 
+điều khoản và điều kiện được nêu trong thỏa thuận này.
+
+Phần mềm miniZ MCP là công cụ điều khiển máy tính thông qua 
+giao diện AI, cho phép người dùng tương tác với robot Xiaozhi 
+và các dịch vụ AI khác.
+
+============================================================
+2. CẤP PHÉP SỬ DỤNG
+============================================================
+
+2.1. Giấy phép cá nhân
+- Bạn được cấp quyền sử dụng Phần mềm cho mục đích cá nhân, 
+  phi thương mại.
+- Giấy phép này là không độc quyền và không thể chuyển nhượng.
+
+2.2. Hạn chế
+Bạn KHÔNG được phép:
+- Bán, cho thuê, hoặc phân phối lại Phần mềm
+- Sửa đổi, dịch ngược, hoặc tháo rời mã nguồn
+- Sử dụng Phần mềm cho mục đích bất hợp pháp
+- Chia sẻ API keys hoặc thông tin đăng nhập với bên thứ ba
+- Sử dụng Phần mềm để spam, tấn công, hoặc gây hại cho người khác
+
+============================================================
+3. API KEYS VÀ BẢO MẬT
+============================================================
+
+3.1. Trách nhiệm về API Keys
+- Bạn có trách nhiệm bảo mật các API keys của mình
+- Gemini API Key, OpenAI API Key, Serper API Key là tài sản 
+  riêng của bạn
+- miniZ Team không lưu trữ hoặc truy cập API keys của bạn
+
+3.2. Chi phí sử dụng API
+- Google Gemini: MIỄN PHÍ (có giới hạn)
+- Serper.dev: MIỄN PHÍ 2500 queries/tháng
+- OpenAI GPT-4: TRẢ PHÍ theo usage
+- Bạn chịu trách nhiệm về các chi phí phát sinh từ việc sử dụng API
+
+============================================================
+4. QUYỀN RIÊNG TƯ
+============================================================
+
+4.1. Thu thập dữ liệu
+Phần mềm có thể thu thập:
+- Lịch sử hội thoại (lưu cục bộ trên máy của bạn)
+- Thông tin thiết bị (Hardware ID) để xác thực giấy phép
+- Logs lỗi để cải thiện chất lượng
+
+4.2. Lưu trữ dữ liệu
+- Tất cả dữ liệu được lưu trữ cục bộ trên máy tính của bạn
+- Không có dữ liệu nào được gửi đến server của miniZ Team
+- Bạn có toàn quyền kiểm soát và xóa dữ liệu
+
+============================================================
+5. MIỄN TRỪ TRÁCH NHIỆM
+============================================================
+
+5.1. Phần mềm được cung cấp "NGUYÊN TRẠNG" (AS IS)
+- Không có bảo đảm về tính chính xác, độ tin cậy
+- Không đảm bảo phù hợp cho mục đích cụ thể nào
+
+5.2. Giới hạn trách nhiệm
+miniZ Team KHÔNG chịu trách nhiệm về:
+- Mất mát dữ liệu hoặc thiệt hại phát sinh từ việc sử dụng
+- Gián đoạn dịch vụ hoặc lỗi kỹ thuật
+- Hành vi của bên thứ ba (Google, OpenAI, Xiaozhi)
+- Chi phí API vượt quá dự kiến
+
+============================================================
+6. CẬP NHẬT VÀ THAY ĐỔI
+============================================================
+
+- miniZ Team có quyền cập nhật Phần mềm mà không cần thông báo
+- Điều khoản sử dụng có thể được thay đổi theo thời gian
+- Tiếp tục sử dụng sau khi thay đổi đồng nghĩa với việc chấp nhận
+
+============================================================
+7. CHẤM DỨT
+============================================================
+
+- Giấy phép tự động chấm dứt nếu bạn vi phạm điều khoản
+- Khi chấm dứt, bạn phải xóa tất cả bản sao của Phần mềm
+- Các điều khoản về miễn trừ trách nhiệm vẫn có hiệu lực
+
+============================================================
+8. LUẬT ÁP DỤNG
+============================================================
+
+Thỏa thuận này được điều chỉnh bởi pháp luật Việt Nam.
+Mọi tranh chấp sẽ được giải quyết tại tòa án có thẩm quyền 
+tại Việt Nam.
+
+============================================================
+9. LIÊN HỆ
+============================================================
+
+Nếu có câu hỏi về điều khoản sử dụng, vui lòng liên hệ:
+
+- Website: https://miniz.vn
+- Email: support@miniz.vn  
+- GitHub: https://github.com/miniZ-MCP
+
+============================================================
+10. ĐỒNG Ý
+============================================================
+
+BẰNG VIỆC NHẤN "ĐỒNG Ý" HOẶC CÀI ĐẶT PHẦN MỀM, BẠN XÁC NHẬN 
+RẰNG BẠN ĐÃ ĐỌC, HIỂU VÀ ĐỒNG Ý VỚI TẤT CẢ CÁC ĐIỀU KHOẢN 
+VÀ ĐIỀU KIỆN TRONG THỎA THUẬN NÀY.
+
+============================================================
+
+Copyright © 2024-2025 miniZ Team. All rights reserved.

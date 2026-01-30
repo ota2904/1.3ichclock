@@ -1,0 +1,294 @@
+════════════════════════════════════════════════════════════════════════
+    miniZ MCP v4.3.3 - END USER LICENSE AGREEMENT (EULA)
+    Copyright © 2024-2025 miniZ MCP Team. All rights reserved.
+════════════════════════════════════════════════════════════════════════
+
+⚠️ QUAN TRỌNG - VUI LÒNG ĐỌC KỸ TRƯỚC KHI CÀI ĐẶT
+
+Thỏa thuận cấp phép này ("Thỏa thuận") là một hợp đồng pháp lý giữa bạn 
+(cá nhân hoặc tổ chức) và miniZ MCP Team về việc sử dụng phần mềm miniZ MCP 
+và các tài liệu liên quan.
+
+🔐 BẢO MẬT QUAN TRỌNG:
+   • Phần mềm này KHÔNG chứa API keys hoặc tokens
+   • Bạn phải tự cấu hình API keys của riêng mình
+   • KHÔNG chia sẻ file cấu hình chứa API keys
+
+================================================================================
+1. CÁC ĐỊNH NGHĨA
+================================================================================
+
+"Phần mềm" có nghĩa là ứng dụng miniZ MCP v4.3.0, bao gồm tất cả các file 
+code, tài liệu, và các thành phần liên quan.
+
+"License Key" là mã kích hoạt duy nhất được cấp cho bạn để sử dụng Phần mềm.
+
+"Thiết bị" là máy tính hoặc thiết bị điện tử mà bạn cài đặt Phần mềm.
+
+================================================================================
+2. CÁC LOẠI GIẤY PHÉP
+================================================================================
+
+2.1 STANDARD LICENSE (365 ngày)
+    • Sử dụng cho mục đích CÁ NHÂN, PHI THƯƠNG MẠI
+    • Được cài đặt trên TỐI ĐA 1 thiết bị
+    • Hỗ trợ kỹ thuật qua email
+    • Cập nhật phần mềm miễn phí trong thời hạn license
+
+2.2 PRO LICENSE (730 ngày)
+    • Sử dụng cho mục đích CHUYÊN NGHIỆP
+    • Được cài đặt trên TỐI ĐA 1 thiết bị
+    • Hỗ trợ ưu tiên qua email và chat
+    • Cập nhật phần mềm miễn phí trong thời hạn license
+    • Tính năng nâng cao (nếu có)
+
+2.3 ENTERPRISE LICENSE (1825 ngày)
+    • Sử dụng cho mục đích DOANH NGHIỆP
+    • Được cài đặt trên NHIỀU thiết bị (theo thỏa thuận)
+    • Hỗ trợ 24/7 qua email, chat, và điện thoại
+    • Cập nhật phần mềm miễn phí không giới hạn
+    • Customization và training (theo yêu cầu)
+
+================================================================================
+3. QUYỀN VÀ HẠN CHẾ
+================================================================================
+
+3.1 QUYỀN ĐƯỢC CẤP
+Bạn ĐƯỢC PHÉP:
+    ✓ Cài đặt và sử dụng Phần mềm trên số thiết bị theo license
+    ✓ Sao lưu Phần mềm cho mục đích bảo vệ
+    ✓ Nhận cập nhật và hỗ trợ trong thời hạn license
+
+3.2 HẠN CHẾ
+Bạn KHÔNG ĐƯỢC PHÉP:
+    ✗ Sao chép, phân phối, hoặc chia sẻ License Key cho người khác
+    ✗ Decompile, reverse engineer, hoặc disassemble Phần mềm
+    ✗ Cho thuê, cho mượn, hoặc chuyển nhượng license (trừ trường hợp được phép)
+    ✗ Sử dụng Phần mềm cho mục đích bất hợp pháp
+    ✗ Xóa hoặc thay đổi thông tin bản quyền trong Phần mềm
+    ✗ Sử dụng vượt quá số thiết bị được phép
+
+================================================================================
+4. BẢO MẬT DỮ LIỆU VÀ QUYỀN RIÊNG TƯ
+================================================================================
+
+4.1 THU THẬP DỮ LIỆU
+Phần mềm có thể thu thập:
+    • Thông tin cấu hình hệ thống
+    • Log sử dụng cơ bản (không bao gồm dữ liệu cá nhân)
+    • Thông tin lỗi để cải thiện chất lượng
+
+4.2 SỬ DỤNG DỮ LIỆU CỦA KHÁCH HÀNG
+    • Phần mềm xử lý dữ liệu LOCAL trên máy của bạn
+    • Chúng tôi KHÔNG thu thập, lưu trữ, hoặc truyền tải:
+      - File cá nhân của bạn
+      - Nội dung tài liệu trong Knowledge Base
+      - Thông tin nhạy cảm
+      - Lịch sử sử dụng chi tiết
+
+4.3 API BÊN THỨ BA
+    • Phần mềm kết nối với API của bên thứ ba (Google Gemini, OpenAI)
+    • Dữ liệu gửi đến API được mã hóa qua HTTPS
+    • Vui lòng đọc điều khoản của từng API provider
+
+================================================================================
+5. MIỄN TRỪ BẢO HÀNH
+================================================================================
+
+PHẦN MỀM ĐƯỢC CUNG CẤP THEO NGUYÊN TẮC "AS IS" (NHƯ ĐANG CÓ), 
+KHÔNG CÓ BẢO HÀNH RÕ RÀNG HAY NGỤ Ý NÀO.
+
+Chúng tôi KHÔNG bảo đảm rằng:
+    • Phần mềm sẽ hoạt động không có lỗi
+    • Phần mềm sẽ đáp ứng yêu cầu cụ thể của bạn
+    • Kết quả từ Phần mềm sẽ chính xác hoàn toàn
+    • Tất cả lỗi sẽ được sửa chữa
+
+================================================================================
+6. GIỚI HẠN TRÁCH NHIỆM
+================================================================================
+
+⚠️ QUAN TRỌNG - VUI LÒNG ĐỌC KỸ ⚠️
+
+TRONG MỌI TRƯỜNG HỢP, miniZ MCP Team VÀ CÁC NHÀ PHÁT TRIỂN SẼ KHÔNG 
+CHỊU TRÁCH NHIỆM VỀ:
+
+    ✗ Mất mát, hư hỏng, hoặc xóa dữ liệu của bạn
+    ✗ Thiệt hại gián tiếp, ngẫu nhiên, đặc biệt, hoặc hậu quả
+    ✗ Mất lợi nhuận, doanh thu, hoặc cơ hội kinh doanh
+    ✗ Gián đoạn dịch vụ hoặc ngừng hoạt động
+    ✗ Chi phí cho hàng hóa hoặc dịch vụ thay thế
+    ✗ Thiệt hại do sử dụng không đúng cách
+    ✗ Vấn đề phát sinh từ API bên thứ ba
+    ✗ Hành vi của AI/LLM (kết quả không chính xác, không phù hợp)
+
+TRÁCH NHIỆM TỐI ĐA CỦA CHÚNG TÔI BỊ GIỚI HẠN Ở SỐ TIỀN BẠN ĐÃ TRẢ 
+CHO LICENSE KEY.
+
+================================================================================
+7. TRÁCH NHIỆM CỦA NGƯỜI DÙNG
+================================================================================
+
+BẠN CHỊU TRÁCH NHIỆM HOÀN TOÀN VỀ:
+
+    ✓ Sao lưu dữ liệu quan trọng TRƯỚC KHI sử dụng Phần mềm
+    ✓ Kiểm tra kết quả từ AI trước khi sử dụng
+    ✓ Bảo mật License Key của bạn
+    ✓ Tuân thủ điều khoản sử dụng API bên thứ ba
+    ✓ Sử dụng Phần mềm hợp pháp và có đạo đức
+    ✓ Cập nhật hệ điều hành và các dependency cần thiết
+
+================================================================================
+8. HỖ TRỢ VÀ CẬP NHẬT
+================================================================================
+
+8.1 HỖ TRỢ KỸ THUẬT
+    • Standard: Email support trong giờ làm việc
+    • Pro: Email + Chat support, thời gian phản hồi nhanh hơn
+    • Enterprise: 24/7 support qua email, chat, phone
+
+8.2 CẬP NHẬT PHẦN MỀM
+    • Bug fixes: Miễn phí trong thời hạn license
+    • Minor updates: Miễn phí trong thời hạn license
+    • Major updates: Có thể yêu cầu upgrade license
+
+8.3 GIA HẠN LICENSE
+    • License có thể được gia hạn trước khi hết hạn
+    • Giá gia hạn có thể thay đổi
+    • Liên hệ để biết thêm chi tiết
+
+================================================================================
+9. CHẤM DỨT
+================================================================================
+
+9.1 CHẤM DỨT TỰ ĐỘNG
+License sẽ tự động chấm dứt nếu:
+    • Hết thời hạn và không gia hạn
+    • Bạn vi phạm bất kỳ điều khoản nào
+
+9.2 CHẤM DỨT DO VI PHẠM
+Chúng tôi có quyền chấm dứt license ngay lập tức nếu phát hiện:
+    • Chia sẻ License Key trái phép
+    • Reverse engineering Phần mềm
+    • Sử dụng cho mục đích bất hợp pháp
+    • Vi phạm nghiêm trọng điều khoản
+
+9.3 NGHĨA VỤ SAU CHẤM DỨT
+Khi license chấm dứt, bạn phải:
+    • Ngừng sử dụng Phần mềm
+    • Gỡ cài đặt khỏi tất cả thiết bị
+    • Xóa tất cả bản sao
+
+================================================================================
+10. LUẬT ÁP DỤNG
+================================================================================
+
+Thỏa thuận này được điều chỉnh bởi luật pháp Việt Nam.
+
+Mọi tranh chấp sẽ được giải quyết thông qua thương lượng trước. 
+Nếu không thành, sẽ đưa ra tòa án có thẩm quyền tại Việt Nam.
+
+================================================================================
+11. ĐIỀU KHOẢN CHUNG
+================================================================================
+
+11.1 TOÀN BỘ THỎA THUẬN
+Đây là toàn bộ thỏa thuận giữa bạn và miniZ MCP Team về Phần mềm.
+
+11.2 THAY ĐỔI ĐIỀU KHOẢN
+Chúng tôi có quyền thay đổi điều khoản này. Thay đổi có hiệu lực từ khi 
+được công bố. Tiếp tục sử dụng sau thay đổi đồng nghĩa với việc chấp nhận.
+
+11.3 TÁC ĐỘNG NẾU MỘT ĐIỀU KHOẢN VÔ HIỆU
+Nếu bất kỳ điều khoản nào bị tòa án tuyên bố vô hiệu, các điều khoản khác 
+vẫn có hiệu lực.
+
+11.4 KHÔNG CHUYỂN NHƯỢNG
+Bạn không được chuyển nhượng quyền lợi theo Thỏa thuận này trừ khi được 
+chúng tôi cho phép bằng văn bản.
+
+================================================================================
+12. THÔNG TIN LIÊN HỆ
+================================================================================
+
+Để được hỗ trợ hoặc giải đáp thắc mắc:
+
+    📧 Email: support@miniZ-mcp.com
+    🌐 Website: https://github.com/miniz-mcp
+    📱 Support Hours: 9:00 - 18:00 (GMT+7), Mon-Fri
+
+════════════════════════════════════════════════════════════════════════
+13. BẢO MẬT API KEYS VÀ TOKENS
+════════════════════════════════════════════════════════════════════════
+
+⚠️ LƯU Ý CỰC KỲ QUAN TRỌNG VỀ BẢO MẬT:
+
+13.1 PHẦN MỀM KHÔNG CHỨA API KEYS
+    ❌ Installer này KHÔNG chứa:
+       • JWT tokens (MCP connection)
+       • Gemini API keys (Google AI)
+       • Serper API keys (Google Search)
+       • OpenAI API keys
+       • Bất kỳ credentials nào
+
+13.2 TRÁCH NHIỆM CỦA NGƯỜI DÙNG
+    ✓ Bạn phải tự đăng ký và lấy API keys
+    ✓ Bạn phải cấu hình trong file: xiaozhi_endpoints.json
+    ✓ Bạn chịu trách nhiệm bảo mật API keys của mình
+    ✓ KHÔNG chia sẻ file cấu hình với người khác
+    ✓ KHÔNG commit file cấu hình lên Git/GitHub
+    ✓ KHÔNG upload file cấu hình lên internet
+
+13.3 HẬU QUẢ NẾU LỘ API KEYS
+    • API providers có thể khóa keys của bạn
+    • Bạn có thể bị tính phí cho việc sử dụng trái phép
+    • Chúng tôi KHÔNG chịu trách nhiệm về việc lộ keys
+    • Bạn phải tự liên hệ providers để xử lý
+
+════════════════════════════════════════════════════════════════════════
+14. TÍNH NĂNG KHỞI ĐỘNG CÙNG WINDOWS
+════════════════════════════════════════════════════════════════════════
+
+14.1 AUTO-STARTUP OPTION
+    • Trong quá trình cài đặt, bạn có thể chọn "Auto-start with Windows"
+    • Chức năng này thêm shortcut vào Startup folder
+    • Bạn có thể tắt bất cứ lúc nào qua:
+      - Task Manager > Startup tab
+      - Registry: HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+
+14.2 QUYỀN ADMIN
+    • Auto-startup KHÔNG cần quyền admin
+    • Chỉ cần quyền user thông thường
+    • Phần mềm chạy với quyền của user hiện tại
+
+════════════════════════════════════════════════════════════════════════
+15. CHẤP NHẬN ĐIỀU KHOẢN
+════════════════════════════════════════════════════════════════════════
+
+BẰNG VIỆC CLICK "I ACCEPT" (TÔI CHẤP NHẬN) HOẶC CÀI ĐẶT PHẦN MỀM, 
+BẠN XÁC NHẬN RẰNG:
+
+    ✓ Bạn đã đọc và hiểu toàn bộ Thỏa thuận này
+    ✓ Bạn đồng ý bị ràng buộc bởi các điều khoản
+    ✓ Bạn có đủ quyền hạn để chấp nhận (nếu thay mặt tổ chức)
+    ✓ Bạn hiểu rằng chúng tôi KHÔNG chịu trách nhiệm về dữ liệu của bạn
+    ✓ Bạn sẽ tự sao lưu dữ liệu quan trọng
+    ✓ Bạn hiểu phần mềm KHÔNG chứa API keys/tokens
+    ✓ Bạn sẽ tự cấu hình và bảo mật API keys của mình
+    ✓ Bạn KHÔNG chia sẻ file cấu hình chứa API keys
+
+NẾU BẠN KHÔNG ĐỒNG Ý, VUI LÒNG KHÔNG CÀI ĐẶT HOẶC SỬ DỤNG PHẦN MỀM.
+
+════════════════════════════════════════════════════════════════════════
+
+Copyright © 2024-2025 miniZ MCP Team. All rights reserved.
+miniZ MCP is a trademark of miniZ MCP Team.
+Version: 4.3.3 - Full Features Edition
+Last Updated: December 14, 2025
+
+════════════════════════════════════════════════════════════════════════
+
+Last Updated: December 6, 2025
+Version: 4.3.0
+
+================================================================================

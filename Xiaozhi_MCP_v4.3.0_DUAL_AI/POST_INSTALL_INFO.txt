@@ -1,0 +1,171 @@
+╔══════════════════════════════════════════════════════════════════╗
+║                                                                  ║
+║         🎉 CHÚC MỪNG BẠN ĐÃ CÀI ĐẶT THÀNH CÔNG miniZ MCP!      ║
+║                     Professional Edition v4.3.2                  ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+
+📋 HƯỚNG DẪN SỬ DỤNG NHANH
+══════════════════════════════════════════════════════════════════
+
+✅ CÀI ĐẶT ĐÃ HOÀN TẤT - BẠN CÓ THỂ SỬ DỤNG NGAY!
+
+Nếu bạn đã chọn "Cài đặt Python dependencies" trong bước cuối,
+tất cả thư viện đã được cài đặt tự động. Bạn chỉ cần:
+
+1. Chạy file "START.bat" để khởi động server
+2. Mở Xiaozhi App và kết nối đến: http://localhost:8000
+
+
+══════════════════════════════════════════════════════════════════
+🚀 CÁCH KHỞI ĐỘNG
+══════════════════════════════════════════════════════════════════
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🟢 KHỞI ĐỘNG LẦN ĐẦU (NẾU CHƯA CÀI DEPENDENCIES)            │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. Chạy file: FIRST_RUN.bat                                 │
+│     → Sẽ tự động cài đặt dependencies và khởi động server   │
+│                                                              │
+│  2. Đợi 2-5 phút để cài đặt thư viện                         │
+│                                                              │
+│  3. Server sẽ tự động khởi động sau khi cài xong             │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ ⚡ KHỞI ĐỘNG NHANH (SAU LẦN ĐẦU)                             │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  • Desktop: Double-click icon "miniZ MCP"                    │
+│  • Start Menu: miniZ MCP → miniZ MCP                         │
+│  • Trực tiếp: Chạy START.bat trong thư mục cài đặt           │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🔇 KHỞI ĐỘNG ẨN (Không hiển thị cửa sổ console)              │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  • Chạy: START_HIDDEN.bat                                    │
+│  • Hoặc: Start Menu → miniZ MCP (Hidden)                     │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+
+══════════════════════════════════════════════════════════════════
+🔧 KIỂM TRA CÀI ĐẶT
+══════════════════════════════════════════════════════════════════
+
+Nếu gặp lỗi khi khởi động, chạy file CHECK.bat để kiểm tra:
+
+   ✓ Python đã được cài đặt
+   ✓ Các thư viện dependencies đã đầy đủ
+   ✓ Port 8000 có bị chiếm không
+   ✓ Quyền truy cập file
+
+
+══════════════════════════════════════════════════════════════════
+📚 TÀI LIỆU HƯỚNG DẪN
+══════════════════════════════════════════════════════════════════
+
+📖 QUICKSTART.md           → Hướng dẫn nhanh cho người mới
+📖 GEMINI_GUIDE.md         → Cấu hình Gemini AI
+📖 GPT4_GUIDE.md           → Cấu hình GPT-4/ChatGPT
+📖 MUSIC_GUIDE.md          → Sử dụng Music Player
+📖 README.md               → Tài liệu đầy đủ
+📖 CHANGELOG.md            → Lịch sử cập nhật
+
+
+══════════════════════════════════════════════════════════════════
+🎯 CÁC TÍNH NĂNG CHÍNH
+══════════════════════════════════════════════════════════════════
+
+✅ 141 Tools đa dạng (file, web, system, music, AI...)
+✅ Dual AI: Gemini Flash + GPT-4 (tùy chọn)
+✅ Knowledge Base với AI indexing & search
+✅ Music Player tích hợp VLC
+✅ Web Search real-time
+✅ System Control (screenshot, clipboard, power...)
+✅ Auto-save conversations
+
+
+══════════════════════════════════════════════════════════════════
+⚙️ CẤU HÌNH API KEYS
+══════════════════════════════════════════════════════════════════
+
+Để sử dụng đầy đủ tính năng AI, bạn cần cấu hình API keys:
+
+1. Mở file: xiaozhi_endpoints.json
+
+2. Thêm API keys của bạn:
+   {
+     "GEMINI_API_KEY": "your-gemini-key-here",
+     "OPENAI_API_KEY": "your-openai-key-here",    // Optional
+     "SERPER_API_KEY": "your-serper-key-here"     // For web search
+   }
+
+3. Khởi động lại server
+
+
+📌 MIỄN PHÍ API KEYS:
+
+   🔹 Gemini AI: https://aistudio.google.com/apikey
+      → Free 1500 requests/day
+      
+   🔹 Serper API: https://serper.dev/api-key
+      → Free 2500 searches/month
+
+
+══════════════════════════════════════════════════════════════════
+🛠️ KHẮC PHỤC SỰ CỐ
+══════════════════════════════════════════════════════════════════
+
+❌ "Python not found"
+   → Cài Python 3.11+ từ: https://www.python.org/downloads/
+   → Nhớ chọn "Add Python to PATH"
+
+❌ "Port 8000 already in use"
+   → Đóng ứng dụng đang dùng port 8000
+   → Hoặc chạy: taskkill /F /IM python.exe
+
+❌ "Module not found"
+   → Chạy: AUTO_INSTALL_DEPENDENCIES.bat
+   → Hoặc: pip install -r requirements.txt
+
+❌ Server không khởi động
+   → Chạy CHECK.bat để xem lỗi chi tiết
+   → Kiểm tra logs trong thư mục logs/
+
+
+══════════════════════════════════════════════════════════════════
+📞 HỖ TRỢ
+══════════════════════════════════════════════════════════════════
+
+🌐 Website: https://miniz-mcp.com
+📧 Email: support@miniz-mcp.com
+📱 Telegram: @miniz_mcp_support
+💬 Discord: discord.gg/miniz-mcp
+
+
+══════════════════════════════════════════════════════════════════
+📋 YÊU CẦU HỆ THỐNG
+══════════════════════════════════════════════════════════════════
+
+✓ Windows 10/11 (64-bit)
+✓ Python 3.11 trở lên
+✓ RAM: 4GB+ (khuyến nghị 8GB)
+✓ Disk: 2GB+ free space
+✓ Internet connection (để sử dụng AI)
+
+
+══════════════════════════════════════════════════════════════════
+
+             🎊 CHÚC BẠN SỬ DỤNG miniZ MCP VUI VẺ! 🎊
+
+══════════════════════════════════════════════════════════════════
+
+© 2024-2025 miniZ MCP Team. All rights reserved.
+Licensed under miniZ MCP Professional License v4.3.2

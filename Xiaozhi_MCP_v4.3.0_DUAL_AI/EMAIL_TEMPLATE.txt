@@ -1,0 +1,170 @@
+═══════════════════════════════════════════════════════════════════════════
+  📧 EMAIL TEMPLATE - GỬI KHÁCH HÀNG
+═══════════════════════════════════════════════════════════════════════════
+
+Subject: [GIAO HÀNG] Xiaozhi MCP v4.3.0 - Điều Khiển Máy Tính Qua AI
+
+---
+
+Xin chào [Tên Khách Hàng],
+
+Đính kèm là phần mềm Xiaozhi MCP Control Panel v4.3.0 - Phiên bản hoàn chỉnh.
+
+═══════════════════════════════════════════════════════════════════════════
+📦 THÔNG TIN PACKAGE
+═══════════════════════════════════════════════════════════════════════════
+
+File: Xiaozhi_MCP_v4.3.0_PORTABLE_20251116_2048.zip
+Dung lượng: 21.92 MB
+Phiên bản: v4.3.0 Dual AI Edition
+
+═══════════════════════════════════════════════════════════════════════════
+🎯 TÍNH NĂNG CHÍNH
+═══════════════════════════════════════════════════════════════════════════
+
+✅ 38 CÔNG CỤ điều khiển Windows
+   • Hệ thống: Volume, Screenshot, Lock, Shutdown, Theme
+   • File: Tạo, đọc, xóa files
+   • Process: Xem & tắt tiến trình
+   • Web: Mở YouTube, Facebook, Google
+   • Nhạc: Thư viện nhạc với auto-play
+
+✅ 2 AI ENGINES
+   • Google Gemini (MIỄN PHÍ) - 1500 requests/ngày
+   • OpenAI GPT-4 (TRẢ PHÍ) - Chất lượng cao nhất
+
+✅ DASHBOARD WEB UI
+   • Giao diện hiện đại, dễ sử dụng
+   • Tất cả công cụ trong 1 trang
+   • Log hoạt động real-time
+
+═══════════════════════════════════════════════════════════════════════════
+🚀 HƯỚNG DẪN CÀI ĐẶT (5 PHÚT)
+═══════════════════════════════════════════════════════════════════════════
+
+BƯỚC 1: Giải nén file .zip
+
+BƯỚC 2: MỞ FILE "START_HERE.txt" (BẮT BUỘC ĐỌC ĐẦU TIÊN)
+
+BƯỚC 3: Đọc "DISCLAIMER.md" (Điều khoản miễn trách nhiệm)
+
+BƯỚC 4: Chạy "INSTALL.bat" (Cài đặt tự động - 1-2 phút)
+
+BƯỚC 5: Lấy Xiaozhi Token
+   • Truy cập: https://xiaozhi.me
+   • Đăng nhập → Profile → Copy JWT token
+
+BƯỚC 6: Chạy "START.bat"
+   • Browser tự mở: http://localhost:8000
+   • Click ⚙️ (góc phải) → Dán token → Lưu
+
+🎉 XOG! Bắt đầu ra lệnh cho AI!
+
+═══════════════════════════════════════════════════════════════════════════
+📋 YÊU CẦU HỆ THỐNG
+═══════════════════════════════════════════════════════════════════════════
+
+✅ Windows 10/11 (64-bit)
+✅ Python 3.8+ (Tải tại: https://www.python.org/downloads/)
+✅ RAM 4GB trở lên
+✅ Kết nối Internet
+
+═══════════════════════════════════════════════════════════════════════════
+⚠️ QUAN TRỌNG
+═══════════════════════════════════════════════════════════════════════════
+
+🔴 ĐỌC TRƯỚC KHI SỬ DỤNG:
+   1. START_HERE.txt (File đầu tiên)
+   2. DISCLAIMER.md (Điều khoản bắt buộc)
+   3. README.md (Hướng dẫn chi tiết)
+
+🔴 LƯU Ý:
+   • Phần mềm cung cấp "AS IS" không bảo hành
+   • Người dùng tự chịu trách nhiệm về việc sử dụng
+   • Không bán lại hoặc dùng thương mại
+   • Không xóa credit/logo miniZ
+
+═══════════════════════════════════════════════════════════════════════════
+🎵 THÊM NHẠC VÀO THƯ VIỆN
+═══════════════════════════════════════════════════════════════════════════
+
+1. Copy file .mp3/.wav/.flac vào thư mục "music_library/"
+2. Có thể tạo subfolder: Pop/, Rock/, EDM/
+3. Ra lệnh AI: "Liệt kê nhạc" → Tự động phát bài đầu
+
+Chi tiết: Xem file MUSIC_GUIDE.md
+
+═══════════════════════════════════════════════════════════════════════════
+🤖 CẤU HÌNH AI (TÙY CHỌN - MIỄN PHÍ)
+═══════════════════════════════════════════════════════════════════════════
+
+GOOGLE GEMINI (Khuyến nghị):
+   • Lấy API key: https://aistudio.google.com/apikey
+   • Dashboard → ⚙️ → Nhập Gemini API Key → Auto-save
+   • Giới hạn: 1500 requests/ngày MIỄN PHÍ
+
+OPENAI GPT-4 (Tùy chọn):
+   • Lấy API key: https://platform.openai.com/api-keys
+   • Dashboard → ⚙️ → Nhập OpenAI API Key → Auto-save
+   • Chi phí: ~$0.01-0.03/1K tokens (TRẢ PHÍ)
+
+Chi tiết: Xem GEMINI_GUIDE.md và GPT4_GUIDE.md
+
+═══════════════════════════════════════════════════════════════════════════
+🛠️ TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+❌ Python not found:
+   → Cài Python + Check "Add to PATH" khi cài
+   → Khởi động lại máy
+
+❌ Server không khởi động:
+   → Chạy CHECK.bat để xem lỗi
+   → Cài lại: pip install -r requirements.txt --force-reinstall
+
+❌ Không kết nối Xiaozhi:
+   → Kiểm tra JWT token
+   → Kiểm tra Internet
+
+Chi tiết: Xem README.md phần Troubleshooting
+
+═══════════════════════════════════════════════════════════════════════════
+📞 HỖ TRỢ
+═══════════════════════════════════════════════════════════════════════════
+
+🎥 YouTube miniZ: https://youtube.com/@minizjp?si=LRg5piGHmxYtsFJU
+📧 Email: (Xem trong video)
+📝 Báo lỗi: Comment trên video
+
+⚠️ Hỗ trợ miễn phí, không cam kết thời gian phản hồi
+
+═══════════════════════════════════════════════════════════════════════════
+📜 ĐIỀU KHOẢN
+═══════════════════════════════════════════════════════════════════════════
+
+✅ ĐƯỢC PHÉP:
+   • Sử dụng cá nhân, phi thương mại
+   • Chia sẻ với bạn bè
+
+❌ KHÔNG ĐƯỢC PHÉP:
+   • Bán lại hoặc dùng thương mại
+   • Xóa credit/logo tác giả
+
+⚠️ Nhà phát triển KHÔNG chịu trách nhiệm về thiệt hại
+   Chi tiết: Xem DISCLAIMER.md
+
+═══════════════════════════════════════════════════════════════════════════
+
+Chúc bạn sử dụng hiệu quả!
+
+Nếu có bất kỳ thắc mắc nào, đừng ngại liên hệ.
+
+Best regards,
+miniZ Team
+
+---
+
+Made with ❤️ for Xiaozhi MCP
+v4.3.0 Dual AI Edition | 16/11/2025
+
+═══════════════════════════════════════════════════════════════════════════

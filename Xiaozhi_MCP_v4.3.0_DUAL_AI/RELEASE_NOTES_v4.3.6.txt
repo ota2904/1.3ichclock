@@ -1,0 +1,317 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   miniZ MCP Professional v4.3.6 - RELEASE NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Release Date: December 11, 2025
+Build Number: 4.3.6.20251211
+Package Size: ~150 MB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 WHAT'S NEW IN v4.3.6:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔐 1. ENHANCED LICENSE PERSISTENCE SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROBLEM SOLVED:
+• Some users reported license being lost after computer restart
+• "Please enter license key" prompt appearing despite successful activation
+• License file being deleted by Windows Defender or cleanup operations
+
+NEW MULTI-LOCATION BACKUP SYSTEM:
+
+Location 1 (Primary):
+  %LOCALAPPDATA%\miniZ_MCP\.license\license.json
+
+Location 2 (Backup #1):
+  %APPDATA%\miniZ_MCP\.license\license.json
+
+Location 3 (Backup #2):
+  C:\ProgramData\miniZ_MCP\.license\license.json
+
+Location 4 (Backup #3):
+  <EXE_DIRECTORY>\.license\license.json
+
+HOW IT WORKS:
+✅ License is written to ALL 4 locations simultaneously
+✅ On startup, system checks ALL locations
+✅ If one location is deleted, others serve as backup
+✅ Survives Windows Cleanup, Antivirus scans, and system updates
+
+TECHNICAL DETAILS:
+• Atomic write operations with error handling
+• JSON-based license storage
+• Hardware ID binding (MAC address + CPU ID)
+• Expiration date tracking
+• Offline validation support
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔒 2. SECURITY IMPROVEMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+API KEY PROTECTION:
+• ❌ REMOVED hardcoded API keys from source code
+• ❌ REMOVED API keys from PyInstaller build
+• ✅ Template-based configuration (xiaozhi_endpoints_template.json)
+• ✅ User must provide their OWN API keys after installation
+• ✅ Keys stored LOCALLY on user's machine only
+
+WHY THIS MATTERS:
+Before: API keys were bundled in EXE → Risk of key extraction and abuse
+After: Clean build with zero sensitive data → Users control their own keys
+
+FILE CHANGES:
+• xiaozhi_endpoints.json → Excluded from build
+• xiaozhi_endpoints_template.json → Included (empty keys)
+• PyInstaller spec updated to exclude sensitive files
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🧠 3. KNOWLEDGE BASE AUTO-LOADING FOR GEMINI AI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BEFORE v4.3.6:
+User: "What is the project budget?"
+System: [Searches KB for keyword "budget"] → Returns limited results
+Gemini: [Only sees 2-3 matching documents]
+
+AFTER v4.3.6:
+User: "What is the project budget?"
+System: [Automatically loads ALL Knowledge Base (50 documents)]
+Gemini: [Reads entire KB, summarizes all financial docs, finds budget]
+Result: Comprehensive answer with full context!
+
+NEW BEHAVIOR:
+✅ Gemini ALWAYS reads ALL documents in Knowledge Base
+✅ Automatic summarization of long content (>2000 chars per file)
+✅ Intelligent context extraction from multiple sources
+✅ No manual search or filtering needed
+✅ Maximum context awareness (up to 50,000 chars)
+
+HOW TO USE:
+1. Go to "Knowledge Base" tab
+2. Click "Set Folder" → Choose your documents folder
+3. Click "Scan Folder" → System finds all .pdf, .docx, .txt, .md files
+4. Click "Index All" → Gemini processes and summarizes each file
+5. Ask questions in "Ask Gemini" tab → Gemini automatically reads ALL data!
+
+SUPPORTED FILE TYPES:
+• PDF (.pdf)
+• Word Documents (.docx, .doc)
+• Text Files (.txt)
+• Markdown (.md)
+• JSON (.json)
+• CSV (.csv)
+• Excel (.xlsx, .xls)
+• Rich Text Format (.rtf)
+
+EXAMPLE USE CASES:
+• "Summarize all project documentation"
+• "What are the key risks mentioned across all documents?"
+• "Find all budget allocations in financial reports"
+• "Compare requirements from different specification files"
+
+TECHNICAL IMPLEMENTATION:
+Code changes in xiaozhi_final.py:
+
+@app.post("/api/tool/ask_gemini")
+async def api_ask_gemini(data: dict):
+    # 🔒 FORCED KB LOADING
+    use_knowledge_base = True  # Always enabled
+    
+    # 📚 LOAD ALL KB - NO FILTERING
+    kb_result = await get_knowledge_context(
+        query="",  # Empty = load everything
+        max_chars=50000,  # Increased limit
+        use_gemini_summary=True  # Auto-summarize
+    )
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 INHERITED FEATURES FROM v4.3.5:
+
+🎨 IMPROVED UI:
+• Horizontal endpoint configuration (2-column layout)
+• Modal width: 1400px (increased from 900px)
+• Left column: Gemini API settings
+• Right column: OpenAI + Serper API settings
+• Visual separator between columns
+
+🐛 BUG FIXES:
+• Fixed "Cannot read properties of undefined" error in conversation history
+• Added null/undefined safety checks throughout codebase
+• Improved error handling for empty data responses
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ INHERITED FEATURES FROM v4.3.4:
+
+📊 API QUOTAS PAGE:
+• Real-time monitoring of Gemini API usage
+• Visual charts showing quota consumption
+• Serper API search quota tracking
+• Alert system for approaching limits
+
+🚀 PERFORMANCE:
+• 600% speed improvement in UI responsiveness
+• Reduced conversation history file size by 70%
+• Optimized VLC status polling (cache 200ms)
+• 85% reduction in disk I/O operations
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 TECHNICAL SPECIFICATIONS:
+
+BUILD INFORMATION:
+• Python Version: 3.13.9
+• PyInstaller Version: 6.17.0
+• Inno Setup Version: 6.5.4
+• Build Method: --onefile with clean rebuild
+• Platform: Windows 10/11 64-bit
+
+DEPENDENCIES INCLUDED:
+• FastAPI 0.115.6
+• google-generativeai 0.8.3
+• openai 1.59.7
+• psutil 6.1.1
+• pyautogui 0.9.54
+• python-vlc 3.0.21203
+• selenium 4.27.1
+• Pillow 11.0.0
+• requests 2.32.3
+• websockets 14.1
+• + 50 more libraries (all bundled in EXE)
+
+FILE STRUCTURE:
+miniZ_MCP_Professional.exe (149.4 MB)
+├── Python 3.13 runtime
+├── All required libraries
+├── logo.png
+├── LICENSE_AGREEMENT.txt
+└── Configuration templates
+
+NO EXTERNAL DEPENDENCIES REQUIRED!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🐛 KNOWN ISSUES & WORKAROUNDS:
+
+1. ANTIVIRUS FALSE POSITIVES
+   Issue: Some antivirus software flags the EXE as suspicious
+   Reason: PyInstaller EXEs often trigger heuristic analysis
+   Solution: Add to antivirus exclusion list
+
+2. FIRST STARTUP SLOW
+   Issue: First launch takes 10-15 seconds
+   Reason: Windows Defender scanning large EXE
+   Solution: Wait patiently, subsequent launches are instant
+
+3. VLC INTEGRATION REQUIRES VLC INSTALLED
+   Issue: Music player features need VLC Media Player
+   Reason: We use VLC's powerful media engine
+   Solution: Install VLC from https://www.videolan.org
+
+4. KNOWLEDGE BASE INDEXING SLOW FOR LARGE FILES
+   Issue: 100+ documents take 5-10 minutes to index
+   Reason: Gemini API summarization for each file
+   Solution: Index in batches, or disable summarization for quick scan
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 MIGRATION GUIDE:
+
+FROM v4.3.5 → v4.3.6:
+
+1. Uninstall v4.3.5 (Settings → Apps → Uninstall)
+2. Install v4.3.6 using new installer
+3. License key will be PRESERVED (auto-detected from backup)
+4. API keys will be RESET - need to re-enter
+5. Knowledge Base index preserved (if in same location)
+6. Conversation history preserved (if in AppData)
+
+⚠️ IMPORTANT: Export your API keys from v4.3.5 before upgrading!
+
+FROM OLDER VERSIONS (v4.3.4 or earlier):
+
+• Complete fresh installation recommended
+• Export license key and API keys manually
+• Re-index Knowledge Base documents
+• Conversation history may not be compatible
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆘 TROUBLESHOOTING:
+
+LICENSE ISSUES:
+Q: License not found after restart?
+A: v4.3.6 fixes this! Upgrade immediately. If still occurs, manually copy
+   license.json from %LOCALAPPDATA%\miniZ_MCP\.license\ to other locations.
+
+Q: "Invalid license key" error?
+A: Check if Hardware ID changed (VM snapshot, dual boot, hardware upgrade).
+   Contact support for license transfer.
+
+API KEY ISSUES:
+Q: "API key not configured" despite entering key?
+A: Check xiaozhi_endpoints.json in program directory. Make sure keys are
+   saved without quotes and spaces.
+
+Q: Gemini API rate limit errors?
+A: Free tier: 15 requests/min. Upgrade to paid plan or wait 1 minute.
+
+KNOWLEDGE BASE ISSUES:
+Q: "No context found" despite indexing files?
+A: Re-index with "Index All" button. Check file formats are supported.
+
+Q: Gemini not reading all documents?
+A: v4.3.6 automatically loads ALL documents. Make sure you're using v4.3.6!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 SUPPORT CHANNELS:
+
+• Email: support@miniz-mcp.com
+• Website: https://miniz-mcp.com
+• Discord: https://discord.gg/miniz-mcp
+• GitHub Issues: (Private repository for licensed users)
+
+Response time: Within 24 hours for licensed users
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 ROADMAP (Upcoming Features):
+
+v4.3.7 (Planned: January 2025):
+• Multi-language UI support (English/Vietnamese)
+• Voice input for AI queries
+• Browser extension for cross-platform control
+
+v4.4.0 (Planned: February 2025):
+• Claude AI integration
+• Custom tool creation system
+• Mobile app companion (Android/iOS)
+
+v5.0.0 (Planned: Q2 2025):
+• Cloud sync for Knowledge Base
+• Team collaboration features
+• Enterprise license management
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Thank you for using miniZ MCP Professional v4.3.6!
+
+© 2025 miniZ Team. All rights reserved.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

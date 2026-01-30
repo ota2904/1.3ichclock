@@ -1,0 +1,51 @@
+════════════════════════════════════════════════════════════
+                                                            
+     miniZ MCP Professional v4.3.0 - Installation Guide      
+                                                            
+════════════════════════════════════════════════════════════
+
+Welcome! This installer will set up miniZ MCP Professional on your computer.
+
+
+📋 SYSTEM REQUIREMENTS:
+
+  • Windows 10/11 (64-bit)
+  • At least 500 MB free disk space
+  • Internet connection for AI features
+
+
+🔑 ACTIVATION:
+
+  • You will need a license key to activate the software
+  • Format: MINIZ-XXXX-XXXX-XXXX-XXXX
+  • You can activate now or later when you first run the app
+
+
+📦 WHAT WILL BE INSTALLED:
+
+  • miniZ MCP Professional application
+  • 141 AI-powered tools
+  • Dual AI support (Gemini + GPT-4)
+  • Knowledge Base system
+  • User guide and documentation
+
+
+⚡ NEW IN VERSION 4.3.0:
+
+  ✨ Enhanced Knowledge Base with auto-search
+  ✨ Improved AI integration and performance
+  ✨ 141 powerful automation tools
+  ✨ Better security and stability
+
+
+🚀 GETTING STARTED:
+
+  1. Click Next to continue installation
+  2. Choose installation location
+  3. Enter license key (or skip to activate later)
+  4. Launch and enjoy!
+
+
+Need help? Check the User Guide in the Start Menu after installation.
+
+Let's begin! Click Next to continue...

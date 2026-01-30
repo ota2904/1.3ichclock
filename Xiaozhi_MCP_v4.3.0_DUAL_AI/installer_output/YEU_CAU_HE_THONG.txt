@@ -1,0 +1,318 @@
+════════════════════════════════════════════════════════════════
+📋 YÊU CẦU HỆ THỐNG VÀ CHUẨN BỊ CÀI ĐẶT
+miniZ MCP v4.3.0 Professional Edition
+════════════════════════════════════════════════════════════════
+
+## 💻 YÊU CẦU HỆ THỐNG TỐI THIỂU
+
+### Hệ điều hành:
+✅ Windows 10 (64-bit) hoặc cao hơn
+✅ Windows 11 (64-bit) - Khuyên dùng
+
+❌ KHÔNG hỗ trợ:
+   - Windows 7, 8, 8.1
+   - Windows 32-bit
+   - Linux, MacOS
+
+### Phần cứng:
+📌 CPU: Intel/AMD dual-core trở lên (2 GHz+)
+📌 RAM: 4GB tối thiểu, 8GB khuyên dùng
+📌 Ổ cứng: 500MB dung lượng trống
+📌 Màn hình: 1280x720 trở lên
+📌 Kết nối: Ethernet/WiFi (cho AI features)
+
+### Quyền truy cập:
+⚠️ Cần quyền Administrator để cài đặt
+   (Right-click Setup.exe → Run as Administrator)
+
+
+════════════════════════════════════════════════════════════════
+📦 CHUẨN BỊ TRƯỚC KHI CÀI ĐẶT
+════════════════════════════════════════════════════════════════
+
+### 1. TẢI FILES CÀI ĐẶT
+
+Bạn cần có 2 files:
+
+✅ **miniZ_MCP_v4.3.0_Professional_Setup.exe** (48 MB)
+   → File installer chính
+
+✅ **PRE_GENERATED_KEYS.txt** (15 KB)
+   → Danh sách 100 license keys
+
+
+### 2. CHỌN LICENSE KEY
+
+📖 Mở file: PRE_GENERATED_KEYS.txt
+📋 Chọn 1 key chưa sử dụng (format: XXXX-XXXX-XXXX-XXXX)
+📝 Copy key hoặc ghi lại
+
+⚠️ LƯU Ý: Mỗi key CHỈ dùng 1 LẦN cho 1 máy!
+
+Ví dụ key:
+```
+[001] 4DOR-91QP-DKVA-CBR0  ← Chọn key này
+[002] IPC8-A79V-TUKC-WDSG
+[003] P7O3-A6JF-P3JC-WN94
+```
+
+
+### 3. CHUẨN BỊ API KEYS (Tùy chọn)
+
+Nếu muốn dùng AI features (Gemini/GPT-4):
+
+📌 **Gemini API Key:**
+   - Truy cập: https://makersuite.google.com/app/apikey
+   - Tạo API key miễn phí
+   - Copy và lưu lại
+
+📌 **OpenAI API Key (GPT-4):**
+   - Truy cập: https://platform.openai.com/api-keys
+   - Tạo API key (có phí)
+   - Copy và lưu lại
+
+⚠️ KHÔNG bắt buộc - Có thể thêm sau khi cài đặt
+
+
+### 4. TẮT ANTIVIRUS TẠM THỜI (Nếu cần)
+
+Một số antivirus có thể chặn file .exe:
+
+🛡️ Windows Defender:
+   Settings → Update & Security → Windows Security
+   → Virus & threat protection → Manage settings
+   → Tắt "Real-time protection" TẠM THỜI
+
+🛡️ Avast/Kaspersky/Norton:
+   Tắt protection trong 10 phút để cài đặt
+
+✅ Sau khi cài xong, BẬT LẠI ngay!
+
+
+### 5. ĐÓNG CÁC CHƯƠNG TRÌNH ĐANG CHẠY
+
+Trước khi cài đặt, đóng:
+❌ Trình duyệt web (Chrome, Edge, Firefox)
+❌ Music players (Spotify, iTunes)
+❌ Video players (VLC nếu có)
+❌ Các phần mềm tự động hóa khác
+
+
+════════════════════════════════════════════════════════════════
+🚀 QUY TRÌNH CÀI ĐẶT - 5 BƯỚC ĐƠN GIẢN
+════════════════════════════════════════════════════════════════
+
+### BƯỚC 1: CHẠY INSTALLER
+
+1. Tìm file: miniZ_MCP_v4.3.0_Professional_Setup.exe
+2. Right-click → **Run as Administrator**
+3. Nếu Windows hỏi "Do you want to allow?" → Chọn **Yes**
+
+
+### BƯỚC 2: THEO WIZARD CÀI ĐẶT
+
+```
+[Welcome Screen]
+→ Next
+
+[License Agreement]
+→ I accept the agreement
+→ Next
+
+[Installation Information]
+→ Đọc hướng dẫn kích hoạt
+→ Next
+
+[Select Destination]
+→ C:\Program Files\miniZ_MCP\  (mặc định)
+→ Next
+
+[Select Tasks]
+☑ Create a desktop icon (khuyên dùng)
+→ Next
+
+[Ready to Install]
+→ Install
+
+[Installing...]
+⏳ Đợi 30-60 giây
+
+[Setup Complete]
+☑ Launch miniZ MCP Professional (tùy chọn)
+→ Finish
+```
+
+
+### BƯỚC 3: KÍCH HOẠT LICENSE (QUAN TRỌNG!)
+
+Sau khi cài xong, lần đầu chạy phần mềm:
+
+```
+┌─────────────────────────────────────────┐
+│  🚀 miniZ MCP v4.3.0                    │
+│                                          │
+│  🔑 Hardware ID:                        │
+│  ECA8CBFBB21D3486071BF46ECCB7FA3C      │
+│  [Copy]                                  │
+│                                          │
+│  💳 Nhập License Key:                   │
+│  [____-____-____-____]                  │
+│                                          │
+│  ☐ Offline Mode                         │
+│                                          │
+│  [✅ Kích Hoạt]  [❌ Thoát]            │
+└─────────────────────────────────────────┘
+```
+
+**Làm theo:**
+1. Mở file **PRE_GENERATED_KEYS.txt**
+2. Chọn 1 key (VD: 4DOR-91QP-DKVA-CBR0)
+3. Nhập key vào ô "Nhập License Key"
+4. Nhấn **"Kích Hoạt"**
+5. Đợi 1-2 giây
+6. ✅ Thành công! Phần mềm tự động khởi động
+
+
+### BƯỚC 4: CẤU HÌNH AI (TÙY CHỌN)
+
+Nếu có API keys:
+
+1. Phần mềm đã chạy → Mở: http://localhost:8000
+2. Tìm file: `C:\Program Files\miniZ_MCP\xiaozhi_endpoints.json`
+3. Right-click → Open with Notepad
+4. Thêm API keys:
+
+```json
+{
+  "gemini_api_key": "AIzaSy... (key của bạn)",
+  "openai_api_key": "sk-... (key của bạn)",
+  "endpoints": []
+}
+```
+
+5. Save file
+6. Restart phần mềm
+
+
+### BƯỚC 5: KIỂM TRA HOẠT ĐỘNG
+
+✅ Phần mềm chạy không lỗi
+✅ Web UI mở được: http://localhost:8000
+✅ Trình duyệt tự động mở
+✅ Sidebar hiển thị đầy đủ
+✅ Music Player hoạt động
+✅ AI Chat (nếu có API key)
+
+
+════════════════════════════════════════════════════════════════
+⚠️ LƯU Ý QUAN TRỌNG
+════════════════════════════════════════════════════════════════
+
+### Về License Keys:
+
+❗ MỖI KEY CHỈ DÙNG 1 LẦN cho 1 máy tính
+❗ Key sẽ bị BIND với Hardware ID của máy
+❗ KHÔNG THỂ chuyển key sang máy khác
+❗ Cài lại Windows trên cùng máy → Vẫn dùng được key cũ
+❗ Đổi mainboard/CPU → Cần key mới
+
+### Về Quyền truy cập:
+
+✅ Phần mềm cài vào: `C:\Program Files\miniZ_MCP\`
+✅ License lưu tại: `C:\Users\<user>\AppData\Local\miniZ_MCP\`
+✅ Mỗi user Windows có license riêng
+✅ KHÔNG cần quyền Admin để chạy (chỉ cần khi cài)
+
+### Về Kết nối mạng:
+
+🌐 Cần internet để:
+   - Dùng AI features (Gemini/GPT-4)
+   - Lấy tin tức/giá vàng
+   - Browsing automation
+
+📡 KHÔNG cần internet để:
+   - Kích hoạt license (offline mode)
+   - Phát nhạc
+   - Điều khiển máy tính cơ bản
+
+
+════════════════════════════════════════════════════════════════
+🛠️ SỬA LỖI THƯỜNG GẶP
+════════════════════════════════════════════════════════════════
+
+### ❌ "Windows protected your PC"
+
+**Nguyên nhân:** SmartScreen chặn app chưa có chữ ký
+**Giải pháp:**
+1. Click "More info"
+2. Click "Run anyway"
+
+### ❌ "License không hợp lệ"
+
+**Nguyên nhân:** Key đã được dùng trên máy khác
+**Giải pháp:** Chọn key MỚI từ danh sách 100 keys
+
+### ❌ "Permission denied: miniz_license.json"
+
+**Nguyên nhân:** KHÔNG XẢY RA (đã fix)
+**Lý do:** License lưu vào AppData (writable)
+
+### ❌ "Port 8000 already in use"
+
+**Nguyên nhân:** Port bị chiếm bởi app khác
+**Giải pháp:**
+```powershell
+# Tìm process dùng port 8000
+netstat -ano | findstr :8000
+
+# Kill process đó
+taskkill /PID <số_PID> /F
+```
+
+### ❌ Antivirus xóa file .exe
+
+**Nguyên nhân:** False positive
+**Giải pháp:**
+1. Restore file từ Quarantine
+2. Add exception cho: `C:\Program Files\miniZ_MCP\`
+3. Hoặc tắt antivirus khi cài đặt
+
+
+════════════════════════════════════════════════════════════════
+📞 HỖ TRỢ
+════════════════════════════════════════════════════════════════
+
+Nếu gặp vấn đề khi cài đặt:
+
+📧 Email: support@miniz-mcp.com
+📱 Hotline: 1900-xxxx
+💬 Zalo: 0xxx-xxx-xxx
+🌐 Website: https://miniz-mcp.com
+
+Thời gian hỗ trợ: 8:00 - 22:00 (T2-CN)
+
+
+════════════════════════════════════════════════════════════════
+✅ CHECKLIST TRƯỚC KHI CÀI ĐẶT
+════════════════════════════════════════════════════════════════
+
+□ Đã có file Setup.exe (48 MB)
+□ Đã có file PRE_GENERATED_KEYS.txt
+□ Đã chọn 1 license key chưa dùng
+□ Đã đóng các chương trình không cần thiết
+□ Có quyền Administrator
+□ Windows 10/11 64-bit
+□ Đủ 500MB dung lượng ổ cứng
+□ Đã tắt antivirus (nếu cần)
+□ Đã có API keys (nếu dùng AI - tùy chọn)
+
+Nếu đã check HẾT → Sẵn sàng cài đặt! 🚀
+
+
+════════════════════════════════════════════════════════════════
+🎉 CHÚC BẠN CÀI ĐẶT THÀNH CÔNG!
+════════════════════════════════════════════════════════════════
+
+miniZ Software © 2025
+Version: 4.3.0 Professional Edition
+Build Date: November 27, 2025

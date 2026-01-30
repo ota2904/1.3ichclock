@@ -1,0 +1,24 @@
+{
+  "endpoints": [
+    {
+      "name": "Thiết bị 1",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6NjQwNzMwLCJlbmRwb2ludElkIjoiYWdlbnRfNjQwNzMwIiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjEzNjU0NCwiZXhwIjoxNzkzNjk0MTQ0fQ.s7OZIbHfobePMfFpkX1HOOe77RHoiFdSx1iAQV10iCJRIsI4sK-P3dJtyCp2m__nOERfmZJXuxtXoh4KjTFyMQ",
+      "enabled": true
+    },
+    {
+      "name": "Thiết bị 2",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjEzNzAxOSwiZXhwIjoxNzkzNjk0NjE5fQ.Kp3l_DTlFKwid3TFO6S78LJxZ8PFgZPYYQCjcX9gtgHwntzCgO1pkZzpWTM-FtRZuCyaUYz7djQ9OK1Xi-ZiBQ",
+      "enabled": true
+    },
+    {
+      "name": "Thiết bị 3",
+      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2MjE3MTgyMywiZXhwIjoxNzkzNzI5NDIzfQ.9SArf9HVfdhu_XN6QJDx4ur5XkEDSXwpbqHN5WVN7FPhR4hEcYgZpzURyNlWRBGLZXPzHoDyZC51H408q2ho7Q",
+      "enabled": true
+    }
+  ],
+  "active_index": 2,
+  "gemini_api_key": "",
+  "openai_api_key": "",
+  "serper_api_key": "",
+  "last_updated": "2025-12-11T00:00:00.000000"
+}

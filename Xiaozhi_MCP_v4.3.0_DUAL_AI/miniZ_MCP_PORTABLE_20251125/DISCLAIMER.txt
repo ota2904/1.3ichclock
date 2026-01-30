@@ -1,0 +1,199 @@
+================================================================================
+                    MINIΖ MCP - CHÍNH SÁCH MIỄN TRỪ TRÁCH NHIỆM
+                           (DISCLAIMER & TERMS OF USE)
+================================================================================
+
+📅 Ngày phát hành: 25/11/2025
+🔖 Phiên bản: miniZ MCP v4.3.0 PORTABLE
+
+================================================================================
+                            1. MIỄN TRỪ TRÁCH NHIỆM
+================================================================================
+
+⚠️ QUAN TRỌNG - VUI LÒNG ĐỌC KỸ TRƯỚC KHI SỬ DỤNG
+
+Bằng việc cài đặt, sử dụng hoặc truy cập phần mềm miniZ MCP (sau đây gọi là 
+"Phần mềm"), bạn đồng ý với các điều khoản sau:
+
+1.1. KHÔNG CHỊU TRÁCH NHIỆM VỀ MẤT DỮ LIỆU
+    ✗ Nhà phát triển KHÔNG chịu trách nhiệm cho bất kỳ mất mát dữ liệu nào
+    ✗ KHÔNG đảm bảo tính toàn vẹn của dữ liệu trong quá trình sử dụng
+    ✗ KHÔNG chịu trách nhiệm về hậu quả từ việc mất mát, hỏng hóc dữ liệu
+    ✗ Người dùng TỰ CHỊU TRÁCH NHIỆM backup dữ liệu quan trọng
+
+1.2. SỬ DỤNG TẠI RỦI RO CỦA CHÍNH BẠN
+    ✗ Phần mềm được cung cấp "NGUYÊN TRẠNG" (AS IS)
+    ✗ KHÔNG có bảo hành rõ ràng hay ngụ ý
+    ✗ KHÔNG đảm bảo hoạt động liên tục, không lỗi
+    ✗ Người dùng chịu mọi rủi ro khi sử dụng
+
+1.3. GIỚI HẠN TRÁCH NHIỆM
+    ✗ KHÔNG chịu trách nhiệm về thiệt hại trực tiếp, gián tiếp
+    ✗ KHÔNG bồi thường cho mất lợi nhuận, mất dữ liệu
+    ✗ KHÔNG chịu trách nhiệm về hành động của bên thứ ba
+    ✗ Tổng trách nhiệm tối đa = 0 VNĐ
+
+================================================================================
+                        2. CAM KẾT VỀ TÍNH SẠCH VÀ BẢO MẬT
+================================================================================
+
+✅ CAM KẾT PHẦN MỀM SẠCH (CLEAN SOFTWARE)
+
+Chúng tôi cam kết miniZ MCP là phần mềm sạch, không chứa:
+    ✓ KHÔNG có virus, malware, trojan, spyware
+    ✓ KHÔNG có keylogger hay phần mềm gián điệp
+    ✓ KHÔNG có backdoor hoặc mã độc ẩn
+    ✓ KHÔNG cài đặt phần mềm không mong muốn
+    ✓ KHÔNG thu thập dữ liệu cá nhân trái phép
+
+✅ BẢO MẬT DỮ LIỆU (DATA PRIVACY)
+
+    ✓ Không gửi dữ liệu cá nhân về server bên ngoài
+    ✓ API keys được lưu cục bộ trên máy người dùng
+    ✓ Không theo dõi hoạt động người dùng
+    ✓ Không quảng cáo, không phần mềm đính kèm
+    ✓ Mã nguồn trong sạch, có thể kiểm tra
+
+⚠️ LƯU Ý: Phần mềm sử dụng API của Google Gemini và OpenAI. Khi bạn sử dụng 
+các AI này, dữ liệu của bạn được xử lý theo chính sách của họ.
+
+================================================================================
+                        3. YÊU CẦU HỆ THỐNG VÀ TƯƠNG THÍCH
+================================================================================
+
+📌 HỆ ĐIỀU HÀNH:
+    • Windows 10/11 (64-bit) - Khuyến nghị
+    • Python 3.8 trở lên (Python 3.11-3.13 được test kỹ)
+
+📌 PHẦN MỀM BÊN NGOÀI:
+    • VLC Media Player (cho tính năng phát nhạc)
+    • Chrome/Edge Browser (cho tính năng điều khiển web)
+    • Internet Explorer (cho một số API hệ thống Windows)
+
+📌 KẾT NỐI INTERNET:
+    • Cần kết nối Internet để sử dụng AI (Google Gemini/OpenAI)
+    • Một số tính năng offline vẫn hoạt động bình thường
+
+================================================================================
+                            4. QUYỀN SỞ HỮU TRÍ TUỆ
+================================================================================
+
+🔒 BẢN QUYỀN VÀ SỞ HỮU
+
+    • Phần mềm này là tài sản của nhà phát triển
+    • KHÔNG cho phép tái phân phối mã nguồn
+    • KHÔNG cho phép sửa đổi và phát hành lại
+    • CHỈ sử dụng cho mục đích cá nhân hoặc doanh nghiệp đã mua
+
+📵 NGHIÊM CẤM:
+    ✗ Sao chép, phân phối mã nguồn
+    ✗ Đảo ngược kỹ thuật (reverse engineering)
+    ✗ Tách rời các thành phần để tái sử dụng
+    ✗ Bán lại hoặc cho thuê phần mềm
+
+================================================================================
+                        5. ĐIỀU KHOẢN SỬ DỤNG HỢP LỆ
+================================================================================
+
+✅ ĐƯỢC PHÉP:
+    ✓ Sử dụng cho mục đích cá nhân
+    ✓ Sử dụng trong môi trường doanh nghiệp (nếu đã mua license)
+    ✓ Tùy chỉnh file cấu hình (endpoints, playlists)
+    ✓ Thêm nhạc, dữ liệu vào thư viện cá nhân
+
+✗ KHÔNG ĐƯỢC PHÉP:
+    ✗ Sử dụng cho mục đích bất hợp pháp
+    ✗ Tấn công, phá hoại hệ thống khác
+    ✗ Vi phạm quyền riêng tư người khác
+    ✗ Sao chép và bán lại cho bên thứ ba
+
+================================================================================
+                    6. THÔNG TIN API VÀ DỊCH VỤ BÊN NGOÀI
+================================================================================
+
+⚠️ TRÁCH NHIỆM VỀ API KEYS
+
+Phần mềm SỬ DỤNG API của bên thứ ba:
+    • Google Gemini API (AI miễn phí/trả phí)
+    • OpenAI API (AI trả phí)
+
+NGƯỜI DÙNG CHỊU TRÁCH NHIỆM:
+    ✓ Đăng ký và quản lý API keys của riêng bạn
+    ✓ Chi phí phát sinh từ việc sử dụng API (nếu có)
+    ✓ Tuân thủ chính sách sử dụng của Google/OpenAI
+    ✓ Bảo mật API keys, không chia sẻ cho người khác
+
+⚠️ NHÀ PHÁT TRIỂN:
+    ✗ KHÔNG cung cấp API keys miễn phí
+    ✗ KHÔNG chịu chi phí API cho người dùng
+    ✗ KHÔNG chịu trách nhiệm về hành vi vi phạm chính sách API
+
+================================================================================
+                        7. HỖ TRỢ VÀ CÂP NHẬT
+================================================================================
+
+📧 HỖ TRỢ KỸ THUẬT:
+    • Chỉ hỗ trợ cho khách hàng đã mua phần mềm
+    • Hỗ trợ qua email, không hỗ trợ qua điện thoại
+    • Thời gian hỗ trợ: 9h-18h, Thứ 2-6 (trừ ngày lễ)
+    • KHÔNG đảm bảo thời gian phản hồi cụ thể
+
+🔄 CẬP NHẬT PHẦN MỀM:
+    • Cập nhật miễn phí trong vòng 6 tháng từ ngày mua
+    • Sau 6 tháng: phí gia hạn 30% giá gốc
+    • Không bắt buộc cập nhật, phiên bản cũ vẫn dùng được
+
+================================================================================
+                        8. CHẤM DỨT SỬ DỤNG
+================================================================================
+
+Quyền sử dụng phần mềm có thể bị chấm dứt nếu:
+    ✗ Vi phạm các điều khoản trong Disclaimer này
+    ✗ Sử dụng cho mục đích bất hợp pháp
+    ✗ Sao chép, phân phối trái phép
+    ✗ Tấn công, phá hoại hệ thống của người khác
+
+Khi chấm dứt, bạn phải:
+    ✓ Ngừng sử dụng phần mềm ngay lập tức
+    ✓ Xóa toàn bộ phần mềm khỏi máy tính
+    ✓ Không giữ bất kỳ bản sao nào
+
+================================================================================
+                        9. THAY ĐỔI ĐIỀU KHOẢN
+================================================================================
+
+⚠️ Nhà phát triển có quyền:
+    • Thay đổi Disclaimer này bất kỳ lúc nào
+    • Không cần thông báo trước cho người dùng
+    • Phiên bản mới sẽ có hiệu lực ngay khi phát hành
+
+📌 KHUYẾN NGHỊ: Kiểm tra Disclaimer mới nhất khi cập nhật phần mềm
+
+================================================================================
+                        10. THÔNG TIN LIÊN HỆ
+================================================================================
+
+📧 Email hỗ trợ: (Sẽ được cung cấp cho khách hàng đã mua)
+🌐 Website: (Không công khai)
+📦 Phiên bản: miniZ MCP v4.3.0 PORTABLE
+📅 Ngày: 25/11/2025
+
+================================================================================
+                        XÁC NHẬN VÀ ĐỒNG Ý
+================================================================================
+
+Bằng việc sử dụng phần mềm miniZ MCP, bạn XÁC NHẬN rằng:
+
+    ☑ Đã đọc và hiểu toàn bộ Disclaimer này
+    ☑ Đồng ý với các điều khoản miễn trừ trách nhiệm
+    ☑ Chấp nhận rủi ro khi sử dụng phần mềm
+    ☑ Tự chịu trách nhiệm backup dữ liệu quan trọng
+    ☑ Hiểu rằng không có bảo hành nào được cung cấp
+    ☑ Đồng ý không sao chép, phân phối mã nguồn
+    ☑ Tự chịu chi phí API keys của Google/OpenAI
+
+⚠️ NẾU KHÔNG ĐỒNG Ý, VUI LÒNG KHÔNG CÀI ĐẶT VÀ XÓA PHẦN MỀM NGAY ⚠️
+
+================================================================================
+                        © 2025 miniZ MCP. All Rights Reserved.
+================================================================================
