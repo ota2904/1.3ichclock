@@ -2,6 +2,43 @@
 
 All notable changes to Xiaozhi MCP Control Panel will be documented in this file.
 
+## [4.3.1] - 2025-12-14 (Gemini 2.5 + Knowledge Base Integration)
+
+### 🚀 Updated
+- **Gemini 2.5 Model Upgrade**
+  - Default model: `models/gemini-2.5-flash` (Flash 2.5 - mới nhất, nhanh nhất)
+  - New option: `models/gemini-2.5-pro` (Pro 2.5 - chất lượng cao nhất)
+  - Sửa tên model đúng theo API (không có -latest)
+  - Tất cả các hàm sử dụng Gemini đã được nâng cấp lên 2.5
+  - UI dropdown đã cập nhật với các model mới
+  - Cải thiện tốc độ và chất lượng câu trả lời
+
+### ✨ New Features
+- **🤖📚 Gemini AI + Knowledge Base Integration**
+  - Gemini AI tự động tìm kiếm trong Knowledge Base khi được hỏi
+  - Không cần người dùng bật/tắt thủ công - luôn tự động
+  - Trả lời dựa trên dữ liệu có sẵn trong KB
+  - Trích dẫn nguồn cụ thể từ documents
+  - UI mới: "Hỏi Gemini AI + KB" với icon 🤖📚
+  - API endpoint `/api/tool/ask_gemini` tích hợp KB tự động
+  - Response có flag `knowledge_base_used` để biết KB có được dùng
+  - Tối ưu: Load toàn bộ KB (up to 50K chars) cho context đầy đủ
+  - Test suite: `TEST_GEMINI_KB.bat` để verify tính năng
+
+- **📺 YouTube Direct Video**
+  - `open_youtube()` giờ TỰ ĐỘNG mở video trực tiếp khi query cụ thể
+  - Auto-detect logic: Query >= 3 từ → Mở direct video
+  - Query ngắn (< 3 từ) → Mở trang tìm kiếm
+  - Sử dụng `youtube-search-python` để tìm video chính xác
+  - Ví dụ: "Sơn Tùng Chúng Ta Của Hiện Tại" → Mở video ngay, không phải search page
+  - Test suite: `TEST_YOUTUBE_DIRECT.bat`
+
+### 🔧 Fixed
+- **YouTube Video Opening**
+  - Fixed: `open_youtube()` chỉ mở search page
+  - Now: Tự động detect và mở direct video URL khi query cụ thể
+  - Fallback gracefully to search page nếu không tìm thấy video
+
 ## [4.3.0] - 2025-11-06 (Dual AI Edition)
 
 ### 🎉 Dual AI Integration - Gemini + GPT-4
@@ -9,7 +46,7 @@ All notable changes to Xiaozhi MCP Control Panel will be documented in this file
 #### Added
 - **Google Gemini AI Integration** (MIỄN PHÍ)
   - New tool: `ask_gemini()` - Hỏi đáp với Gemini AI
-  - Models: models/gemini-2.5-pro (default), gemini-2.5-flash
+  - Models: models/gemini-2.5-flash (default), gemini-2.5-pro, gemini-2.0-flash-exp
   - API key configuration trong `xiaozhi_endpoints.json`
   - Auto-save API key trên Web UI
   - 1500 requests/day miễn phí

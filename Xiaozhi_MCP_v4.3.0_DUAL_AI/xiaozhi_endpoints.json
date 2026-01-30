@@ -12,13 +12,44 @@
     },
     {
       "name": "Thiết bị 3",
-      "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ1MzYxMSwiYWdlbnRJZCI6OTQ0MjE4LCJlbmRwb2ludElkIjoiYWdlbnRfOTQ0MjE4IiwicHVycG9zZSI6Im1jcC1lbmRwb2ludCIsImlhdCI6MTc2NTA2MDIxMCwiZXhwIjoxNzk2NjE3ODEwfQ.UXCld_3yCaPBSCcwEGR7cUZbFJZ_Erp1ZlE_R1q_P2KSRlu0k2Jd9xK1nV40ZZE2Xk_b3B7DVv6Pkb2P2nqLmQ",
-      "enabled": true
+      "token": "",
+      "enabled": false
     }
   ],
-  "active_index": 2,
-  "gemini_api_key": "AIzaSyBOkWaA_mN1t7avaLCOfj4VjEQDIaRWC_0",
+  "active_index": 0,
+  "gemini_api_key": "",
   "openai_api_key": "",
-  "serper_api_key": "cea12165b15bf8f31a12e0d3fa8f9de9ca44370a",
-  "last_updated": "2025-12-07T07:30:26.556867"
+  "serper_api_key": "",
+  "connection_stats": {
+    "0": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    },
+    "1": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    },
+    "2": {
+      "total_connects": 0,
+      "total_disconnects": 0,
+      "total_errors": 0,
+      "last_connected": null,
+      "last_disconnected": null,
+      "last_error": null,
+      "uptime_seconds": 0
+    }
+  },
+  "auto_connect_on_start": true,
+  "remember_last_endpoint": true,
+  "last_saved": "2026-01-28T16:15:12.397813"
 }

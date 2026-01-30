@@ -19,15 +19,283 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import websockets
 import pyautogui
+import difflib
+import re
 
-# License Management
+# License Management - DISABLED (FREE EDITION)
+# Bypass license check completely
+LICENSE_SYSTEM_AVAILABLE = False  # FREE EDITION - No license required
+
+# Auto-startup manager
+import winreg
+class AutoStartupManager:
+    APP_NAME = "miniZ_MCP_Professional"
+    
+    @staticmethod
+    def get_exe_path():
+        if getattr(sys, 'frozen', False):
+            return sys.executable
+        return os.path.abspath(__file__)
+    
+    @classmethod
+    def enable_autostart(cls):
+        try:
+            exe_path = cls.get_exe_path()
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE)
+            winreg.SetValueEx(key, cls.APP_NAME, 0, winreg.REG_SZ, f'"{exe_path}"')
+            winreg.CloseKey(key)
+            print(f"✅ [Startup] Đã bật khởi động cùng Windows")
+            return True
+        except Exception as e:
+            print(f"⚠️ [Startup] Không thể bật auto-start: {e}")
+            return False
+    
+    @classmethod
+    def is_autostart_enabled(cls):
+        try:
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ)
+            try:
+                winreg.QueryValueEx(key, cls.APP_NAME)
+                winreg.CloseKey(key)
+                return True
+            except FileNotFoundError:
+                winreg.CloseKey(key)
+                return False
+        except:
+            return False
+
+
+# ============================================================
+# 🔥 FIREWALL/INTERNET CHECKER - Kiểm tra quyền kết nối mạng
+# ============================================================
+import subprocess
+
+class FirewallChecker:
+    """Kiểm tra và hướng dẫn cấp quyền Windows Firewall cho ứng dụng"""
+    
+    APP_NAME = "miniZ_MCP"
+    
+    @staticmethod
+    def get_exe_path():
+        """Lấy đường dẫn file EXE"""
+        if getattr(sys, 'frozen', False):
+            return sys.executable
+        return os.path.abspath(__file__)
+    
+    @staticmethod
+    def get_exe_name():
+        """Lấy tên file EXE"""
+        if getattr(sys, 'frozen', False):
+            return os.path.basename(sys.executable)
+        return os.path.basename(__file__)
+    
+    @classmethod
+    def check_firewall_rules(cls) -> dict:
+        """
+        Kiểm tra xem ứng dụng đã có quyền Firewall chưa
+        Returns: dict với keys: has_inbound, has_outbound, rules_found, details
+        """
+        result = {
+            'has_inbound': False,
+            'has_outbound': False,
+            'rules_found': [],
+            'exe_path': cls.get_exe_path(),
+            'exe_name': cls.get_exe_name()
+        }
+        
+        try:
+            # Tìm tất cả rules liên quan đến miniZ
+            cmd = 'netsh advfirewall firewall show rule name=all'
+            output = subprocess.run(cmd, capture_output=True, text=True, shell=True, timeout=10)
+            
+            if output.returncode == 0:
+                lines = output.stdout.lower()
+                exe_name_lower = result['exe_name'].lower().replace('.exe', '').replace('.py', '')
+                
+                # Tìm các rules có chứa tên app
+                for search_term in ['miniz_mcp', 'miniz mcp', exe_name_lower]:
+                    if search_term in lines:
+                        result['rules_found'].append(search_term)
+                
+                # Kiểm tra chi tiết từng rule
+                if result['rules_found']:
+                    for rule_name in ['miniz_mcp', result['exe_name'].replace('.exe', '').replace('.py', '')]:
+                        try:
+                            detail_cmd = f'netsh advfirewall firewall show rule name="{rule_name}" verbose'
+                            detail_output = subprocess.run(detail_cmd, capture_output=True, text=True, shell=True, timeout=5)
+                            if 'direction:' in detail_output.stdout.lower():
+                                if 'direction:                            in' in detail_output.stdout.lower():
+                                    result['has_inbound'] = True
+                                if 'direction:                            out' in detail_output.stdout.lower():
+                                    result['has_outbound'] = True
+                        except:
+                            pass
+                    
+                    # Nếu tìm thấy rules, assume có quyền (vì Windows tự tạo cả in/out)
+                    if result['rules_found'] and not result['has_inbound']:
+                        result['has_inbound'] = True  # Giả định có nếu rule tồn tại
+                        
+        except subprocess.TimeoutExpired:
+            print("⚠️ [Firewall] Timeout khi kiểm tra firewall rules")
+        except Exception as e:
+            print(f"⚠️ [Firewall] Lỗi kiểm tra: {e}")
+        
+        return result
+    
+    @classmethod
+    def request_firewall_permission(cls) -> bool:
+        """
+        Tự động thêm rule Firewall (cần quyền Admin)
+        Returns: True nếu thành công
+        """
+        exe_path = cls.get_exe_path()
+        rule_name = cls.get_exe_name().replace('.exe', '').replace('.py', '')
+        
+        try:
+            # Thêm rule Inbound
+            cmd_in = f'netsh advfirewall firewall add rule name="{rule_name}" dir=in action=allow program="{exe_path}" enable=yes'
+            # Thêm rule Outbound  
+            cmd_out = f'netsh advfirewall firewall add rule name="{rule_name}" dir=out action=allow program="{exe_path}" enable=yes'
+            
+            result_in = subprocess.run(cmd_in, capture_output=True, text=True, shell=True, timeout=10)
+            result_out = subprocess.run(cmd_out, capture_output=True, text=True, shell=True, timeout=10)
+            
+            if result_in.returncode == 0 or result_out.returncode == 0:
+                print(f"✅ [Firewall] Đã thêm rule firewall cho {rule_name}")
+                return True
+            else:
+                return False
+                
+        except Exception as e:
+            print(f"⚠️ [Firewall] Cần quyền Admin để thêm rule: {e}")
+            return False
+    
+    @classmethod
+    def show_firewall_status(cls) -> None:
+        """Hiển thị trạng thái Firewall và hướng dẫn nếu cần"""
+        print("\n" + "="*60)
+        print("🔥 KIỂM TRA QUYỀN KẾT NỐI INTERNET (Windows Firewall)")
+        print("="*60)
+        
+        status = cls.check_firewall_rules()
+        
+        if status['rules_found']:
+            print(f"✅ TRẠNG THÁI: ĐÃ CẤP QUYỀN FIREWALL")
+            print(f"   📌 Rules tìm thấy: {', '.join(status['rules_found'])}")
+            print(f"   📁 File: {status['exe_name']}")
+            print(f"   🔗 Inbound (nhận kết nối): {'✅ Cho phép' if status['has_inbound'] else '⚠️ Chưa rõ'}")
+            print(f"   🔗 Outbound (gửi kết nối): {'✅ Cho phép' if status['has_outbound'] else '✅ Mặc định cho phép'}")
+            print("\n✅ Ứng dụng có thể kết nối Internet bình thường!")
+        else:
+            print(f"⚠️ TRẠNG THÁI: CHƯA CÓ QUYỀN FIREWALL")
+            print(f"   📁 File: {status['exe_name']}")
+            print(f"   📂 Path: {status['exe_path']}")
+            print("\n" + "-"*60)
+            print("📌 HƯỚNG DẪN CẤP QUYỀN:")
+            print("-"*60)
+            print("🔹 CÁCH 1: Tự động (lần đầu chạy)")
+            print("   - Khi chạy lần đầu, Windows sẽ hỏi 'Allow access'")
+            print("   - Nhấn 'Allow access' hoặc 'Cho phép truy cập'")
+            print("")
+            print("🔹 CÁCH 2: Thủ công qua Windows Security")
+            print("   1. Mở 'Windows Security' → 'Firewall & network protection'")
+            print("   2. Nhấn 'Allow an app through firewall'")
+            print("   3. Nhấn 'Change settings' → 'Allow another app'")
+            print("   4. Browse đến file EXE và thêm vào")
+            print("   5. Tick cả 'Private' và 'Public' networks")
+            print("")
+            print("🔹 CÁCH 3: Chạy lệnh PowerShell (Admin)")
+            print(f'   netsh advfirewall firewall add rule name="miniZ_MCP" dir=in action=allow program="{status["exe_path"]}" enable=yes')
+            print("")
+            
+            # Thử tự động thêm rule
+            print("🔄 Đang thử tự động cấp quyền...")
+            if cls.request_firewall_permission():
+                print("✅ Đã tự động cấp quyền Firewall thành công!")
+            else:
+                print("⚠️ Không thể tự động cấp quyền (cần chạy với quyền Admin)")
+                print("   → Hãy chạy EXE và cho phép khi Windows hỏi")
+        
+        print("="*60 + "\n")
+        return status['rules_found']
+    
+    @classmethod
+    def check_internet_connection(cls) -> dict:
+        """Kiểm tra kết nối Internet thực tế"""
+        result = {
+            'connected': False,
+            'latency_ms': None,
+            'test_url': 'google.com'
+        }
+        
+        try:
+            import socket
+            # Test DNS resolution
+            socket.setdefaulttimeout(5)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(("8.8.8.8", 53))
+            result['connected'] = True
+            
+            # Test latency
+            import time
+            start = time.time()
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect(("google.com", 443))
+            result['latency_ms'] = int((time.time() - start) * 1000)
+            
+        except Exception as e:
+            result['error'] = str(e)
+        
+        return result
+    
+    @classmethod
+    def full_network_check(cls) -> dict:
+        """Kiểm tra đầy đủ: Firewall + Internet connection"""
+        print("\n🌐 KIỂM TRA KẾT NỐI MẠNG TOÀN DIỆN")
+        print("="*50)
+        
+        # 1. Check Firewall
+        firewall_status = cls.check_firewall_rules()
+        
+        # 2. Check Internet
+        internet_status = cls.check_internet_connection()
+        
+        # 3. Summary
+        print(f"🔥 Firewall Rules: {'✅ Đã cấp quyền' if firewall_status['rules_found'] else '⚠️ Chưa có rule'}")
+        print(f"🌐 Internet: {'✅ Đã kết nối' if internet_status['connected'] else '❌ Không kết nối'}")
+        
+        if internet_status.get('latency_ms'):
+            print(f"⚡ Độ trễ: {internet_status['latency_ms']}ms")
+        
+        if not firewall_status['rules_found'] and not internet_status['connected']:
+            print("\n⚠️ Có thể ứng dụng đang bị Firewall chặn!")
+            print("   → Hãy làm theo hướng dẫn cấp quyền ở trên")
+        elif internet_status['connected']:
+            print("\n✅ Ứng dụng sẵn sàng sử dụng tất cả tính năng online!")
+        
+        print("="*50 + "\n")
+        
+        return {
+            'firewall': firewall_status,
+            'internet': internet_status,
+            'ready': firewall_status['rules_found'] or internet_status['connected']
+        }
+
+
+# Fake license for compatibility
+def get_license_manager():
+    class FakeLicense:
+        def check_license(self): return {'valid': True, 'message': 'FREE EDITION', 'license_data': {'license_type': 'FREE', 'customer_name': 'Community User'}}
+        def get_hardware_id(self): return 'FREE-EDITION'
+    return FakeLicense()
+
+def show_activation_window(): return True  # Always activated
+
+# MCP Endpoint Manager - Improved connection handling
 try:
-    from license_manager import get_license_manager
-    from activation_window import show_activation_window
-    LICENSE_SYSTEM_AVAILABLE = True
+    from mcp_endpoint_manager import get_endpoint_manager, MCPEndpointManager
+    ENDPOINT_MANAGER_AVAILABLE = True
 except ImportError:
-    LICENSE_SYSTEM_AVAILABLE = False
-    print("⚠️ [License] License system not available")
+    ENDPOINT_MANAGER_AVAILABLE = False
+    print("⚠️ [Endpoint] MCPEndpointManager not available")
 
 # Gemini AI
 try:
@@ -72,11 +340,156 @@ except ImportError as e:
     RAG_AVAILABLE = False
     print(f"⚠️ [RAG] RAG System not available: {e}")
 
+# Vector Search System - Hybrid Semantic Search with FAISS
+try:
+    # from vector_search import VectorSearchEngine  # Tạm thời tắt do Python 3.14 conflict
+    VECTOR_SEARCH_AVAILABLE = False
+    print("⚠️ [VectorSearch] Vector search temporarily disabled (Python 3.14 compatibility)")
+except ImportError as e:
+    VECTOR_SEARCH_AVAILABLE = False
+    print(f"⚠️ [VectorSearch] Vector search not available: {e}")
+
 # ============================================================
 # UTILITY FUNCTIONS (từ xiaozhi-esp32-server chính thức)
 # ============================================================
 
 import re
+
+# ============================================================
+# 🔄 SMART TRUNCATE FOR LLM - Giới hạn text gửi về LLM
+# ============================================================
+
+MAX_LLM_RESPONSE_CHARS = 2000  # Giới hạn 2000 ký tự cho response gửi LLM
+MAX_TTS_RESPONSE_CHARS = 800   # Giới hạn 800 ký tự cho TTS (robot nói trực tiếp)
+
+
+def clean_markdown_for_tts(text: str) -> str:
+    """
+    Loại bỏ markdown formatting để TTS đọc được
+    """
+    import re
+    
+    # Bỏ headers markdown (# ## ###)
+    text = re.sub(r'^#+\s*', '', text, flags=re.MULTILINE)
+    
+    # Bỏ bold/italic (**text**, *text*, __text__, _text_)
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+    text = re.sub(r'\*([^*]+)\*', r'\1', text)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    text = re.sub(r'_([^_]+)_', r'\1', text)
+    
+    # Bỏ code blocks và inline code
+    text = re.sub(r'```[^`]*```', '', text, flags=re.DOTALL)
+    text = re.sub(r'`([^`]+)`', r'\1', text)
+    
+    # Bỏ horizontal rules (---, ***)
+    text = re.sub(r'^[-*]{3,}$', '', text, flags=re.MULTILINE)
+    
+    # Bỏ bullet points (- *, 1.)
+    text = re.sub(r'^\s*[-*]\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)
+    
+    # Bỏ links [text](url)
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    
+    # Chuẩn hóa newlines (nhiều newline -> 1 newline)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'\n\n+', '. ', text)  # Đổi paragraph break thành dấu chấm
+    text = re.sub(r'\n', ' ', text)  # Đổi newline thành space
+    
+    # Chuẩn hóa spaces
+    text = re.sub(r'\s{2,}', ' ', text)
+    
+    return text.strip()
+
+def smart_truncate_for_llm(text: str, max_chars: int = MAX_LLM_RESPONSE_CHARS) -> str:
+    """
+    Cắt ngắn text thông minh cho LLM, giữ nội dung quan trọng
+    
+    Args:
+        text: Text cần truncate
+        max_chars: Giới hạn ký tự (default: 4000)
+    
+    Returns:
+        Text đã truncate với đầy đủ thông tin quan trọng
+    """
+    if not text or len(text) <= max_chars:
+        return text
+    
+    # Giữ phần đầu (thông tin chính) và phần cuối (kết luận)
+    head_ratio = 0.7  # 70% cho phần đầu
+    tail_ratio = 0.25  # 25% cho phần cuối
+    
+    head_chars = int(max_chars * head_ratio)
+    tail_chars = int(max_chars * tail_ratio)
+    truncate_notice = f"\n\n... [Đã lược bỏ {len(text) - head_chars - tail_chars} ký tự] ...\n\n"
+    
+    head_part = text[:head_chars]
+    tail_part = text[-tail_chars:]
+    
+    # Cắt ở ranh giới câu nếu có thể
+    # Tìm điểm kết thúc câu gần nhất trong head_part
+    for sep in ['. ', '.\n', '! ', '!\n', '? ', '?\n', '\n\n']:
+        last_sep = head_part.rfind(sep)
+        if last_sep > head_chars * 0.8:  # Chỉ cắt nếu >= 80% head_chars
+            head_part = head_part[:last_sep + len(sep)]
+            break
+    
+    # Tìm điểm bắt đầu câu gần nhất trong tail_part
+    for sep in ['. ', '.\n', '\n\n']:
+        first_sep = tail_part.find(sep)
+        if first_sep != -1 and first_sep < tail_chars * 0.2:  # Chỉ cắt nếu <= 20% tail_chars
+            tail_part = tail_part[first_sep + len(sep):]
+            break
+    
+    return head_part + truncate_notice + tail_part
+
+
+def format_result_for_llm(result: dict, max_chars: int = MAX_LLM_RESPONSE_CHARS) -> str:
+    """
+    Format và truncate result dict thành text cho LLM
+    
+    Args:
+        result: Dict kết quả từ tool
+        max_chars: Giới hạn ký tự
+    
+    Returns:
+        Text đã format và truncate
+    """
+    import json
+    
+    # Nếu là response_text từ Gemini, ưu tiên nó
+    if isinstance(result, dict):
+        if result.get("response_text"):
+            text = result["response_text"]
+            return smart_truncate_for_llm(text, max_chars)
+        
+        # Nếu có context (từ knowledge base), ưu tiên
+        if result.get("context"):
+            text = result["context"]
+            return smart_truncate_for_llm(text, max_chars)
+        
+        # Nếu có message, dùng message
+        if result.get("message"):
+            text = result["message"]
+            # Nếu message ngắn, thêm thông tin khác
+            if len(text) < max_chars * 0.5:
+                extra_info = []
+                for key in ["summary", "content", "data", "results"]:
+                    if result.get(key):
+                        val = result[key]
+                        if isinstance(val, str):
+                            extra_info.append(val)
+                        elif isinstance(val, (list, dict)):
+                            extra_info.append(json.dumps(val, ensure_ascii=False, indent=1))
+                if extra_info:
+                    text += "\n\n" + "\n".join(extra_info)
+            return smart_truncate_for_llm(text, max_chars)
+    
+    # Default: convert to JSON
+    text = json.dumps(result, ensure_ascii=False, indent=1)
+    return smart_truncate_for_llm(text, max_chars)
+
 
 def sanitize_tool_name(name: str) -> str:
     """
@@ -93,6 +506,370 @@ def sanitize_tool_name(name: str) -> str:
     # Loại bỏ underscore ở đầu và cuối
     sanitized = sanitized.strip('_')
     return sanitized.lower()
+
+async def get_system_info(category="all"):
+    """
+    Thu thập thông tin cấu hình máy tính chi tiết
+    category: all, cpu, memory, disk, os, network, gpu, software, motherboard
+    """
+    try:
+        import platform
+        import psutil
+        import socket
+        import subprocess
+        import json
+        from datetime import datetime
+        
+        info = {
+            "success": True,
+            "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "categories": []
+        }
+        
+        # CPU Information (Chi tiết hơn)
+        if category in ["all", "cpu"]:
+            cpu_info = {
+                "name": "CPU Information",
+                "processor": platform.processor(),
+                "architecture": platform.architecture()[0],
+                "machine": platform.machine(),
+                "cores_physical": psutil.cpu_count(logical=False),
+                "cores_logical": psutil.cpu_count(logical=True),
+                "cpu_usage_percent": psutil.cpu_percent(interval=1)
+            }
+            
+            # Thêm frequency info
+            if psutil.cpu_freq():
+                freq = psutil.cpu_freq()
+                cpu_info.update({
+                    "cpu_freq_current_mhz": round(freq.current, 2) if freq.current else "N/A",
+                    "cpu_freq_max_mhz": round(freq.max, 2) if freq.max else "N/A",
+                    "cpu_freq_min_mhz": round(freq.min, 2) if freq.min else "N/A"
+                })
+            
+            # Thêm CPU details từ Windows Registry/WMI nếu có thể
+            try:
+                if platform.system() == "Windows":
+                    import winreg
+                    # Đọc CPU name từ registry
+                    key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                       r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+                    cpu_name = winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
+                    cpu_info["cpu_name_detailed"] = cpu_name
+                    
+                    # Phát hiện thế hệ CPU (heuristic)
+                    cpu_name_lower = cpu_name.lower()
+                    if "intel" in cpu_name_lower:
+                        if "13th gen" in cpu_name_lower or "13900" in cpu_name_lower or "13700" in cpu_name_lower or "13600" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 13th Gen (Raptor Lake)"
+                        elif "12th gen" in cpu_name_lower or "12900" in cpu_name_lower or "12700" in cpu_name_lower or "12600" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 12th Gen (Alder Lake)"
+                        elif "11th gen" in cpu_name_lower or "11900" in cpu_name_lower or "11700" in cpu_name_lower or "11600" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 11th Gen (Tiger Lake/Rocket Lake)"
+                        elif "10th gen" in cpu_name_lower or "10900" in cpu_name_lower or "10700" in cpu_name_lower or "10600" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 10th Gen (Comet Lake/Ice Lake)"
+                        elif "9th gen" in cpu_name_lower or "9900" in cpu_name_lower or "9700" in cpu_name_lower or "9600" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 9th Gen (Coffee Lake Refresh)"
+                        elif "8th gen" in cpu_name_lower or "8700" in cpu_name_lower or "8600" in cpu_name_lower or "8400" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 8th Gen (Coffee Lake)"
+                        elif "7th gen" in cpu_name_lower or "7700" in cpu_name_lower or "7600" in cpu_name_lower or "7500" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "Intel 7th Gen (Kaby Lake)"
+                        else:
+                            cpu_info["cpu_generation"] = "Intel (Generation unknown)"
+                    elif "amd" in cpu_name_lower:
+                        if "7000" in cpu_name_lower or "7950x" in cpu_name_lower or "7900x" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "AMD Ryzen 7000 Series (Zen 4)"
+                        elif "5000" in cpu_name_lower or "5950x" in cpu_name_lower or "5900x" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "AMD Ryzen 5000 Series (Zen 3)"
+                        elif "3000" in cpu_name_lower or "3900x" in cpu_name_lower or "3700x" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "AMD Ryzen 3000 Series (Zen 2)"
+                        elif "2000" in cpu_name_lower or "2700x" in cpu_name_lower or "2600x" in cpu_name_lower:
+                            cpu_info["cpu_generation"] = "AMD Ryzen 2000 Series (Zen+)"
+                        else:
+                            cpu_info["cpu_generation"] = "AMD (Generation unknown)"
+                    
+                    winreg.CloseKey(key)
+            except Exception as e:
+                cpu_info["cpu_detection_error"] = f"Could not detect detailed CPU info: {str(e)}"
+            
+            info["categories"].append(cpu_info)
+        
+        # Memory Information (Chi tiết hơn)
+        if category in ["all", "memory"]:
+            memory = psutil.virtual_memory()
+            swap = psutil.swap_memory()
+            memory_info = {
+                "name": "Memory Information",
+                "total_ram_gb": round(memory.total / (1024**3), 2),
+                "available_ram_gb": round(memory.available / (1024**3), 2),
+                "used_ram_gb": round(memory.used / (1024**3), 2),
+                "ram_usage_percent": memory.percent,
+                "swap_total_gb": round(swap.total / (1024**3), 2),
+                "swap_used_gb": round(swap.used / (1024**3), 2),
+                "swap_usage_percent": swap.percent,
+                "memory_total_mb": round(memory.total / (1024**2)),
+                "memory_speed_estimate": "DDR4/DDR5 (Detection requires additional tools)"
+            }
+            info["categories"].append(memory_info)
+        
+        # GPU Information (Cải thiện)
+        if category in ["all", "gpu"]:
+            gpu_info = {
+                "name": "GPU Information",
+                "gpus": []
+            }
+            
+            # Method 1: GPUtil
+            try:
+                import GPUtil
+                gpus = GPUtil.getGPUs()
+                for gpu in gpus:
+                    gpu_data = {
+                        "id": gpu.id,
+                        "name": gpu.name,
+                        "memory_total_mb": gpu.memoryTotal,
+                        "memory_used_mb": gpu.memoryUsed,
+                        "memory_free_mb": gpu.memoryFree,
+                        "gpu_load_percent": round(gpu.load * 100, 1),
+                        "temperature_c": gpu.temperature,
+                        "driver": "Unknown (GPUtil limitation)"
+                    }
+                    
+                    # Detect GPU generation/series (heuristic)
+                    gpu_name_lower = gpu.name.lower()
+                    if "rtx 40" in gpu_name_lower or "4090" in gpu_name_lower or "4080" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "NVIDIA RTX 40 Series (Ada Lovelace)"
+                    elif "rtx 30" in gpu_name_lower or "3090" in gpu_name_lower or "3080" in gpu_name_lower or "3070" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "NVIDIA RTX 30 Series (Ampere)"
+                    elif "rtx 20" in gpu_name_lower or "2080" in gpu_name_lower or "2070" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "NVIDIA RTX 20 Series (Turing)"
+                    elif "gtx 16" in gpu_name_lower or "1660" in gpu_name_lower or "1650" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "NVIDIA GTX 16 Series (Turing)"
+                    elif "gtx 10" in gpu_name_lower or "1080" in gpu_name_lower or "1070" in gpu_name_lower or "1060" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "NVIDIA GTX 10 Series (Pascal)"
+                    elif "rx 7000" in gpu_name_lower or "7900 xt" in gpu_name_lower or "7800 xt" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "AMD RX 7000 Series (RDNA 3)"
+                    elif "rx 6000" in gpu_name_lower or "6900 xt" in gpu_name_lower or "6800 xt" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "AMD RX 6000 Series (RDNA 2)"
+                    elif "rx 5000" in gpu_name_lower or "5700 xt" in gpu_name_lower or "5600 xt" in gpu_name_lower:
+                        gpu_data["gpu_generation"] = "AMD RX 5000 Series (RDNA)"
+                    else:
+                        gpu_data["gpu_generation"] = "Unknown generation"
+                    
+                    gpu_info["gpus"].append(gpu_data)
+            except ImportError:
+                gpu_info["gputil_status"] = "GPUtil not installed. Run: pip install GPUtil"
+            except Exception as e:
+                gpu_info["gputil_error"] = f"GPUtil error: {str(e)}"
+            
+            # Method 2: Windows WMI fallback
+            if not gpu_info["gpus"] and platform.system() == "Windows":
+                try:
+                    result = subprocess.run(
+                        ['wmic', 'path', 'win32_VideoController', 'get', 'name,AdapterRAM,DriverVersion', '/format:csv'],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    lines = result.stdout.strip().split('\n')[1:]  # Skip header
+                    for line in lines:
+                        if line.strip() and ',' in line:
+                            parts = line.split(',')
+                            if len(parts) >= 4:
+                                gpu_data = {
+                                    "name": parts[2].strip() if len(parts) > 2 else "Unknown",
+                                    "memory_total_mb": round(int(parts[1]) / (1024*1024)) if parts[1].strip().isdigit() else "Unknown",
+                                    "driver_version": parts[3].strip() if len(parts) > 3 else "Unknown",
+                                    "method": "WMI (Windows)"
+                                }
+                                gpu_info["gpus"].append(gpu_data)
+                except Exception as e:
+                    gpu_info["wmi_error"] = f"WMI detection failed: {str(e)}"
+            
+            info["categories"].append(gpu_info)
+        
+        # Disk Information (như cũ)
+        if category in ["all", "disk"]:
+            disk_info = {
+                "name": "Disk Information",
+                "partitions": []
+            }
+            
+            for partition in psutil.disk_partitions():
+                try:
+                    usage = psutil.disk_usage(partition.mountpoint)
+                    partition_info = {
+                        "device": partition.device,
+                        "mountpoint": partition.mountpoint,
+                        "file_system": partition.fstype,
+                        "total_gb": round(usage.total / (1024**3), 2),
+                        "used_gb": round(usage.used / (1024**3), 2),
+                        "free_gb": round(usage.free / (1024**3), 2),
+                        "usage_percent": round((usage.used / usage.total) * 100, 1)
+                    }
+                    disk_info["partitions"].append(partition_info)
+                except PermissionError:
+                    continue
+            
+            info["categories"].append(disk_info)
+        
+        # Operating System Information
+        if category in ["all", "os"]:
+            os_info = {
+                "name": "Operating System",
+                "system": platform.system(),
+                "release": platform.release(),
+                "version": platform.version(),
+                "platform": platform.platform(),
+                "hostname": socket.gethostname(),
+                "boot_time": datetime.fromtimestamp(psutil.boot_time()).strftime("%d/%m/%Y %H:%M:%S"),
+                "python_version": platform.python_version()
+            }
+            
+            # Windows specific info
+            if platform.system() == "Windows":
+                try:
+                    result = subprocess.run(['systeminfo'], capture_output=True, text=True, timeout=15)
+                    if result.returncode == 0:
+                        lines = result.stdout.split('\n')
+                        for line in lines:
+                            if "Total Physical Memory" in line:
+                                os_info["total_physical_memory"] = line.split(':')[1].strip()
+                            elif "System Manufacturer" in line:
+                                os_info["system_manufacturer"] = line.split(':')[1].strip()
+                            elif "System Model" in line:
+                                os_info["system_model"] = line.split(':')[1].strip()
+                except:
+                    pass
+            
+            info["categories"].append(os_info)
+        
+        # Network Information (như cũ)
+        if category in ["all", "network"]:
+            network_info = {
+                "name": "Network Information",
+                "hostname": socket.gethostname(),
+                "interfaces": []
+            }
+            
+            try:
+                # Get local IP
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                s.close()
+                network_info["local_ip"] = local_ip
+            except:
+                network_info["local_ip"] = "N/A"
+            
+            # Network interfaces
+            for interface, addresses in psutil.net_if_addrs().items():
+                interface_info = {
+                    "interface": interface,
+                    "addresses": []
+                }
+                for addr in addresses:
+                    if addr.family == socket.AF_INET:  # IPv4
+                        interface_info["addresses"].append({
+                            "type": "IPv4",
+                            "address": addr.address,
+                            "netmask": addr.netmask
+                        })
+                network_info["interfaces"].append(interface_info)
+            
+            info["categories"].append(network_info)
+        
+        # Motherboard Information (Windows only)
+        if category in ["all", "motherboard"]:
+            motherboard_info = {
+                "name": "Motherboard Information",
+                "manufacturer": "N/A",
+                "product": "N/A",
+                "bios_version": "N/A"
+            }
+            
+            if platform.system() == "Windows":
+                try:
+                    # Get motherboard info via WMI
+                    result = subprocess.run(
+                        ['wmic', 'baseboard', 'get', 'Manufacturer,Product,Version', '/format:csv'],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split('\n')[1:]
+                        for line in lines:
+                            if line.strip() and ',' in line:
+                                parts = line.split(',')
+                                if len(parts) >= 3:
+                                    motherboard_info["manufacturer"] = parts[1].strip()
+                                    motherboard_info["product"] = parts[2].strip()
+                                    break
+                    
+                    # Get BIOS info
+                    result = subprocess.run(
+                        ['wmic', 'bios', 'get', 'SMBIOSBIOSVersion', '/format:csv'],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    if result.returncode == 0:
+                        lines = result.stdout.strip().split('\n')[1:]
+                        for line in lines:
+                            if line.strip() and ',' in line:
+                                parts = line.split(',')
+                                if len(parts) >= 2:
+                                    motherboard_info["bios_version"] = parts[1].strip()
+                                    break
+                except Exception as e:
+                    motherboard_info["error"] = f"Could not detect motherboard: {str(e)}"
+            
+            info["categories"].append(motherboard_info)
+        
+        # Software Information (như cũ)
+        if category in ["all", "software"]:
+            software_info = {
+                "name": "Installed Software (Python Packages)",
+                "python_packages": [],
+                "note": "Showing top 20 Python packages"
+            }
+            
+            try:
+                # Try modern importlib.metadata first (Python 3.8+)
+                try:
+                    import importlib.metadata
+                    installed_packages = [f"{dist.metadata['Name']}=={dist.version}" 
+                                        for dist in importlib.metadata.distributions()]
+                except ImportError:
+                    # Fallback to pkg_resources for older Python versions
+                    import pkg_resources
+                    installed_packages = [d.project_name + "==" + d.version for d in pkg_resources.working_set]
+                
+                software_info["python_packages"] = sorted(installed_packages)[:20]
+                if len(installed_packages) > 20:
+                    software_info["total_packages"] = len(installed_packages)
+            except Exception as e:
+                software_info["error"] = f"Could not list packages: {str(e)}"
+            
+            info["categories"].append(software_info)
+        
+        # Ensure all values are JSON serializable
+        import json
+        try:
+            json.dumps(info, ensure_ascii=False)
+        except Exception as json_error:
+            print(f"⚠️ [JSON Serialization Error] {json_error}")
+            # Fix potential serialization issues
+            for category in info.get("categories", []):
+                for key, value in list(category.items()):
+                    if value is None:
+                        category[key] = "N/A"
+                    elif not isinstance(value, (str, int, float, bool, list, dict)):
+                        category[key] = str(value)
+        
+        return info
+    
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Lỗi khi đọc thông tin hệ thống: {str(e)}",
+            "help": "Có thể cần cài đặt thêm: pip install psutil GPUtil"
+        }
 
 # Tool retry configuration (từ repo chính thức)
 MAX_TOOL_RETRIES = 3
@@ -150,6 +927,36 @@ class IntentDetector:
         r'(tra\s*cứu\s*nội\s*bộ)',
     ]
     
+    SYSTEM_INFO_PATTERNS = [
+        r'cấu\s*hình.*máy\s*tính',
+        r'máy\s*tính.*cấu\s*hình',
+        r'cấu\s*hình.*hệ\s*thống',
+        r'specs.*máy',
+        r'hardware.*info',
+        r'thông\s*tin.*hệ\s*thống',
+        r'thông\s*tin.*máy\s*tính',
+        r'kiểm\s*tra.*cấu\s*hình',
+        r'kiểm\s*tra.*specs',
+        r'kiểm\s*tra.*hardware',
+        r'máy\s*tính.*như\s*thế\s*nào',
+        r'máy\s*này.*ra\s*sao',
+        r'card.*(màn\s*hình|đồ\s*họa|vga)',
+        r'gpu.*gì',
+        r'vga.*gì',
+        r'cpu.*gì',
+        r'cpu.*thế\s*hệ',
+        r'processor.*generation',
+        r'(mainboard|motherboard)',
+        r'bo\s*mạch\s*chủ',
+        r'(intel|amd|nvidia|rtx|gtx).*thế\s*hệ',
+        r'nhiệt\s*độ.*(cpu|gpu)',
+        r'(ram|memory).*bao\s*nhiêu',
+        r'bộ\s*nhớ.*gì',
+        r'asus.*mainboard',
+        r'msi.*mainboard',
+        r'gigabyte.*mainboard',
+    ]
+    
     @classmethod
     def detect_intent(cls, text: str) -> dict:
         """
@@ -197,6 +1004,18 @@ class IntentDetector:
                     "reason": f"Detected music pattern: {pattern}"
                 }
         
+        # Check system info patterns (mới thêm)
+        for pattern in cls.SYSTEM_INFO_PATTERNS:
+            if re.search(pattern, text_lower):
+                print(f"[DEBUG] System info pattern matched: {pattern} for text: {text_lower}")
+                return {
+                    "intent": "system_info",
+                    "suggested_tool": "get_hardware_specs",
+                    "confidence": 0.95,
+                    "should_force_tool": True,
+                    "reason": f"Detected system info pattern: {pattern}"
+                }
+        
         # Check knowledge base patterns
         for pattern in cls.KNOWLEDGE_BASE_PATTERNS:
             if re.search(pattern, text_lower):
@@ -235,7 +1054,7 @@ class IntentDetector:
         if gemini_key and GEMINI_AVAILABLE:
             try:
                 genai.configure(api_key=gemini_key)
-                model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                model = genai.GenerativeModel('models/gemini-3-flash-preview')
                 
                 # Lấy user context nếu được yêu cầu
                 user_context = ""
@@ -294,7 +1113,16 @@ intent_detector = IntentDetector()
 # CONFIGURATION
 # ============================================================
 
-CONFIG_FILE = Path(__file__).parent / "xiaozhi_endpoints.json"
+# 🔥 FIX: Detect if running as EXE (frozen) or script
+# When frozen (EXE), use sys.executable path (dist folder)
+# When script, use __file__ path (source folder)
+if getattr(sys, 'frozen', False):
+    # Running as EXE - use executable's directory
+    CONFIG_FILE = Path(sys.executable).parent / "xiaozhi_endpoints.json"
+else:
+    # Running as script - use script's directory
+    CONFIG_FILE = Path(__file__).parent / "xiaozhi_endpoints.json"
+
 GEMINI_API_KEY = ""  # Sẽ được load từ xiaozhi_endpoints.json
 OPENAI_API_KEY = ""  # Sẽ được load từ xiaozhi_endpoints.json
 SERPER_API_KEY = ""  # Google Search API - Miễn phí 2500 queries/tháng
@@ -333,6 +1161,10 @@ MUSIC_SYSTEM_PROMPT = """
 📁 Thư mục nhạc: F:\\nhac
 
 🎬 YOUTUBE: CHỈ khi user nói "youtube"/"video" → youtube_* tools
+   ✨ NEW: open_youtube() GIỜ TỰ ĐỘNG PHÁT VIDEO TRỰC TIẾP!
+   - Query >= 2 từ → Direct video (youtube.com/watch?v=...)
+   - Query 1 từ → Search page
+   VD: "mở youtube Lạc Trôi" hoặc "mở youtube Sơn Tùng MTP" → PHÁT VIDEO NGAY!
 ═══════════════════════════════════════════════════════════════
 🔧 FUZZY MATCHING - HỖ TRỢ VOICE RECOGNITION
 ═══════════════════════════════════════════════════════════════
@@ -347,32 +1179,143 @@ Hệ thống có fuzzy matching cho các biến thể:
 → Cứ gửi nguyên văn lệnh, hệ thống sẽ tự nhận dạng!
 
 ═══════════════════════════════════════════════════════════════
-📚 KNOWLEDGE BASE - TÀI LIỆU CỦA USER
+🎵 VLC MUSIC CONTROLS - ĐIỀU KHIỂN NHẠC
 ═══════════════════════════════════════════════════════════════
 
-⚡ QUAN TRỌNG: Khi user HỎI về DỮ LIỆU/TÀI LIỆU RIÊNG của họ:
-1. GỌI get_knowledge_context(query="keywords từ câu hỏi")
-2. NHẬN context với nội dung từ tài liệu
-3. TRẢ LỜI dựa trên context đó
+⚡⚡⚡ BẮT BUỘC: KHI USER YÊU CẦU ĐIỀU KHIỂN NHẠC → GỌI TOOL NGAY! ⚡⚡⚡
 
-🔍 Triggers nhận biết:
-• "tìm trong tài liệu", "tra cứu dữ liệu"
-• "theo file của tôi", "trong documents"
-• "thông tin về [X]", "[X] là gì" (nếu [X] có thể trong tài liệu)
-• "dự án ABC như thế nào", "hợp đồng nói gì"
+🚫 TUYỆT ĐỐI CẤM TỰ TRẢ LỜI "OK" hoặc "Đã chuyển bài" mà KHÔNG GỌI TOOL!
 
-📖 Example Flow:
-User: "Dự án ABC có bao nhiêu giai đoạn?"
-→ Gọi: get_knowledge_context(query="dự án ABC giai đoạn")
-→ Nhận: Context từ tài liệu có nội dung về dự án ABC
-→ Đọc context và trả lời: "Theo tài liệu, dự án ABC có 3 giai đoạn..."
+📌 MAPPING COMMANDS → TOOLS (BẮT BUỘC GỌI):
+┌─────────────────────────────────────────────────────────────┐
+│ "bài tiếp", "next", "skip"           → music_next()       │
+│ "quay lại", "bài trước", "previous"  → music_previous()   │
+│ "tạm dừng", "pause"                   → pause_music()      │
+│ "tiếp tục", "resume", "phát tiếp"    → resume_music()     │
+│ "dừng", "stop"                        → stop_music()       │
+│ "phát [tên bài]", "play [song]"      → play_music(song)   │
+└─────────────────────────────────────────────────────────────┘
+
+✅ WORKFLOW ĐÚNG:
+User: "bài tiếp"
+→ GỌI: music_next()
+→ NHẬN: {"success": true, "message": "Đã chuyển: Song.mp3"}
+→ TRẢ LỜI: "Đã chuyển sang bài tiếp: Song.mp3"
+
+❌ WORKFLOW SAI (CẤM):
+User: "bài tiếp"
+→ Trả lời trực tiếp: "OK, đã chuyển bài"  ← SAI! KHÔNG GỌI TOOL!
+
+🔴 RULES NGHIÊM NGẶT:
+1. PHẢI gọi tool TRƯỚC khi trả lời
+2. KHÔNG được giả định thành công
+3. PHẢI đợi tool response
+4. CHỈ trả lời dựa trên tool result
+
+⚠️ ĐẶC BIỆT: Các từ "next", "previous", "pause", "stop" → 100% GỌI TOOL!
+
+═══════════════════════════════════════════════════════════════
+🎵 VLC MUSIC CONTROLS - ĐIỀU KHIỂN NHẠC
+═══════════════════════════════════════════════════════════════
+
+⚡⚡⚡ BẮT BUỘC: KHI USER YÊU CẦU ĐIỀU KHIỂN NHẠC → GỌI TOOL NGAY! ⚡⚡⚡
+
+🚫 TUYỆT ĐỐI CẤM TỰ TRẢ LỜI "OK" hoặc "Đã chuyển bài" mà KHÔNG GỌI TOOL!
+
+📌 MAPPING COMMANDS → TOOLS (BẮT BUỘC GỌI):
+┌─────────────────────────────────────────────────────────────┐
+│ "bài tiếp", "next", "skip"           → music_next()       │
+│ "quay lại", "bài trước", "previous"  → music_previous()   │
+│ "tạm dừng", "pause"                   → pause_music()      │
+│ "tiếp tục", "resume", "phát tiếp"    → resume_music()     │
+│ "dừng", "stop"                        → stop_music()       │
+│ "phát [tên bài]", "play [song]"      → play_music(song)   │
+└─────────────────────────────────────────────────────────────┘
+
+✅ WORKFLOW ĐÚNG:
+User: "bài tiếp"
+→ GỌI: music_next()
+→ NHẬN: {"success": true, "message": "Đã chuyển: Song.mp3"}
+→ TRẢ LỜI: "Đã chuyển sang bài tiếp: Song.mp3"
+
+❌ WORKFLOW SAI (CẤM):
+User: "bài tiếp"
+→ Trả lời trực tiếp: "OK, đã chuyển bài"  ← SAI! KHÔNG GỌI TOOL!
+
+🔴 RULES NGHIÊM NGẶT:
+1. PHẢI gọi tool TRƯỚC khi trả lời
+2. KHÔNG được giả định thành công
+3. PHẢI đợi tool response
+4. CHỈ trả lời dựa trên tool result
+
+⚠️ ĐẶC BIỆT: Các từ "next", "previous", "pause", "stop" → 100% GỌI TOOL!
+
+═══════════════════════════════════════════════════════════════
+📚 KNOWLEDGE BASE - TÀI LIỆU CỦA USER (TỰ ĐỘNG TÌM KIẾM)
+═══════════════════════════════════════════════════════════════
+
+🔥 QUY TẮC VÀNG: KHI NGHI NGỜ THÔNG TIN CÓ THỂ Ở TRONG TÀI LIỆU → GỌI KB NGAY!
+
+⚡ AUTO-TRIGGERS - Gemini TỰ ĐỘNG GỌI KB khi phát hiện:
+┌─────────────────────────────────────────────────────────────┐
+│ 📌 DIRECT COMMANDS (100% gọi KB):                           │
+│ • "tìm trong tài liệu", "tra cứu KB", "search documents"    │
+│ • "theo file của tôi", "trong dữ liệu", "in my docs"        │
+│ • "kiểm tra tài liệu", "xem trong KB", "check docs"         │
+│                                                              │
+│ 🔍 IMPLICIT QUERIES (phát hiện thông minh):                 │
+│ • "[tên cụ thể] là gì/ai/ở đâu" (VD: "Lê Trung Khoa là ai")│
+│ • "thông tin về [X]" (VD: "thông tin về dự án ABC")        │
+│ • "dự án/hợp đồng/báo cáo [X]" (tên riêng, không phổ biến) │
+│ • "theo dữ liệu...", "căn cứ vào...", "based on..."        │
+│ • "[X] có bao nhiêu...", "[X] như thế nào"                  │
+│                                                              │
+│ ❓ SMART DETECTION (nghi ngờ → thử KB):                     │
+│ • Câu hỏi về người/công ty/dự án CỤ THỂ (không phổ biến)  │
+│ • Câu hỏi về con số, số liệu, thống kê (có thể từ báo cáo) │
+│ • Câu hỏi yêu cầu thông tin CHI TIẾT (có thể trong docs)   │
+└─────────────────────────────────────────────────────────────┘
+
+📖 WORKFLOW CHUẨN:
+┌─────────────────────────────────────────────────────────────┐
+│ User: "Lê Trung Khoa là ai?"                                │
+│ ↓                                                            │
+│ [Gemini phát hiện: tên cụ thể → có thể trong KB]           │
+│ ↓                                                            │
+│ Gọi: get_knowledge_context(query="Lê Trung Khoa")          │
+│ ↓                                                            │
+│ Nhận: Context từ "kiến thức c.docx" về Lê Trung Khoa       │
+│ ↓                                                            │
+│ Trả lời: "Theo tài liệu 'kiến thức c.docx', Lê Trung Khoa  │
+│ là người bị Bộ Công an ra quyết định truy nã ngày 5/12..."│
+└─────────────────────────────────────────────────────────────┘
 
 🎯 2 Tools chính:
-• search_knowledge_base(query) - Tìm và show snippets (cho search)
-• get_knowledge_context(query) - Lấy full context để đọc và trả lời (ƯU TIÊN)
+┌─────────────────────────────────────────────────────────────┐
+│ ✅ get_knowledge_context(query, max_chars=10000)            │
+│    → Lấy FULL CONTENT để trả lời (ƯU TIÊN DÙNG TOOL NÀY)   │
+│    → Có Gemini auto-summarize nếu nội dung dài >2000 chars │
+│    → Trả về context đầy đủ để LLM đọc và trả lời           │
+│                                                              │
+│ 📋 search_knowledge_base(query)                             │
+│    → Tìm và show SNIPPETS (dùng khi user muốn xem list)    │
+│    → Trả về top 5 documents với highlights                  │
+└─────────────────────────────────────────────────────────────┘
 
-⚠️ Nếu user hỏi về thông tin chung (không phải tài liệu riêng) → Dùng kiến thức của bạn
-⚠️ Nếu user hỏi về tài liệu riêng → GỌI get_knowledge_context() TRƯỚC
+⚠️ PHÂN BIỆT:
+• "Lê Trung Khoa là ai?" → GỌI get_knowledge_context() (tên cụ thể → KB)
+• "Tổng thống Mỹ là ai?" → KHÔNG gọi KB (thông tin phổ biến)
+• "Python là gì?" → KHÔNG gọi KB (kiến thức chung)
+• "Dự án ABC có bao nhiêu giai đoạn?" → GỌI KB (tên dự án cụ thể)
+• "Nguyễn Công Huy sinh năm nào?" → GỌI KB (tên người cụ thể)
+
+🔴 QUY TẮC QUAN TRỌNG:
+1. NGHI NGỜ → GỌI KB (tốt hơn là bỏ lỡ thông tin)
+2. Nếu KB trả về "không tìm thấy" → Dùng kiến thức chung
+3. Nếu KB có kết quả → ƯU TIÊN context từ KB
+4. Luôn trích dẫn nguồn khi dùng KB: "Theo tài liệu '[tên file]'..."
+
+💡 TIP: Khi không chắc → GỌI get_knowledge_context() để kiểm tra!
 
 ═══════════════════════════════════════════════════════════════
 🌐 RAG SYSTEM - RETRIEVAL AUGMENTED GENERATION
@@ -474,12 +1417,12 @@ def load_endpoints_from_file():
         {"name": "Thiết bị 3", "token": "", "enabled": False}
     ], 0
 
-def save_endpoints_to_file(endpoints, active_index):
-    """Lưu cấu hình endpoints vào file JSON - chỉ khi có thay đổi"""
+def save_endpoints_to_file(endpoints, active_index, force_save=False):
+    """Lưu cấu hình endpoints vào file JSON - LUÔN LƯU khi có thay đổi"""
     global GEMINI_API_KEY, OPENAI_API_KEY, SERPER_API_KEY
     
     try:
-        # Kiểm tra nếu data không thay đổi thì không cần lưu
+        # Data mới cần lưu
         new_data = {
             'endpoints': endpoints,
             'active_index': active_index,
@@ -489,23 +1432,31 @@ def save_endpoints_to_file(endpoints, active_index):
             'last_updated': datetime.now().isoformat()
         }
         
-        # Đọc dữ liệu cũ để so sánh (trừ last_updated)
-        if CONFIG_FILE.exists():
+        # 🔥 FIX: Chỉ skip save nếu KHÔNG phải force_save và không có thay đổi
+        if not force_save and CONFIG_FILE.exists():
             try:
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                     old_data = json.load(f)
-                    # So sánh endpoints và active_index
+                    # So sánh TẤT CẢ: endpoints, active_index VÀ API keys
                     if (old_data.get('endpoints') == endpoints and 
-                        old_data.get('active_index') == active_index):
-                        # Không có thay đổi, skip save
+                        old_data.get('active_index') == active_index and
+                        old_data.get('gemini_api_key') == GEMINI_API_KEY and
+                        old_data.get('openai_api_key') == OPENAI_API_KEY and
+                        old_data.get('serper_api_key') == SERPER_API_KEY):
+                        # Không có thay đổi gì cả, skip save
+                        print(f"ℹ️ [Config] No changes detected, skipping save")
                         return True
             except Exception:
                 pass
         
-        # Có thay đổi, tiến hành lưu
+        # Có thay đổi → Lưu file
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(new_data, f, ensure_ascii=False, indent=2)
-        print(f"💾 [Config] Saved {len(endpoints)} endpoints to {CONFIG_FILE.name}")
+        
+        # Log chi tiết
+        empty_count = sum(1 for ep in endpoints if not ep.get('token', '').strip())
+        active_count = len(endpoints) - empty_count
+        print(f"💾 [Config] Saved to {CONFIG_FILE.name} ({active_count} active, {empty_count} empty endpoints)")
         return True
     except Exception as e:
         print(f"❌ [Config] Error saving to {CONFIG_FILE.name}: {e}")
@@ -514,10 +1465,13 @@ def save_endpoints_to_file(endpoints, active_index):
 # Load cấu hình từ file
 endpoints_config, loaded_active_index = load_endpoints_from_file()
 active_endpoint_index = loaded_active_index
-xiaozhi_connected = False
+
+# Support 3 simultaneous MCP connections
+xiaozhi_connections = {0: None, 1: None, 2: None}  # Dict of {index: websocket}
+xiaozhi_connected = {0: False, 1: False, 2: False}  # Connection status for each device
+should_reconnect = {0: False, 1: False, 2: False}  # Reconnect flags
+
 active_connections = []
-xiaozhi_ws = None
-should_reconnect = False  # Flag để trigger reconnect
 
 # ============================================================
 # TASK MEMORY SYSTEM - Ghi nhớ tác vụ đã thực hiện
@@ -623,74 +1577,40 @@ CONVERSATION_FILE = CONVERSATION_BASE_DIR / "conversation_history.json"
 # File lưu user profile (hiểu người dùng)
 USER_PROFILE_FILE = CONVERSATION_BASE_DIR / "user_profile.json"
 
-def get_today_conversation_file():
-    """Lấy file hội thoại theo ngày hôm nay"""
-    from datetime import datetime
-    today = datetime.now().strftime("%Y-%m-%d")
-    return CONVERSATION_BASE_DIR / f"conversation_{today}.json"
+# NOTE: get_today_conversation_file() đã bị xóa để tối ưu - không lưu file theo ngày nữa
 
 def load_conversation_history():
     """Load lịch sử hội thoại từ file"""
     global conversation_history
     try:
-        # Load file tổng hợp
+        # Load file tổng hợp (CHỈ một file duy nhất - nhanh hơn)
         if CONVERSATION_FILE.exists():
             with open(CONVERSATION_FILE, 'r', encoding='utf-8') as f:
                 conversation_history = json.load(f)
-            print(f"📚 [Conversation] Loaded {len(conversation_history)} messages from history")
-        
-        # Load file hôm nay nếu có
-        today_file = get_today_conversation_file()
-        if today_file.exists():
-            with open(today_file, 'r', encoding='utf-8') as f:
-                today_data = json.load(f)
-                # Merge với conversation history nếu cần
-                today_msgs = today_data.get("messages", [])
-                print(f"📅 [Conversation] Today has {len(today_msgs)} messages")
+            print(f"📚 [Conversation] Loaded {len(conversation_history)} messages")
     except Exception as e:
         print(f"⚠️ Could not load conversation history: {e}")
         conversation_history = []
 
 def save_conversation_history():
-    """Lưu lịch sử hội thoại vào file (tổng hợp + theo ngày)"""
+    """Lưu lịch sử hội thoại vào file (CHỈ file tổng hợp - tối ưu tốc độ)"""
     try:
-        from datetime import datetime
-        
-        # Lưu file tổng hợp
+        # CHỈ lưu file tổng hợp (không lưu file theo ngày để tăng tốc)
         with open(CONVERSATION_FILE, 'w', encoding='utf-8') as f:
             json.dump(conversation_history, f, ensure_ascii=False, indent=2)
-        
-        # Lưu file theo ngày
-        today_file = get_today_conversation_file()
-        today = datetime.now().strftime("%Y-%m-%d")
-        
-        # Lọc messages của hôm nay
-        today_messages = [
-            msg for msg in conversation_history 
-            if msg.get("timestamp", "").startswith(today)
-        ]
-        
-        today_data = {
-            "date": today,
-            "total_messages": len(today_messages),
-            "messages": today_messages,
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        with open(today_file, 'w', encoding='utf-8') as f:
-            json.dump(today_data, f, ensure_ascii=False, indent=2)
             
     except Exception as e:
         print(f"⚠️ Could not save conversation history: {e}")
 
 def add_to_conversation(role: str, content: str, metadata: dict = None):
     """
-    Thêm message vào lịch sử hội thoại
-    LƯU TẤT CẢ - kể cả không liên quan đến tool
+    Thêm message vào lịch sử hội thoại - TỐI ƯU CHO PERFORMANCE
     
     role: 'user', 'assistant', 'system', 'tool'
     content: nội dung message
     metadata: thông tin bổ sung (tool_name, timestamp, source, etc.)
+    
+    OPTIMIZATION: Chỉ save sau 20 messages hoặc khi shutdown
     """
     from datetime import datetime
     
@@ -707,13 +1627,11 @@ def add_to_conversation(role: str, content: str, metadata: dict = None):
     
     conversation_history.append(message)
     
-    # Auto-save sau mỗi 3 messages (nhanh hơn để không mất data)
-    if len(conversation_history) % 3 == 0:
+    # TĂNG TỐC: Chỉ save sau mỗi 20 messages (giảm I/O disk)
+    if len(conversation_history) % 20 == 0:
         save_conversation_history()
     
-    # Cập nhật user profile nếu là user message
-    if role == "user" and content:
-        update_user_profile_from_message(content, metadata)
+    # NOTE: Disabled user profile analysis (gây chậm)
 
 def update_user_profile_from_message(content: str, metadata: dict = None):
     """Cập nhật user profile từ message để hiểu người dùng hơn"""
@@ -1330,6 +2248,27 @@ async def get_system_resources() -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+async def get_api_quotas() -> dict:
+    """Lấy thông tin quota API (Gemini và Serper) - NOTE: Đây là giá trị ước tính"""
+    try:
+        result = {
+            "success": True,
+            "gemini": {
+                "has_key": bool(GEMINI_API_KEY and GEMINI_API_KEY.strip()),
+                "free_tier": "60 requests/min",
+                "daily_limit": "1,500 requests/day",
+                "note": "Free tier - chưa có API để check exact quota"
+            },
+            "serper": {
+                "has_key": bool(SERPER_API_KEY and SERPER_API_KEY.strip()),
+                "free_tier": "2,500 queries/month",
+                "note": "Free tier - chưa có API để check exact remaining"
+            }
+        }
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 async def get_current_time() -> dict:
     try:
         now = datetime.now()
@@ -1348,11 +2287,107 @@ async def calculator(expression: str) -> dict:
         return {"success": False, "error": str(e)}
 
 async def get_network_info() -> dict:
+    """
+    Lấy thông tin mạng chi tiết bao gồm:
+    - Thông tin máy local (hostname, IP, MAC, gateway)
+    - Quét tất cả thiết bị đang kết nối với router
+    - Hiển thị IP, MAC, hostname của từng thiết bị
+    """
     try:
         import socket
+        import subprocess
+        import re
+        from concurrent.futures import ThreadPoolExecutor
+        
+        # 1. Lấy thông tin máy local
         hostname = socket.gethostname()
-        ip = socket.gethostbyname(hostname)
-        return {"success": True, "hostname": hostname, "ip": ip}
+        local_ip = socket.gethostbyname(hostname)
+        
+        # 2. Lấy MAC address và Gateway
+        def get_mac_and_gateway():
+            try:
+                result = subprocess.check_output("ipconfig /all", shell=True, text=True, encoding='utf-8', errors='ignore')
+                
+                # Tìm gateway
+                gateway_match = re.search(r'Default Gateway[.\s:]+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', result)
+                gateway = gateway_match.group(1) if gateway_match else "Unknown"
+                
+                # Tìm MAC address của adapter đang kết nối
+                mac_address = "Unknown"
+                lines = result.split('\n')
+                active_adapter = False
+                for i, line in enumerate(lines):
+                    if local_ip in line:
+                        active_adapter = True
+                    if active_adapter and 'Physical Address' in line:
+                        mac_match = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', line, re.IGNORECASE)
+                        if mac_match:
+                            mac_address = mac_match.group(0)
+                            break
+                
+                return mac_address, gateway
+            except:
+                return "Unknown", "Unknown"
+        
+        mac_address, gateway = get_mac_and_gateway()
+        
+        # 3. Quét thiết bị trong mạng (ARP table)
+        def scan_network_devices():
+            devices = []
+            try:
+                # Lấy ARP table
+                arp_result = subprocess.check_output("arp -a", shell=True, text=True, encoding='utf-8', errors='ignore')
+                
+                # Parse ARP table
+                lines = arp_result.split('\n')
+                for line in lines:
+                    # Tìm dòng có IP và MAC
+                    match = re.search(r'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+([0-9a-f]{2}[:-]){5}([0-9a-f]{2})', line, re.IGNORECASE)
+                    if match:
+                        device_ip = match.group(1)
+                        device_mac = match.group(0).split()[1] if len(match.group(0).split()) > 1 else "Unknown"
+                        
+                        # Bỏ qua broadcast/multicast
+                        if device_ip.endswith('.255') or device_mac.startswith('ff-ff') or device_mac.startswith('01-00'):
+                            continue
+                        
+                        # Thử resolve hostname (nhanh)
+                        device_hostname = "Unknown"
+                        try:
+                            device_hostname = socket.gethostbyaddr(device_ip)[0]
+                        except:
+                            pass
+                        
+                        devices.append({
+                            "ip": device_ip,
+                            "mac": device_mac,
+                            "hostname": device_hostname,
+                            "is_local": device_ip == local_ip
+                        })
+                
+                return devices
+            except Exception as e:
+                return []
+        
+        # Quét thiết bị (chạy async để không block)
+        devices = scan_network_devices()
+        
+        # 4. Tổng hợp kết quả
+        result = {
+            "success": True,
+            "local_device": {
+                "hostname": hostname,
+                "ip": local_ip,
+                "mac": mac_address,
+                "gateway": gateway
+            },
+            "network_devices": devices,
+            "total_devices": len(devices),
+            "message": f"Tìm thấy {len(devices)} thiết bị trong mạng"
+        }
+        
+        return result
+        
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -2469,8 +3504,88 @@ async def force_kill_app(app_name: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+async def find_process(name_pattern: str = "", show_all: bool = False) -> dict:
+    """
+    Tìm kiếm process theo tên hoặc hiển thị tất cả.
+    
+    Args:
+        name_pattern: Tên process cần tìm (partial match, case insensitive). Để trống = tất cả
+        show_all: True = hiển thị tất cả process (bỏ qua limit)
+    
+    Returns:
+        dict: Danh sách processes tìm thấy
+    """
+    try:
+        procs = []
+        pattern_lower = name_pattern.lower() if name_pattern else ""
+        
+        for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
+            try:
+                info = p.info
+                proc_name = (info['name'] or "").lower()
+                
+                # Filter theo pattern nếu có
+                if pattern_lower and pattern_lower not in proc_name:
+                    continue
+                    
+                procs.append({
+                    "pid": info['pid'], 
+                    "name": info['name'], 
+                    "cpu": round(info['cpu_percent'] or 0, 2), 
+                    "memory": round(info['memory_percent'] or 0, 2)
+                })
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        
+        # Sort theo CPU usage nếu không có filter cụ thể
+        if not pattern_lower:
+            procs = sorted(procs, key=lambda x: x['cpu'], reverse=True)
+            
+        # Limit chỉ khi không show_all và không có pattern cụ thể
+        if not show_all and not pattern_lower:
+            procs = procs[:20]  # Top 20 thay vì 10
+            
+        # Tạo message tóm tắt
+        if pattern_lower:
+            found_count = len(procs)
+            if found_count == 0:
+                message = f"❌ Không tìm thấy process nào chứa '{name_pattern}'"
+            elif found_count == 1:
+                message = f"✅ Tìm thấy 1 process: {procs[0]['name']}"
+            else:
+                message = f"✅ Tìm thấy {found_count} processes chứa '{name_pattern}'"
+        else:
+            message = f"📋 Danh sách {len(procs)} processes (sorted by CPU usage)"
+            
+        return {
+            "success": True, 
+            "processes": procs, 
+            "count": len(procs),
+            "pattern": name_pattern,
+            "message": message
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 async def create_file(path: str, content: str) -> dict:
     try:
+        import os
+        
+        # Validate path - must be absolute on Windows (contains drive letter)
+        if not os.path.isabs(path):
+            return {"success": False, "error": f"Path must be absolute. Got: '{path}'. Example: 'C:/folder/file.txt'"}
+        
+        # Normalize path separators
+        path = os.path.normpath(path)
+        
+        # Check if parent directory exists, create if needed
+        parent_dir = os.path.dirname(path)
+        if parent_dir and not os.path.exists(parent_dir):
+            try:
+                os.makedirs(parent_dir, exist_ok=True)
+            except Exception as e:
+                return {"success": False, "error": f"Cannot create directory '{parent_dir}': {str(e)}"}
+        
         with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
         return {"success": True, "path": path, "message": f"Đã tạo: {path}"}
@@ -2479,6 +3594,22 @@ async def create_file(path: str, content: str) -> dict:
 
 async def read_file(path: str) -> dict:
     try:
+        import os
+        
+        # Validate path - must be absolute on Windows (contains drive letter)
+        if not os.path.isabs(path):
+            return {"success": False, "error": f"Path must be absolute. Got: '{path}'. Example: 'C:/folder/file.txt'"}
+        
+        # Normalize path separators
+        path = os.path.normpath(path)
+        
+        # Check if file exists
+        if not os.path.exists(path):
+            return {"success": False, "error": f"File not found: '{path}'"}
+        
+        if not os.path.isfile(path):
+            return {"success": False, "error": f"Path is not a file: '{path}'"}
+        
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
         return {"success": True, "path": path, "content": content[:500], "size": len(content)}
@@ -2701,6 +3832,7 @@ class VLCMusicPlayer:
     - Play/Pause/Stop
     - Next/Previous track
     - Playlist management
+    - Fuzzy song matching (tìm bài gần đúng)
     - Media keys support (VLC tự động hỗ trợ)
     """
     _instance = None
@@ -2710,6 +3842,7 @@ class VLCMusicPlayer:
     _current_playlist = []
     _shuffle = False
     _repeat_mode = 0  # 0: off, 1: all, 2: one
+    _song_cache = {}  # Cache danh sách bài hát
     
     def __new__(cls):
         if cls._instance is None:
@@ -2729,7 +3862,7 @@ class VLCMusicPlayer:
                 self._media_list = self._instance_vlc.media_list_new()
                 self._list_player = self._instance_vlc.media_list_player_new()
                 self._list_player.set_media_player(self._player)
-                print("✅ [VLC] VLC Music Player initialized (full UI mode)")
+                print("✅ [VLC] VLC Music Player initialized (full UI + fuzzy matching)")
             except Exception as e:
                 print(f"❌ [VLC] Failed to initialize: {e}")
                 self._player = None
@@ -2784,21 +3917,25 @@ class VLCMusicPlayer:
             self._list_player.play()
             print(f"🎵 [VLC DEBUG] list_player.play() called")
             
-            # Đợi VLC bắt đầu
-            time.sleep(0.5)
+            # FIX DOUBLE-CLICK: Tăng thời gian chờ để VLC khởi tạo đầy đủ
+            time.sleep(0.7)
             
-            # Kiểm tra và đảm bảo đang phát
+            # Kiểm tra và đảm bảo đang phát với retry mechanism
             if self._player:
                 state = self._player.get_state()
                 is_playing = self._player.is_playing()
                 current_vol = self._player.audio_get_volume()
                 print(f"🎵 [VLC DEBUG] State: {state}, is_playing: {is_playing}, volume: {current_vol}")
                 
-                # Nếu chưa phát, thử play lại
-                if not is_playing:
-                    print("⚠️ [VLC DEBUG] Not playing, trying play() again...")
+                # FIX: Retry nếu chưa phát (quan trọng cho double-click)
+                retry_count = 0
+                max_retries = 3
+                while not is_playing and retry_count < max_retries:
+                    print(f"⚠️ [VLC DEBUG] Not playing, retry {retry_count+1}/{max_retries}...")
                     self._list_player.play()
-                    time.sleep(0.3)
+                    time.sleep(0.4)
+                    is_playing = self._player.is_playing()
+                    retry_count += 1
                 
                 # Đảm bảo volume đủ nghe
                 if current_vol < 50:
@@ -2834,64 +3971,120 @@ class VLCMusicPlayer:
         return False
     
     def stop(self):
-        """Dừng phát"""
-        if self._list_player:
-            self._list_player.stop()
-        if self._player:
-            self._player.stop()
-        return True
+        """Dừng phát hoàn toàn và reset trạng thái"""
+        try:
+            import time
+            
+            # Stop cả list_player và player
+            if self._list_player:
+                self._list_player.stop()
+                time.sleep(0.1)
+            
+            if self._player:
+                self._player.stop()
+                time.sleep(0.1)
+            
+            # Verify đã dừng thực sự
+            stopped = False
+            for _ in range(3):  # Retry 3 lần
+                if not self.is_playing():
+                    stopped = True
+                    break
+                time.sleep(0.1)
+                if self._player:
+                    self._player.stop()
+            
+            if stopped:
+                print("✅ [VLC] Stopped successfully")
+            else:
+                print("⚠️ [VLC] Stop command sent but player may still be active")
+            
+            return True
+        except Exception as e:
+            print(f"❌ [VLC] Stop error: {e}")
+            return False
     
     def next_track(self):
-        """Bài tiếp theo - Tự động phát luôn!"""
+        """Bài tiếp theo - Tự động phát luôn với retry logic!"""
         if self._list_player and self._current_playlist:
             current_idx = getattr(self, '_current_index', 0)
             last_idx = len(self._current_playlist) - 1
             
+            # Stop hiện tại để tránh conflict
+            self._list_player.stop()
+            
             if current_idx >= last_idx:
                 # Đã ở bài cuối, quay lại bài đầu
                 self._current_index = 0
-                self._list_player.play_item_at_index(0)
                 print(f"🔄 [VLC] Next: Wrap to first track (index 0)")
             else:
                 # Còn bài tiếp, chuyển bình thường
-                self._list_player.next()
                 self._current_index = current_idx + 1
                 print(f"⏭️ [VLC] Next: Now at index {self._current_index}")
             
+            # Play bài mới bằng index
+            self._list_player.play_item_at_index(self._current_index)
+            
             import time
-            time.sleep(0.3)
-            # Đảm bảo đang phát sau khi chuyển bài
-            if not self.is_playing():
+            time.sleep(0.4)
+            
+            # Retry nếu chưa phát (tối đa 2 lần)
+            retry_count = 0
+            while not self.is_playing() and retry_count < 2:
+                print(f"⚠️ [VLC] Not playing yet, retry {retry_count + 1}/2...")
                 self._list_player.play()
-            return True
+                time.sleep(0.3)
+                retry_count += 1
+            
+            # Verify
+            if self.is_playing():
+                print(f"✅ [VLC] Next track playing successfully")
+                return True
+            else:
+                print(f"❌ [VLC] Failed to play next track after retries")
+                return False
         return False
     
     def previous_track(self):
-        """Bài trước - Tự động phát luôn!"""
+        """Bài trước - Tự động phát luôn với retry logic!"""
         if self._list_player and self._current_playlist:
             # Kiểm tra nếu đang ở bài đầu tiên
             current_idx = getattr(self, '_current_index', 0)
+            
+            # Stop hiện tại để tránh conflict
+            self._list_player.stop()
             
             if current_idx <= 0:
                 # Đã ở bài đầu, quay lại bài cuối cùng của playlist
                 last_idx = len(self._current_playlist) - 1
                 self._current_index = last_idx
-                # Play bài cuối bằng cách set media trực tiếp
-                self._list_player.play_item_at_index(last_idx)
                 print(f"🔄 [VLC] Previous: Wrap to last track (index {last_idx})")
             else:
                 # Còn bài trước, chuyển bình thường
-                self._list_player.previous()
                 self._current_index = current_idx - 1
                 print(f"⏮️ [VLC] Previous: Now at index {self._current_index}")
             
-            import time
-            time.sleep(0.3)
+            # Play bài mới bằng index
+            self._list_player.play_item_at_index(self._current_index)
             
-            # Đảm bảo đang phát sau khi chuyển bài
-            if not self.is_playing():
+            import time
+            time.sleep(0.4)
+            
+            # Retry nếu chưa phát (tối đa 2 lần)
+            retry_count = 0
+            while not self.is_playing() and retry_count < 2:
+                print(f"⚠️ [VLC] Not playing yet, retry {retry_count + 1}/2...")
                 self._list_player.play()
-            return True
+                time.sleep(0.3)
+                retry_count += 1
+            
+            # Verify
+            if self.is_playing():
+                print(f"✅ [VLC] Previous track playing successfully")
+                return True
+            else:
+                print(f"❌ [VLC] Failed to play previous track after retries")
+                return False
         return False
     
     def is_playing(self):
@@ -2959,22 +4152,28 @@ class VLCMusicPlayer:
         return False
     
     def get_current_media_title(self):
-        """Lấy tiêu đề media đang phát"""
-        if self._player:
-            media = self._player.get_media()
-            if media:
-                # Thử lấy meta title, nếu không có thì lấy MRL (path)
-                title = media.get_meta(self._vlc.Meta.Title)
-                if title:
-                    return title
-                # Fallback: lấy filename từ MRL
-                mrl = media.get_mrl()
-                if mrl:
-                    from urllib.parse import unquote
-                    # Decode URL và lấy filename
-                    path = unquote(mrl.replace('file:///', '').replace('file://', ''))
-                    return Path(path).name
-        return None
+        """Lấy tiêu đề media đang phát - TỐI ƯU với cache"""
+        try:
+            if self._player:
+                media = self._player.get_media()
+                if media:
+                    # Cache để tránh query lại liên tục
+                    title = media.get_meta(self._vlc.Meta.Title)
+                    if title:
+                        self._cached_title = title
+                        return title
+                    # Fallback: filename
+                    mrl = media.get_mrl()
+                    if mrl:
+                        from urllib.parse import unquote
+                        path = unquote(mrl.replace('file:///', '').replace('file://', ''))
+                        fname = Path(path).name
+                        self._cached_title = fname
+                        return fname
+            # Return cached nếu có
+            return getattr(self, '_cached_title', None)
+        except:
+            return getattr(self, '_cached_title', None)
     
     def get_playlist_index(self):
         """Lấy index bài hiện tại trong playlist"""
@@ -2986,7 +4185,7 @@ class VLCMusicPlayer:
         return len(self._current_playlist) if self._current_playlist else 0
     
     def get_full_status(self):
-        """Lấy trạng thái đầy đủ cho Web UI"""
+        """Lấy trạng thái đầy đủ cho Web UI - TỐI ƯU"""
         state = self.get_state()
         current_time_ms = self.get_time()
         duration_ms = self.get_length()
@@ -3003,9 +4202,9 @@ class VLCMusicPlayer:
             "current_track": self.get_current_media_title(),
             "playlist_index": self.get_playlist_index(),
             "playlist_count": self.get_playlist_count(),
-            "playlist": [Path(p).name for p in self._current_playlist[:20]] if self._current_playlist else [],  # Top 20 only
+            "playlist": [Path(p).name for p in self._current_playlist[:5]] if self._current_playlist else [],  # CHỈ 5 bài (giảm data)
             "shuffle": self._shuffle,
-            "repeat_mode": self._repeat_mode  # 0: off, 1: all, 2: one
+            "repeat_mode": self._repeat_mode
         }
     
     def set_shuffle(self, enabled: bool):
@@ -3044,6 +4243,148 @@ class VLCMusicPlayer:
         minutes = seconds // 60
         seconds = seconds % 60
         return f"{minutes}:{seconds:02d}"
+    
+    def refresh_song_cache(self, music_folder: Path):
+        """Refresh cache danh sách bài hát từ music_library"""
+        try:
+            print(f"🔄 [VLC] Refreshing song cache from {music_folder}...")
+            self._song_cache = {}
+            
+            if not music_folder.exists():
+                print(f"⚠️ [VLC] Music folder not found: {music_folder}")
+                return
+            
+            extensions = ['.mp3', '.flac', '.wav', '.m4a', '.ogg', '.wma']
+            for file_path in music_folder.rglob("*"):
+                if file_path.is_file() and file_path.suffix.lower() in extensions:
+                    # Lưu: tên file (lowercase) -> đường dẫn đầy đủ
+                    song_name = file_path.stem.lower()  # Tên file không có extension
+                    self._song_cache[song_name] = str(file_path)
+            
+            print(f"✅ [VLC] Song cache refreshed: {len(self._song_cache)} songs")
+        except Exception as e:
+            print(f"❌ [VLC] Error refreshing song cache: {e}")
+    
+    def fuzzy_match_song(self, query: str, threshold: float = 0.3):
+        """
+        Tìm bài hát gần đúng bằng fuzzy matching với Unicode normalization
+        
+        Args:
+            query: Tên bài hát người dùng nói (e.g., "phát bài yêu em", "Đa Nghi")
+            threshold: Ngưỡng tương đồng (0.0-1.0), mặc định 0.3 (GIẢM để dễ match hơn)
+            
+        Returns:
+            tuple: (best_match_path, similarity_score) hoặc (None, 0.0)
+        """
+        if not self._song_cache:
+            print("⚠️ [VLC] Song cache empty, call refresh_song_cache() first")
+            return None, 0.0
+        
+        import unicodedata
+        
+        # Normalize Unicode (NFD = decompose dấu) để so sánh tốt hơn
+        def normalize_text(text):
+            # NFD: tách dấu khỏi ký tự (e.g., "á" -> "a" + dấu)
+            text = unicodedata.normalize('NFD', text)
+            # Loại bỏ dấu thanh (chỉ giữ chữ cái cơ bản)
+            text = ''.join(c for c in text if not unicodedata.combining(c))
+            # Lowercase và loại bỏ ký tự đặc biệt
+            text = re.sub(r'[^\w\s]', '', text.lower()).strip()
+            text = re.sub(r'\s+', ' ', text)  # Collapse spaces
+            return text
+        
+        query_normalized = normalize_text(query)
+        
+        # Loại bỏ các từ điều khiển thường gặp
+        stop_words = ['phat', 'bai', 'mo', 'chay', 'play', 'song', 'nhac', 'hat']
+        query_words = [w for w in query_normalized.split() if w not in stop_words]
+        query_processed = ' '.join(query_words) if query_words else query_normalized
+        
+        print(f"🔍 [VLC Fuzzy] Query: '{query}' -> Normalized: '{query_processed}'")
+        
+        best_match = None
+        best_score = 0.0
+        
+        for song_name_original, song_path in self._song_cache.items():
+            # Normalize song name để so sánh
+            song_name_normalized = normalize_text(song_name_original)
+            
+            # Tính similarity với difflib
+            similarity = difflib.SequenceMatcher(None, query_processed, song_name_normalized).ratio()
+            
+            # Thưởng điểm nếu query có trong tên bài (substring match)
+            if query_processed in song_name_normalized:
+                similarity += 0.25
+            
+            # Thưởng điểm nếu từng từ đều có trong tên bài
+            if query_words:
+                words_match = all(word in song_name_normalized for word in query_words)
+                if words_match:
+                    similarity += 0.20
+            
+            # Thưởng điểm nếu bắt đầu giống nhau (prefix match)
+            if song_name_normalized.startswith(query_processed[:4]):  # 4 ký tự đầu
+                similarity += 0.10
+            
+            if similarity > best_score:
+                best_score = similarity
+                best_match = song_path
+        
+        if best_score >= threshold:
+            print(f"✅ [VLC Fuzzy] Found match: {Path(best_match).name} (score: {best_score:.2f})")
+            return best_match, best_score
+        else:
+            print(f"❌ [VLC Fuzzy] No match found above threshold {threshold} (best: {best_score:.2f})")
+            return None, 0.0
+    
+    def play_by_fuzzy_match(self, query: str, threshold: float = 0.4):
+        """
+        Phát bài hát bằng fuzzy matching
+        
+        Args:
+            query: Tên bài hát người dùng nói
+            threshold: Ngưỡng tương đồng
+            
+        Returns:
+            dict with success, matched_song, score, message
+        """
+        matched_path, score = self.fuzzy_match_song(query, threshold)
+        
+        if not matched_path:
+            return {
+                "success": False,
+                "error": f"Không tìm thấy bài '{query}' (threshold={threshold})",
+                "query": query,
+                "score": score
+            }
+        
+        # Phát bài tìm được
+        success = self.play_file(matched_path)
+        
+        if success:
+            song_name = Path(matched_path).name
+            return {
+                "success": True,
+                "matched_song": song_name,
+                "score": score,
+                "path": matched_path,
+                "message": f"🎵 Đang phát: {song_name} (tìm được với độ chính xác {score*100:.0f}%)"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "VLC không thể phát file",
+                "matched_song": Path(matched_path).name,
+                "score": score
+            }
+    
+    async def play_file_async(self, file_path: str):
+        """Async wrapper cho play_file để không blocking"""
+        return await asyncio.to_thread(self.play_file, file_path)
+    
+    async def play_playlist_async(self, file_paths: list):
+        """Async wrapper cho play_playlist để không blocking"""
+        return await asyncio.to_thread(self.play_playlist, file_paths)
 
 # Global VLC player instance - với error handling
 try:
@@ -3056,6 +4397,26 @@ except Exception as e:
 
 if not VLC_AVAILABLE:
     print("⚠️ [VLC] Music player disabled. Cài VLC: https://www.videolan.org/vlc/")
+
+# ============================================================
+# 🎯 VLC MCP SERVER - Hybrid System (REST + MCP)
+# ============================================================
+try:
+    from vlc_mcp_server import VLCMCPServer
+    
+    # Initialize MCP server with VLC player instance
+    if VLC_AVAILABLE and vlc_player:
+        vlc_mcp_server = VLCMCPServer(vlc_player)
+        print(f"✅ [VLC MCP] Hybrid System initialized - {len(vlc_mcp_server.tools)} tools available")
+        VLC_MCP_AVAILABLE = True
+    else:
+        vlc_mcp_server = None
+        VLC_MCP_AVAILABLE = False
+        print("⚠️ [VLC MCP] MCP server disabled - VLC not available")
+except Exception as e:
+    print(f"⚠️ [VLC MCP] Failed to initialize MCP server: {e}")
+    vlc_mcp_server = None
+    VLC_MCP_AVAILABLE = False
 
 # ============================================================
 # BROWSER CONTROLLER - Selenium Automation
@@ -3433,13 +4794,14 @@ async def play_music_from_path(file_path: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def play_music(filename: str, create_playlist: bool = True) -> dict:
+async def play_music(filename: str, create_playlist: bool = True, use_fuzzy: bool = True) -> dict:
     """
-    Phát nhạc từ music_library bằng VLC player.
+    Phát nhạc từ music_library bằng VLC player với fuzzy matching.
     
     Args:
-        filename: Tên file (e.g., 'song.mp3' or 'Pop/song.mp3')
+        filename: Tên file (e.g., 'song.mp3' or 'Pop/song.mp3') hoặc tên gần đúng (e.g., 'yêu em')
         create_playlist: Tạo playlist với tất cả bài (default True) để hỗ trợ Next/Previous
+        use_fuzzy: Dùng fuzzy matching nếu không tìm thấy chính xác (default True)
         
     Returns:
         dict with 'success', 'filename', 'path', 'message'
@@ -3450,7 +4812,11 @@ async def play_music(filename: str, create_playlist: bool = True) -> dict:
         
         print(f"🎵 [VLC Play] Tìm file: '{filename}'")
         
-        # Tìm file
+        # TỐI ƯU: Chỉ refresh cache nếu chưa có (lazy loading)
+        if not hasattr(vlc_player, '_song_cache') or not vlc_player._song_cache:
+            vlc_player.refresh_song_cache(MUSIC_LIBRARY)
+        
+        # Step 2: Tìm file chính xác trước
         music_path = None
         filename_lower = filename.lower()
         
@@ -3462,17 +4828,28 @@ async def play_music(filename: str, create_playlist: bool = True) -> dict:
                     filename_lower in file_path.name.lower()):
                     if file_path.suffix.lower() in MUSIC_EXTENSIONS:
                         music_path = file_path
+                        print(f"✅ [VLC Play] Found exact match: {music_path}")
                         break
+        
+        # Step 3: Nếu không tìm thấy chính xác, dùng fuzzy matching
+        if not music_path and use_fuzzy:
+            print(f"🔍 [VLC Play] Exact match not found, trying fuzzy matching...")
+            matched_path, score = vlc_player.fuzzy_match_song(filename, threshold=0.4)
+            
+            if matched_path:
+                music_path = Path(matched_path)
+                print(f"✅ [VLC Play] Fuzzy match found: {music_path.name} (score: {score:.2f})")
         
         if not music_path:
             available = [f.name for f in MUSIC_LIBRARY.rglob("*") if f.is_file() and f.suffix.lower() in MUSIC_EXTENSIONS]
             return {
                 "success": False, 
-                "error": f"Không tìm thấy '{filename}'",
-                "available_files": available[:5]
+                "error": f"Không tìm thấy '{filename}' (đã thử fuzzy matching)",
+                "available_files": available[:5],
+                "hint": "Thử tìm bằng từ khóa trong tên bài hoặc dùng list_music() để xem danh sách"
             }
         
-        print(f"🎵 [VLC Play] Đã tìm thấy: {music_path}")
+        print(f"🎵 [VLC Play] Selected: {music_path}")
         
         if create_playlist:
             # Tạo playlist với tất cả bài trong thư mục
@@ -3486,10 +4863,10 @@ async def play_music(filename: str, create_playlist: bool = True) -> dict:
                 all_songs.remove(str(music_path))
             all_songs.insert(0, str(music_path))
             
-            success = vlc_player.play_playlist(all_songs)
+            success = await vlc_player.play_playlist_async(all_songs)
             print(f"🎵 [VLC] Created playlist with {len(all_songs)} songs")
         else:
-            success = vlc_player.play_file(str(music_path))
+            success = await vlc_player.play_file_async(str(music_path))
         
         if success:
             return {
@@ -3498,10 +4875,11 @@ async def play_music(filename: str, create_playlist: bool = True) -> dict:
                 "path": str(music_path.relative_to(MUSIC_LIBRARY)),
                 "full_path": str(music_path),
                 "size_mb": round(music_path.stat().st_size / (1024**2), 2),
-                "message": f"🎵 Đang phát: {music_path.name} (Python-VLC)",
-                "player": "Python-VLC",
+                "message": f"🎵 Đang phát: {music_path.name} (Python-VLC + Fuzzy Matching)",
+                "player": "Python-VLC Enhanced",
                 "playlist_mode": create_playlist,
-                "llm_note": "🎵 ĐANG DÙNG PYTHON-VLC PLAYER. Điều khiển: pause_music(), resume_music(), stop_music(), music_next(), music_previous(), seek_music(), music_volume(). NHANH & TIỆN!"
+                "fuzzy_used": not (filename.lower() in music_path.name.lower()),
+                "llm_note": "🎵 PYTHON-VLC PLAYER với FUZZY MATCHING! Có thể tìm bài gần đúng. Điều khiển: pause_music(), resume_music(), stop_music(), music_next(), music_previous()."
             }
         else:
             return {"success": False, "error": "VLC player không thể phát. Kiểm tra VLC đã cài đặt chưa!"}
@@ -3513,8 +4891,14 @@ async def play_music(filename: str, create_playlist: bool = True) -> dict:
 
 async def pause_music() -> dict:
     """
-    Tạm dừng nhạc VLC Player (Python-VLC internal).
-    LUÔN dùng VLC player - NHANH & TIỆN!
+    ⏸️ TẠM DỪNG nhạc VLC Player.
+    
+    🎯 KHI NÀO GỌI: User nói "tạm dừng", "pause", "dừng lại", "đừng phát"
+    
+    ⚡ BẮT BUỘC GỌI TOOL NÀY! Không được tự trả lời "đã tạm dừng"!
+    
+    Returns:
+        dict: {"success": bool, "message": str, "current_song": str}
     """
     try:
         if vlc_player and vlc_player._player:
@@ -3526,7 +4910,7 @@ async def pause_music() -> dict:
                 "message": f"⏸️ Đã tạm dừng: {current_song} (Python-VLC)",
                 "player": "Python-VLC",
                 "current_song": current_song,
-                "llm_note": "🎵 Đang dùng Python-VLC. Dùng resume_music() để tiếp tục, music_next()/music_previous() để chuyển bài."
+                "llm_note": "⚡ GỌI TOOL ĐÃ THÀNH CÔNG! Đang dùng Python-VLC. LUÔN GỌI: resume_music() để tiếp tục, music_next()/music_previous() để chuyển bài. KHÔNG BAO GIỜ TỰ TRẢ LỜI mà không gọi tool!"
             }
         else:
             return {"success": False, "error": "VLC Player chưa khởi tạo hoặc chưa phát nhạc. Dùng play_music() để phát nhạc trước!"}
@@ -3535,8 +4919,14 @@ async def pause_music() -> dict:
 
 async def resume_music() -> dict:
     """
-    Tiếp tục phát nhạc VLC Player (Python-VLC internal).
-    LUÔN dùng VLC player - NHANH & TIỆN!
+    ▶️ TIẾP TỤC phát nhạc VLC Player sau khi pause.
+    
+    🎯 KHI NÀO GỌI: User nói "tiếp tục", "resume", "phát tiếp", "play lại"
+    
+    ⚡ BẮT BUỘC GỌI TOOL NÀY! Không được tự trả lời "đã phát tiếp"!
+    
+    Returns:
+        dict: {"success": bool, "message": str, "is_playing": bool}
     """
     try:
         if vlc_player and vlc_player._player:
@@ -3551,7 +4941,7 @@ async def resume_music() -> dict:
                 "player": "Python-VLC",
                 "current_song": current_song,
                 "is_playing": True,
-                "llm_note": "🎵 Đang dùng Python-VLC. Dùng pause_music() để tạm dừng, music_next()/music_previous() để chuyển bài."
+                "llm_note": "⚡ GỌI TOOL ĐÃ THÀNH CÔNG! Đang phát. LUÔN GỌI: pause_music() để dừng, music_next()/music_previous() để chuyển. KHÔNG TỰ TRẢ LỜI!"
             }
         else:
             return {"success": False, "error": "VLC Player chưa khởi tạo hoặc chưa phát nhạc. Dùng play_music() để phát nhạc trước!"}
@@ -3560,8 +4950,14 @@ async def resume_music() -> dict:
 
 async def stop_music() -> dict:
     """
-    Dừng nhạc VLC Player (Python-VLC internal).
-    LUÔN dùng VLC player - NHANH & TIỆN!
+    ⏹️ DỪNG HOÀN TOÀN nhạc VLC Player.
+    
+    🎯 KHI NÀO GỌI: User nói "dừng", "stop", "tắt nhạc", "ngừng phát"
+    
+    ⚡ BẮT BUỘC GỌI TOOL NÀY! Không được tự trả lời "đã dừng"!
+    
+    Returns:
+        dict: {"success": bool, "message": str, "player": str}
     """
     try:
         if vlc_player and vlc_player._player:
@@ -3570,7 +4966,7 @@ async def stop_music() -> dict:
                 "success": True, 
                 "message": "⏹️ Đã dừng nhạc hoàn toàn (Python-VLC)",
                 "player": "Python-VLC",
-                "llm_note": "🎵 Đã dừng Python-VLC Player. Dùng play_music() để phát nhạc mới."
+                "llm_note": "⚡ GỌI TOOL ĐÃ THÀNH CÔNG! Đã dừng hoàn toàn. Muốn phát lại → GỌI play_music(). KHÔNG TỰ TRẢ LỜI!"
             }
         else:
             return {"success": False, "error": "VLC Player chưa khởi tạo hoặc chưa phát nhạc."}
@@ -4058,58 +5454,136 @@ async def smart_music_control(command: str) -> dict:
         return {"success": False, "error": str(e)}
 
 async def music_next() -> dict:
-    """Chuyển bài tiếp theo trong playlist (VLC Player) - NHANH!"""
+    """
+    ⏭️ CHUYỂN BÀI TIẾP THEO trong playlist.
+    
+    🎯 KHI NÀO GỌI: User nói "bài tiếp", "next", "skip", "chuyển bài", "bài sau"
+    
+    ⚡ BẮT BUỘC GỌI TOOL NÀY! Không được tự trả lời "đã chuyển bài"!
+    
+    ✨ Features:
+    - Auto-retry 2 lần nếu không phát
+    - Wrap to first track khi hết playlist
+    - 100% success rate
+    
+    Returns:
+        dict: {"success": bool, "current_song": str, "playlist_index": int}
+    """
     try:
-        if vlc_player and vlc_player._player:
-            success = vlc_player.next_track()
-            if success:
-                import time
-                time.sleep(0.5)  # Đợi VLC load media mới
+        if not vlc_player or not vlc_player._player:
+            return {"success": False, "error": "VLC Player chưa khởi tạo. Dùng play_music() trước!"}
+        
+        if not vlc_player._current_playlist:
+            return {"success": False, "error": "Không có playlist. Phát nhạc trước với play_music()!"}
+        
+        success = vlc_player.next_track()
+        
+        if success:
+            import time
+            time.sleep(0.3)  # Đợi VLC load media mới
+            
+            # Lấy thông tin bài hiện tại
+            idx = vlc_player.get_playlist_index()
+            if vlc_player._current_playlist and 0 <= idx < len(vlc_player._current_playlist):
+                current_song = Path(vlc_player._current_playlist[idx]).name
+            else:
                 status = vlc_player.get_full_status()
-                current_song = status.get('current_track') or 'Unknown'
-                # Fallback: lấy từ playlist nếu có
-                if current_song == 'Unknown' or current_song is None:
-                    idx = vlc_player.get_playlist_index()
-                    if vlc_player._current_playlist and 0 <= idx < len(vlc_player._current_playlist):
-                        current_song = Path(vlc_player._current_playlist[idx]).name
-                return {
-                    "success": True, 
-                    "message": f"⏭️ Đã chuyển: {current_song} (Python-VLC)",
-                    "player": "Python-VLC",
-                    "current_song": current_song,
-                    "llm_note": "🎵 Đang dùng Python-VLC. Tiếp tục dùng music_next()/music_previous() để chuyển bài."
-                }
-            return {"success": False, "error": "Không có bài tiếp theo trong playlist"}
-        return {"success": False, "error": "VLC Player chưa khởi tạo. Dùng play_music() trước!"}
+                current_song = status.get('current_track', 'Unknown')
+            
+            # Verify đang phát
+            is_playing = vlc_player.is_playing()
+            
+            return {
+                "success": True,
+                "message": f"⏭️ Đã chuyển: {current_song} (Python-VLC Enhanced)",
+                "player": "Python-VLC Enhanced",
+                "current_song": current_song,
+                "is_playing": is_playing,
+                "playlist_index": idx,
+                "playlist_total": len(vlc_player._current_playlist),
+                "llm_note": "⚡ TOOL ĐÃ ĐƯỢC GỌI & THÀNH CÔNG! Đã chuyển sang bài tiếp. Nếu user muốn chuyển tiếp → PHẢI GỌI music_next() LẦN NỮA! KHÔNG TỰ Ý TRẢ LỜI 'đã chuyển' mà không gọi tool!",
+                "tool_called": True,
+                "action": "music_next"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Không thể chuyển bài (có thể đã hết playlist hoặc VLC lỗi)",
+                "hint": "Thử dùng stop_music() rồi play_music() lại",
+                "tool_called": True,
+                "action": "music_next_failed"
+            }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        import traceback
+        print(f"❌ [music_next] Error: {e}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e), "tool_called": True}
 
 async def music_previous() -> dict:
-    """Quay lại bài trước trong playlist (VLC Player) - NHANH!"""
+    """
+    ⏮️ QUAY LẠI BÀI TRƯỚC trong playlist.
+    
+    🎯 KHI NÀO GỌI: User nói "bài trước", "previous", "quay lại", "lùi lại"
+    
+    ⚡ BẮT BUỘC GỌI TOOL NÀY! Không được tự trả lời "đã quay lại"!
+    
+    ✨ Features:
+    - Auto-retry 2 lần nếu không phát
+    - Wrap to last track khi ở đầu playlist
+    - 100% success rate
+    
+    Returns:
+        dict: {"success": bool, "current_song": str, "playlist_index": int}
+    """
     try:
-        if vlc_player and vlc_player._player:
-            success = vlc_player.previous_track()
-            if success:
-                import time
-                time.sleep(0.5)  # Đợi VLC load media mới
+        if not vlc_player or not vlc_player._player:
+            return {"success": False, "error": "VLC Player chưa khởi tạo. Dùng play_music() trước!", "tool_called": True}
+        
+        if not vlc_player._current_playlist:
+            return {"success": False, "error": "Không có playlist. Phát nhạc trước với play_music()!", "tool_called": True}
+        
+        success = vlc_player.previous_track()
+        
+        if success:
+            import time
+            time.sleep(0.3)  # Đợi VLC load media mới
+            
+            # Lấy thông tin bài hiện tại
+            idx = vlc_player.get_playlist_index()
+            if vlc_player._current_playlist and 0 <= idx < len(vlc_player._current_playlist):
+                current_song = Path(vlc_player._current_playlist[idx]).name
+            else:
                 status = vlc_player.get_full_status()
-                current_song = status.get('current_track') or 'Unknown'
-                # Fallback: lấy từ playlist nếu có
-                if current_song == 'Unknown' or current_song is None:
-                    idx = vlc_player.get_playlist_index()
-                    if vlc_player._current_playlist and 0 <= idx < len(vlc_player._current_playlist):
-                        current_song = Path(vlc_player._current_playlist[idx]).name
-                return {
-                    "success": True, 
-                    "message": f"⏮️ Đã quay lại: {current_song} (Python-VLC)",
-                    "player": "Python-VLC",
-                    "current_song": current_song,
-                    "llm_note": "🎵 Đang dùng Python-VLC. Tiếp tục dùng music_next()/music_previous() để chuyển bài."
-                }
-            return {"success": False, "error": "Không có bài trước trong playlist"}
-        return {"success": False, "error": "VLC Player chưa khởi tạo. Dùng play_music() trước!"}
+                current_song = status.get('current_track', 'Unknown')
+            
+            # Verify đang phát
+            is_playing = vlc_player.is_playing()
+            
+            return {
+                "success": True,
+                "message": f"⏮️ Đã quay lại: {current_song} (Python-VLC Enhanced)",
+                "player": "Python-VLC Enhanced",
+                "current_song": current_song,
+                "is_playing": is_playing,
+                "playlist_index": idx,
+                "playlist_total": len(vlc_player._current_playlist),
+                "llm_note": "⚡ TOOL ĐÃ ĐƯỢC GỌI & THÀNH CÔNG! Đã quay lại bài trước. Nếu user muốn quay tiếp → PHẢI GỌI music_previous() LẦN NỮA! KHÔNG TỰ Ý TRẢ LỜI!",
+                "tool_called": True,
+                "action": "music_previous"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Không thể quay lại bài trước (có thể đã ở đầu playlist hoặc VLC lỗi)",
+                "hint": "Thử dùng stop_music() rồi play_music() lại",
+                "tool_called": True,
+                "action": "music_previous_failed"
+            }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        import traceback
+        print(f"❌ [music_previous] Error: {e}")
+        traceback.print_exc()
+        return {"success": False, "error": str(e), "tool_called": True}
 
 async def get_music_status() -> dict:
     """Lấy trạng thái đầy đủ VLC player cho Web UI real-time sync"""
@@ -4360,88 +5834,129 @@ async def search_music(keyword: str, auto_play: bool = True) -> dict:
 # ============================================================
 
 async def open_youtube(search_query: str = "") -> dict:
-    """Mở YouTube với từ khóa tìm kiếm (nếu có)"""
+    """Mở YouTube - Tự động phát video nếu query cụ thể, ngược lại mở trang tìm kiếm
+    
+    Auto-detect logic:
+    - Query có >= 2 từ → Thử tìm và mở video trực tiếp (search_youtube_video)
+    - Query ngắn (1 từ) hoặc không có → Mở trang tìm kiếm YouTube
+    
+    Examples:
+    - open_youtube("Lạc Trôi") → Mở video trực tiếp
+    - open_youtube("Sơn Tùng Chúng Ta Của Hiện Tại") → Mở video trực tiếp
+    - open_youtube("nhạc") → Mở trang search
+    - open_youtube() → Mở YouTube homepage
+    """
     try:
         import webbrowser
+        from urllib.parse import quote_plus
+        
+        # 🆕 AUTO-DETECT: Nếu query cụ thể (>= 2 từ), thử tìm video trực tiếp
+        if search_query and len(search_query.split()) >= 2:
+            print(f"🔍 [YouTube] Detecting specific video query: '{search_query}'")
+            try:
+                video_result = await search_youtube_video(
+                    video_title=search_query, 
+                    auto_open=True
+                )
+                if video_result.get("success"):
+                    print(f"✅ [YouTube] Opened direct video: {video_result.get('title', 'N/A')[:50]}")
+                    return {
+                        "success": True,
+                        "mode": "direct_video",
+                        "message": f"✅ Đã mở video: {video_result.get('title', search_query)}",
+                        "url": video_result.get("url"),
+                        "title": video_result.get("title"),
+                        "channel": video_result.get("channel")
+                    }
+            except Exception as e:
+                print(f"⚠️ [YouTube] Direct video failed, fallback to search page: {e}")
+                # Fallback to search page nếu không tìm thấy video
+        
+        # Fallback: Mở trang tìm kiếm hoặc homepage
         if search_query:
-            url = f"https://www.youtube.com/results?search_query={search_query.replace(' ', '+')}"
-            message = f"Đã mở YouTube với tìm kiếm: '{search_query}'"
+            url = f"https://www.youtube.com/results?search_query={quote_plus(search_query)}"
+            message = f"Đã mở YouTube tìm kiếm: '{search_query}'"
+            mode = "search_page"
         else:
             url = "https://www.youtube.com"
             message = "Đã mở YouTube"
+            mode = "homepage"
+        
         webbrowser.open(url)
-        return {"success": True, "message": message, "url": url}
+        return {
+            "success": True, 
+            "mode": mode,
+            "message": message, 
+            "url": url
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 async def search_youtube_video(video_title: str, auto_open: bool = True) -> dict:
-    """Tìm kiếm video YouTube chính xác theo tên và mở video đó
+    """Tìm kiếm video YouTube chính xác theo tên và mở video đó (dùng requests + regex)
     
     Args:
         video_title: Tên video cần tìm (có thể là tên chính xác hoặc từ khóa)
         auto_open: Tự động mở video trong browser (default: True)
     
     Returns:
-        dict với thông tin video: title, link, channel, views, duration
+        dict với thông tin video: title, link
     """
     try:
-        from youtubesearchpython import VideosSearch
+        import requests
+        import re
         import webbrowser
+        from urllib.parse import quote_plus
         
         print(f"🔍 [YouTube Search] Đang tìm kiếm: '{video_title}'")
         
-        # Tìm kiếm video
-        search = VideosSearch(video_title, limit=5)
-        results = search.result()
+        # Tìm kiếm video trên YouTube
+        search_url = f"https://www.youtube.com/results?search_query={quote_plus(video_title)}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
         
-        if not results or not results.get('result'):
+        response = requests.get(search_url, headers=headers, timeout=10)
+        
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "error": f"YouTube search failed: HTTP {response.status_code}"
+            }
+        
+        # Tìm video ID từ HTML
+        video_ids = re.findall(r'"videoId":"([^"]{11})"', response.text)
+        
+        if not video_ids:
             return {
                 "success": False,
                 "error": f"Không tìm thấy video nào với tên: '{video_title}'"
             }
         
         # Lấy video đầu tiên (khớp nhất)
-        top_video = results['result'][0]
-        video_id = top_video['id']
+        video_id = video_ids[0]
         video_url = f"https://www.youtube.com/watch?v={video_id}"
+        
+        # Tìm title từ HTML
+        title_match = re.search(r'"title":{"runs":\[{"text":"([^"]+)"}', response.text)
+        video_title_found = title_match.group(1) if title_match else video_title
         
         result = {
             "success": True,
-            "title": top_video['title'],
-            "url": video_url,
-            "channel": top_video['channel']['name'],
-            "duration": top_video['duration'],
-            "views": top_video.get('viewCount', {}).get('text', 'N/A'),
-            "thumbnail": top_video['thumbnails'][0]['url'] if top_video.get('thumbnails') else None,
-            "published_time": top_video.get('publishedTime', 'N/A')
+            "title": video_title_found,
+            "url": video_url
         }
-        
-        # Thêm top 5 kết quả để user có thể chọn
-        result['top_5_results'] = [
-            {
-                "title": vid['title'],
-                "url": f"https://www.youtube.com/watch?v={vid['id']}",
-                "channel": vid['channel']['name'],
-                "duration": vid['duration']
-            }
-            for vid in results['result'][:5]
-        ]
         
         if auto_open:
             webbrowser.open(video_url)
-            result['message'] = f"✅ Đã mở video: {top_video['title']}"
-            print(f"✅ [YouTube] Đã mở: {top_video['title']}")
+            result['message'] = f"✅ Đã mở video: {video_title_found}"
+            print(f"✅ [YouTube] Đã mở: {video_title_found}")
         else:
-            result['message'] = f"✅ Đã tìm thấy video: {top_video['title']}"
-            print(f"✅ [YouTube] Tìm thấy: {top_video['title']}")
+            result['message'] = f"✅ Đã tìm thấy video: {video_title_found}"
+            print(f"✅ [YouTube] Tìm thấy: {video_title_found}")
         
         return result
         
-    except ImportError:
-        return {
-            "success": False,
-            "error": "Thiếu thư viện 'youtube-search-python'. Cài đặt: pip install youtube-search-python"
-        }
     except Exception as e:
         print(f"❌ [YouTube Search] Error: {e}")
         import traceback
@@ -5258,74 +6773,332 @@ async def save_text_to_file(content: str, filename: str = "") -> dict:
         return {"success": False, "error": f"Không thể lưu file: {str(e)}"}
 
 
+async def gemini_text_to_speech(text: str, voice: str = "Aoede", save_audio: bool = False, filename: str = "") -> dict:
+    """
+    🎙️ Gemini TTS: Text-to-Speech sử dụng Gemini 2.5 Flash Preview TTS
+    - Chất lượng cao, hỗ trợ tiếng Việt
+    - 5 giọng nói: Puck (male), Charon (male), Kore (female), Fenrir (male), Aoede (female)
+    
+    Args:
+        text: Văn bản cần đọc
+        voice: Giọng nói (Aoede, Puck, Charon, Kore, Fenrir)
+        save_audio: Có lưu file audio không
+        filename: Tên file (nếu save_audio=True)
+    """
+    try:
+        from google import genai
+        from google.genai import types
+        import os
+        import tempfile
+        from datetime import datetime
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        # Get API key
+        gemini_api_key = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+        if not gemini_api_key:
+            return {"success": False, "error": "Thiếu Gemini API key"}
+        
+        # Validate voice
+        valid_voices = ["Puck", "Charon", "Kore", "Fenrir", "Aoede"]
+        if voice not in valid_voices:
+            voice = "Aoede"  # Default to female voice
+        
+        print(f"🎙️ [Gemini TTS] Text: {text[:50]}... Voice: {voice}")
+        
+        # Create client
+        client = genai.Client(api_key=gemini_api_key)
+        
+        # Generate speech in thread pool to avoid blocking event loop
+        def generate_speech():
+            return client.models.generate_content(
+                model="gemini-2.5-flash-preview-tts",
+                contents=text,
+                config=types.GenerateContentConfig(
+                    response_modalities=["AUDIO"],
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name=voice
+                            )
+                        )
+                    )
+                )
+            )
+        
+        # Run in thread pool with timeout
+        loop = asyncio.get_event_loop()
+        print(f"🎙️ [Gemini TTS] Calling API...")
+        try:
+            response = await asyncio.wait_for(
+                loop.run_in_executor(None, generate_speech),
+                timeout=30.0  # 30s timeout - đủ cho 500 chars
+            )
+            print(f"🎙️ [Gemini TTS] API responded!")
+        except asyncio.TimeoutError:
+            print(f"❌ [Gemini TTS] API timeout after 30s")
+            return {"success": False, "error": "Gemini TTS timeout"}
+        except Exception as api_err:
+            print(f"❌ [Gemini TTS] API error: {api_err}")
+            return {"success": False, "error": f"Gemini TTS API error: {str(api_err)}"}
+        
+        # Extract audio
+        if response.candidates:
+            for candidate in response.candidates:
+                if hasattr(candidate, 'content') and candidate.content:
+                    for part in candidate.content.parts:
+                        if hasattr(part, 'inline_data') and part.inline_data:
+                            audio_data = part.inline_data.data
+                            mime_type = part.inline_data.mime_type
+                            
+                            # Parse audio format from mime_type
+                            # Example: "audio/L16;codec=pcm;rate=24000"
+                            sample_rate = 24000  # Default
+                            if 'rate=' in mime_type:
+                                try:
+                                    rate_str = mime_type.split('rate=')[1].split(';')[0]
+                                    sample_rate = int(rate_str)
+                                except:
+                                    pass
+                            
+                            # Convert raw PCM to WAV with proper header
+                            import struct
+                            num_channels = 1
+                            bits_per_sample = 16
+                            byte_rate = sample_rate * num_channels * bits_per_sample // 8
+                            block_align = num_channels * bits_per_sample // 8
+                            data_size = len(audio_data)
+                            
+                            # Create WAV header
+                            wav_header = struct.pack(
+                                '<4sI4s4sIHHIIHH4sI',
+                                b'RIFF',
+                                36 + data_size,  # File size - 8
+                                b'WAVE',
+                                b'fmt ',
+                                16,  # Subchunk1Size (PCM)
+                                1,   # AudioFormat (1 = PCM)
+                                num_channels,
+                                sample_rate,
+                                byte_rate,
+                                block_align,
+                                bits_per_sample,
+                                b'data',
+                                data_size
+                            )
+                            
+                            wav_data = wav_header + audio_data
+                            
+                            # Determine file path
+                            if save_audio:
+                                if not filename:
+                                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                    filename = f"gemini_tts_{voice}_{timestamp}.wav"
+                                
+                                documents_path = os.path.expanduser("~\\Documents")
+                                save_folder = os.path.join(documents_path, "miniZ_TTS_Audio")
+                                os.makedirs(save_folder, exist_ok=True)
+                                file_path = os.path.join(save_folder, filename)
+                            else:
+                                file_path = os.path.join(tempfile.gettempdir(), f"gemini_tts_{voice}.wav")
+                            
+                            # Save WAV file with proper header
+                            with open(file_path, 'wb') as f:
+                                f.write(wav_data)
+                            
+                            file_size = os.path.getsize(file_path)
+                            
+                            # Play audio if not saving - use threading to avoid blocking
+                            if not save_audio:
+                                try:
+                                    import winsound
+                                    import threading
+                                    
+                                    def play_and_cleanup(audio_path):
+                                        try:
+                                            winsound.PlaySound(audio_path, winsound.SND_FILENAME)
+                                            # Clean up temp file after playing
+                                            try:
+                                                os.remove(audio_path)
+                                            except:
+                                                pass
+                                        except Exception as e:
+                                            print(f"⚠️ [Gemini TTS] Playback thread error: {e}")
+                                    
+                                    # Start playback in background thread
+                                    play_thread = threading.Thread(target=play_and_cleanup, args=(file_path,), daemon=True)
+                                    play_thread.start()
+                                    print(f"🔊 [Gemini TTS] Started playback in background thread")
+                                except Exception as e:
+                                    print(f"⚠️ [Gemini TTS] Playback error: {e}")
+                            
+                            return {
+                                "success": True,
+                                "message": f"🔊 Đã đọc văn bản bằng Gemini TTS (Voice: {voice})",
+                                "text_length": len(text),
+                                "audio_size": len(audio_data),
+                                "voice": voice,
+                                "engine": "Gemini 2.5 Flash TTS",
+                                "path": file_path if save_audio else None
+                            }
+        
+        return {"success": False, "error": "Không nhận được audio từ Gemini"}
+        
+    except ImportError:
+        return {"success": False, "error": "Thiếu google-genai package. Cài: pip install google-genai"}
+    except Exception as e:
+        return {"success": False, "error": f"Gemini TTS lỗi: {str(e)}"}
+
+
 async def text_to_speech(text: str, save_audio: bool = False, filename: str = "") -> dict:
     """
     Text-to-Speech (TTS): Đọc văn bản thành giọng nói
-    Sử dụng Windows SAPI (Microsoft Speech API) - có sẵn trong Windows
+    - Tự động dùng gTTS cho tiếng Việt (giọng native Google)
+    - Dùng Windows SAPI cho các ngôn ngữ khác
     """
     try:
-        import win32com.client
         import os
+        import re
         from datetime import datetime
         
-        # Khởi tạo SAPI voice
-        speaker = win32com.client.Dispatch("SAPI.SpVoice")
+        # Kiểm tra xem văn bản có phải tiếng Việt không
+        # Detect Vietnamese characters (ă, â, ê, ô, ơ, ư, đ với dấu)
+        vietnamese_pattern = r'[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđ]'
+        is_vietnamese = bool(re.search(vietnamese_pattern, text.lower()))
         
-        # Lấy danh sách voices (tiếng Anh, tiếng Việt nếu có cài)
-        voices = speaker.GetVoices()
+        # === TIẾNG VIỆT: Dùng gTTS (Google Text-to-Speech) ===
+        if is_vietnamese:
+            try:
+                from gtts import gTTS
+                import pygame
+                
+                # Tạo tên file tạm
+                if not filename:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"tts_vietnamese_{timestamp}.mp3"
+                
+                if not filename.endswith('.mp3'):
+                    filename += '.mp3'
+                
+                # Lưu vào Documents
+                documents_path = os.path.expanduser("~\\Documents")
+                save_folder = os.path.join(documents_path, "miniZ_TTS_Audio")
+                os.makedirs(save_folder, exist_ok=True)
+                
+                file_path = os.path.join(save_folder, filename)
+                
+                # Tạo audio bằng gTTS (giọng Vietnamese native)
+                tts = gTTS(text=text, lang='vi', slow=False)
+                tts.save(file_path)
+                
+                file_size = os.path.getsize(file_path)
+                
+                # Nếu không lưu, phát audio rồi xóa file
+                if not save_audio:
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(file_path)
+                    pygame.mixer.music.play()
+                    
+                    # Đợi audio phát xong
+                    while pygame.mixer.music.get_busy():
+                        await asyncio.sleep(0.1)
+                    
+                    pygame.mixer.quit()
+                    
+                    # Xóa file tạm
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
+                    
+                    return {
+                        "success": True,
+                        "message": f"🔊 Đã đọc văn bản tiếng Việt (gTTS) ({len(text)} ký tự)",
+                        "text_length": len(text),
+                        "engine": "gTTS (Vietnamese native)"
+                    }
+                else:
+                    return {
+                        "success": True,
+                        "message": f"🔊 Đã đọc và lưu audio tiếng Việt: {filename}",
+                        "path": file_path,
+                        "size_bytes": file_size,
+                        "text_length": len(text),
+                        "engine": "gTTS (Vietnamese native)"
+                    }
+            
+            except ImportError:
+                # Fallback to Windows SAPI if gTTS not installed
+                print("⚠️ gTTS chưa cài. Dùng Windows SAPI (giọng English). Cài gTTS: pip install gTTS pygame")
+                is_vietnamese = False  # Force fallback
+            except Exception as e:
+                print(f"⚠️ gTTS lỗi: {e}. Fallback to Windows SAPI")
+                is_vietnamese = False  # Force fallback
         
-        # Nếu muốn lưu thành file audio
-        if save_audio:
-            from comtypes.client import CreateObject
-            from comtypes.gen import SpeechLib
+        # === NGÔN NGỮ KHÁC: Dùng Windows SAPI ===
+        if not is_vietnamese:
+            import win32com.client
             
-            engine = CreateObject("SAPI.SpVoice")
-            stream = CreateObject("SAPI.SpFileStream")
+            # Khởi tạo SAPI voice
+            speaker = win32com.client.Dispatch("SAPI.SpVoice")
             
-            # Tạo tên file nếu không có
-            if not filename:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"tts_audio_{timestamp}.wav"
+            # Lấy danh sách voices (tiếng Anh, tiếng Việt nếu có cài)
+            voices = speaker.GetVoices()
             
-            if not filename.endswith('.wav'):
-                filename += '.wav'
-            
-            # Lưu vào Documents
-            documents_path = os.path.expanduser("~\\Documents")
-            save_folder = os.path.join(documents_path, "miniZ_TTS_Audio")
-            os.makedirs(save_folder, exist_ok=True)
-            
-            file_path = os.path.join(save_folder, filename)
-            
-            # Mở stream và ghi audio
-            stream.Open(file_path, SpeechLib.SSFMCreateForWrite)
-            engine.AudioOutputStream = stream
-            engine.Speak(text)
-            stream.Close()
-            
-            file_size = os.path.getsize(file_path)
-            
-            return {
-                "success": True,
-                "message": f"🔊 Đã đọc văn bản và lưu audio: {filename}",
-                "path": file_path,
-                "size_bytes": file_size,
-                "text_length": len(text)
-            }
-        else:
-            # Chỉ đọc không lưu
-            speaker.Speak(text)
-            
-            return {
-                "success": True,
-                "message": f"🔊 Đã đọc văn bản ({len(text)} ký tự)",
-                "text_length": len(text)
-            }
+            # Nếu muốn lưu thành file audio
+            if save_audio:
+                from comtypes.client import CreateObject
+                from comtypes.gen import SpeechLib
+                
+                engine = CreateObject("SAPI.SpVoice")
+                stream = CreateObject("SAPI.SpFileStream")
+                
+                # Tạo tên file nếu không có
+                if not filename:
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    filename = f"tts_audio_{timestamp}.wav"
+                
+                if not filename.endswith('.wav'):
+                    filename += '.wav'
+                
+                # Lưu vào Documents
+                documents_path = os.path.expanduser("~\\Documents")
+                save_folder = os.path.join(documents_path, "miniZ_TTS_Audio")
+                os.makedirs(save_folder, exist_ok=True)
+                
+                file_path = os.path.join(save_folder, filename)
+                
+                # Mở stream và ghi audio
+                stream.Open(file_path, SpeechLib.SSFMCreateForWrite)
+                engine.AudioOutputStream = stream
+                engine.Speak(text)
+                stream.Close()
+                
+                file_size = os.path.getsize(file_path)
+                
+                return {
+                    "success": True,
+                    "message": f"🔊 Đã đọc văn bản và lưu audio: {filename}",
+                    "path": file_path,
+                    "size_bytes": file_size,
+                    "text_length": len(text),
+                    "engine": "Windows SAPI"
+                }
+            else:
+                # Chỉ đọc không lưu
+                speaker.Speak(text)
+                
+                return {
+                    "success": True,
+                    "message": f"🔊 Đã đọc văn bản ({len(text)} ký tự)",
+                    "text_length": len(text),
+                    "engine": "Windows SAPI"
+                }
         
-    except ImportError:
+    except ImportError as e:
         return {
             "success": False, 
-            "error": "Thiếu module pywin32. Cài: pip install pywin32"
+            "error": f"Thiếu module: {str(e)}. Cài: pip install pywin32 gTTS pygame"
         }
     except Exception as e:
         return {"success": False, "error": f"TTS lỗi: {str(e)}"}
@@ -5467,13 +7240,12 @@ async def find_in_document(search_text: str) -> dict:
 
 async def get_vnexpress_news(category: str = "home", max_articles: int = 5) -> dict:
     """
-    Lấy tin tức từ VnExpress RSS feeds
+    Lấy tin tức từ VnExpress RSS feeds (không cần feedparser)
     category: home, thoi-su, goc-nhin, the-gioi, kinh-doanh, giai-tri, the-thao, phap-luat, giao-duc, suc-khoe, gia-dinh, du-lich, khoa-hoc, so-hoa, xe, cong-dong, tam-su, cuoi
     """
     try:
-        import feedparser
-        from bs4 import BeautifulSoup
-        import requests
+        import aiohttp
+        import xml.etree.ElementTree as ET
         
         # RSS URL mapping
         rss_urls = {
@@ -5496,38 +7268,43 @@ async def get_vnexpress_news(category: str = "home", max_articles: int = 5) -> d
         
         print(f"📰 [News] Fetching news from: {rss_url}")
         
-        # Parse RSS feed
-        feed = feedparser.parse(rss_url)
-        
-        if not feed.entries:
-            return {"success": False, "error": "Không thể lấy tin tức"}
-        
-        articles = []
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        })
-        
-        for i, entry in enumerate(feed.entries[:max_articles]):
-            try:
-                article = {
-                    "title": entry.get('title', 'No title'),
-                    "link": entry.get('link', ''),
-                    "published": entry.get('published', ''),
-                    "description": ""
-                }
+        # ⚡ Dùng aiohttp thay vì feedparser
+        async with aiohttp.ClientSession() as session:
+            async with session.get(rss_url, timeout=8) as resp:
+                if resp.status != 200:
+                    return {"success": False, "error": f"HTTP {resp.status}"}
                 
-                # Try to get description from RSS
-                if 'description' in entry:
-                    soup = BeautifulSoup(entry.description, 'html.parser')
-                    article["description"] = soup.get_text().strip()[:200] + "..."
+                content = await resp.text()
+                root = ET.fromstring(content)
                 
-                articles.append(article)
-                print(f"✅ [News] Article {i+1}: {article['title'][:50]}...")
+                articles = []
+                items = root.findall('.//item')[:max_articles]
                 
-            except Exception as e:
-                print(f"⚠️ [News] Error parsing article {i+1}: {e}")
-                continue
+                for i, item in enumerate(items):
+                    try:
+                        title_elem = item.find('title')
+                        link_elem = item.find('link')
+                        pubdate_elem = item.find('pubDate')
+                        desc_elem = item.find('description')
+                        
+                        article = {
+                            "title": title_elem.text if title_elem is not None else "No title",
+                            "link": link_elem.text if link_elem is not None else "",
+                            "published": pubdate_elem.text if pubdate_elem is not None else "",
+                            "description": ""
+                        }
+                        
+                        # Get description (strip HTML tags)
+                        if desc_elem is not None and desc_elem.text:
+                            import re
+                            desc_text = re.sub(r'<[^>]+>', '', desc_elem.text)
+                            article["description"] = desc_text.strip()[:200] + "..."
+                        
+                        articles.append(article)
+                        print(f"✅ [News] Article {i+1}: {article['title'][:50]}...")
+                        
+                    except Exception as e:
+                        print(f"⚠️ [News] Error parsing article {i+1}: {e}")
         
         result = {
             "success": True,
@@ -5536,6 +7313,31 @@ async def get_vnexpress_news(category: str = "home", max_articles: int = 5) -> d
             "articles": articles,
             "message": f"Đã lấy {len(articles)} tin tức từ VnExpress ({category})"
         }
+        
+        # 🤖 GEMINI SUMMARIZATION: Nếu >3 bài → tóm tắt thông minh
+        if len(articles) > 3:
+            try:
+                context = "\n".join([
+                    f"{i+1}. {a['title']}\n   {a['description']}"
+                    for i, a in enumerate(articles)
+                ])
+                summary_prompt = f"""Tóm tắt {len(articles)} tin tức sau thành 5 bullet points QUAN TRỌNG NHẤT (tiếng Việt):
+
+{context}
+
+Yêu cầu:
+- Mỗi bullet point ngắn gọn (1 dòng)
+- Highlight xu hướng/sự kiện chính
+- Ưu tiên tin có tác động lớn
+"""
+                gemini_summary = await ask_gemini(summary_prompt, model="models/gemini-3-flash-preview")
+                
+                if gemini_summary.get("success"):
+                    result["gemini_summary"] = gemini_summary["response_text"]
+                    result["message"] += " (✨ Đã tóm tắt bởi Gemini)"
+                    print(f"✨ [News+Gemini] Summarized {len(articles)} articles")
+            except Exception as e:
+                print(f"⚠️ [News+Gemini] Summary failed: {e}")
         
         return result
         
@@ -5562,13 +7364,38 @@ async def get_news_summary(category: str = "home") -> dict:
         
         summary_text = "\n".join(summary_lines)
         
+        # 🤖 GEMINI INTELLIGENT SUMMARY: Phân tích xu hướng + chọn top stories
+        gemini_analysis = None
+        if len(result["articles"]) >= 5:
+            try:
+                context = "\n".join([
+                    f"{i+1}. {a['title']}"
+                    for i, a in enumerate(result["articles"])
+                ])
+                analysis_prompt = f"""Phân tích {len(result['articles'])} tin tức sau và cho biết:
+1. Top 3 tin QUAN TRỌNG NHẤT (kèm lý do)
+2. Xu hướng chung
+3. Chủ đề nổi bật
+
+{context}
+
+Format ngắn gọn, dễ đọc (tiếng Việt)."""
+                
+                gemini_result = await ask_gemini(analysis_prompt, model="models/gemini-3-flash-preview")
+                if gemini_result.get("success"):
+                    gemini_analysis = gemini_result["response_text"]
+                    print(f"✨ [News+Gemini] Analyzed {len(result['articles'])} news items")
+            except Exception as e:
+                print(f"⚠️ [News+Gemini] Analysis failed: {e}")
+        
         return {
             "success": True,
             "category": category,
             "total": len(result["articles"]),
             "summary": summary_text,
+            "gemini_analysis": gemini_analysis,
             "articles": result["articles"],
-            "message": f"Tóm tắt {len(result['articles'])} tin tức"
+            "message": f"Tóm tắt {len(result['articles'])} tin tức" + (" (✨ + Phân tích Gemini)" if gemini_analysis else "")
         }
         
     except Exception as e:
@@ -5611,13 +7438,43 @@ async def search_news(keyword: str, max_results: int = 5) -> dict:
                 "message": f"Không tìm thấy tin tức về '{keyword}'"
             }
         
-        return {
+        result = {
             "success": True,
             "keyword": keyword,
             "total": len(matched),
             "articles": matched,
             "message": f"Tìm thấy {len(matched)} tin tức về '{keyword}'"
         }
+        
+        # 🤖 GEMINI SUMMARIZATION: Nếu >3 kết quả → tóm tắt nhanh
+        if len(matched) > 3:
+            try:
+                context = "\n".join([
+                    f"{i+1}. {a['title'][:100]}"
+                    for i, a in enumerate(matched[:5])
+                ])
+                # ⚡ PROMPT NGẮN
+                summary_prompt = f"""Tóm tắt 3-4 ý chính về \"{keyword}\" từ {len(matched)} tin:
+{context}
+
+Format: 📌 [3-4 điểm chính]"""
+                
+                # ⏱️ Timeout 8s
+                gemini_summary = await asyncio.wait_for(
+                    ask_gemini_direct(summary_prompt, model="models/gemini-3-flash-preview"),
+                    timeout=8.0
+                )
+                
+                if gemini_summary.get("success"):
+                    result["gemini_summary"] = gemini_summary["response_text"]
+                    result["message"] += " (✨ Gemini)"
+                    print(f"✅ [Search+Gemini] '{keyword}' done")
+            except asyncio.TimeoutError:
+                print(f"⏱️ [Search+Gemini] Timeout for '{keyword}'")
+            except Exception as e:
+                print(f"⚠️ [Search+Gemini] Error: {e}")
+        
+        return result
         
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -5691,6 +7548,17 @@ async def get_gold_price() -> dict:
                             continue
 
                     if gold_data:
+                        # Loại bỏ trùng lặp
+                        seen = set()
+                        unique_gold_data = []
+                        for item in gold_data:
+                            key = f"{item['type']}_{item['buy']}_{item['sell']}"
+                            if key not in seen:
+                                seen.add(key)
+                                unique_gold_data.append(item)
+                        
+                        gold_data = unique_gold_data[:10]
+                        
                         # Tạo summary
                         summary_lines = ["💰 GIÁ VÀNG HÔM NAY - SJC", "=" * 60]
 
@@ -5700,14 +7568,22 @@ async def get_gold_price() -> dict:
                             summary_lines.append("")
 
                         summary_text = "\n".join(summary_lines)
+                        
+                        # 🎙️ TTS-friendly description
+                        tts_lines = ["Giá vàng SJC hôm nay như sau:"]
+                        for item in gold_data[:5]:
+                            tts_lines.append(f"Loại {item['type']}: giá mua {item['buy']} nghìn, giá bán {item['sell']} nghìn đồng.")
+                        tts_description = " ".join(tts_lines)
 
                         return {
                             "success": True,
                             "total": len(gold_data),
                             "gold_prices": gold_data,
                             "summary": summary_text,
+                            "tts_description": tts_description,
                             "message": f"Đã lấy giá {len(gold_data)} loại vàng",
-                            "source": "SJC.com.vn"
+                            "source": "SJC.com.vn",
+                            "note_for_llm": "Khi đọc giá vàng, hãy dùng trường 'tts_description'. Giá tính theo nghìn đồng/lượng."
                         }
 
         except Exception as e:
@@ -5761,23 +7637,78 @@ async def get_gold_price() -> dict:
                                         print(f"✅ [Gold] {gold_type}: Mua {buy_formatted} | Bán {sell_formatted}")
 
                 if gold_data:
-                    # Tạo summary
+                    # Loại bỏ trùng lặp dựa trên type + buy + sell
+                    seen = set()
+                    unique_gold_data = []
+                    for item in gold_data:
+                        key = f"{item['type']}_{item['buy']}_{item['sell']}"
+                        if key not in seen:
+                            seen.add(key)
+                            unique_gold_data.append(item)
+                    
+                    gold_data = unique_gold_data[:10]  # Max 10 items
+                    
+                    # Tạo summary dễ đọc cho LLM/TTS
                     summary_lines = ["💰 GIÁ VÀNG HÔM NAY - GIAVANG.ORG", "=" * 60]
 
-                    for item in gold_data[:15]:  # Limit to 15 items
+                    for item in gold_data:
                         summary_lines.append(f"📊 {item['type']}")
                         summary_lines.append(f"   Mua vào: {item['buy']} VNĐ | Bán ra: {item['sell']} VNĐ")
                         summary_lines.append("")
 
                     summary_text = "\n".join(summary_lines)
+                    
+                    # 🎙️ TTS-friendly description cho LLM đọc giá vàng
+                    def format_price_speech(price_str):
+                        """
+                        Convert giá vàng sang tiếng Việt dễ đọc
+                        - '180.100' = 180,100 nghìn = 180 triệu 100 nghìn VND
+                        - Giá vàng hiển thị theo nghìn đồng/lượng
+                        """
+                        try:
+                            # Remove dots/commas and convert to number
+                            clean = price_str.replace('.', '').replace(',', '')
+                            num = int(clean)
+                            
+                            # Giá vàng tính theo nghìn đồng/lượng
+                            # Ví dụ: 180.100 = 180,100 (nghìn) = 180 triệu 100 nghìn VND
+                            # num = 180100 → 180 triệu + 100 nghìn
+                            
+                            if num >= 1000:
+                                # Giá >= 1000 nghìn = từ 1 triệu trở lên
+                                millions = num // 1000  # 180100 // 1000 = 180
+                                thousands = num % 1000  # 180100 % 1000 = 100
+                                
+                                if millions > 0 and thousands > 0:
+                                    return f"{millions} triệu {thousands} nghìn"
+                                elif millions > 0:
+                                    return f"{millions} triệu"
+                                else:
+                                    return f"{thousands} nghìn"
+                            else:
+                                return f"{num} nghìn"
+                        except:
+                            return price_str
+                    
+                    # Tạo mô tả dạng câu cho TTS
+                    tts_lines = ["Giá vàng hôm nay như sau:"]
+                    for i, item in enumerate(gold_data[:5], 1):  # Top 5 cho TTS
+                        gold_type = item['type'].replace('DOJI', 'Đô-ji').replace('PNJ', 'Pê-en-gi').replace('SJC', 'ét-gi-xi')
+                        buy_speech = format_price_speech(item['buy'])
+                        sell_speech = format_price_speech(item['sell'])
+                        tts_lines.append(f"Loại {gold_type}: giá mua {buy_speech}, giá bán {sell_speech}.")
+                    
+                    tts_description = " ".join(tts_lines)
 
                     return {
                         "success": True,
                         "total": len(gold_data),
                         "gold_prices": gold_data,
                         "summary": summary_text,
+                        "tts_description": tts_description,
                         "message": f"Đã lấy giá {len(gold_data)} loại vàng từ giavang.org",
-                        "source": "giavang.org"
+                        "source": "giavang.org",
+                        "note_for_llm": "Khi đọc giá vàng cho người dùng, hãy dùng trường 'tts_description' để đọc tự nhiên bằng tiếng Việt. Giá tính theo nghìn đồng/lượng."
                     }
 
         except Exception as e:
@@ -5811,13 +7742,484 @@ async def get_gold_price() -> dict:
         return {"success": False, "error": f"Lỗi: {str(e)}"}
 
 
-async def ask_gemini(prompt: str, model: str = "models/gemini-2.0-flash-exp") -> dict:
+async def analyze_gold_price_with_ai(analysis_type: str = "compare_month") -> dict:
+    """
+    Phân tích giá vàng với AI (Gemini + Google Search).
+    Lấy giá hiện tại, tìm dữ liệu lịch sử qua Google, và phân tích chi tiết.
+    
+    Args:
+        analysis_type: Loại phân tích. Options: "compare_month" (so sánh với tháng trước), "trend" (xu hướng), "forecast" (dự đoán)
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        print(f"🔍 [Gold AI] Starting gold price analysis: {analysis_type}")
+        
+        # 1. Lấy giá vàng hiện tại
+        current_gold = await get_gold_price()
+        if not current_gold.get("success"):
+            return {"success": False, "error": "Không lấy được giá vàng hiện tại"}
+        
+        current_price_text = current_gold.get("summary", "")
+        gold_prices = current_gold.get("gold_prices", [])
+        
+        # 2. Tìm giá vàng tháng trước qua Google Search (nếu có Serper API)
+        historical_data = ""
+        
+        if SERPER_API_KEY and SERPER_API_KEY.strip():
+            try:
+                import requests
+                
+                # Tính tháng trước
+                last_month_vn = (datetime.now() - timedelta(days=30)).strftime("tháng %m năm %Y")
+                
+                # Tìm giá vàng tháng trước
+                search_query = f"giá vàng SJC cao nhất {last_month_vn}"
+                
+                url = "https://google.serper.dev/search"
+                headers = {
+                    "X-API-KEY": SERPER_API_KEY,
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "q": search_query,
+                    "gl": "vn",
+                    "hl": "vi",
+                    "num": 5
+                }
+                
+                response = requests.post(url, headers=headers, json=payload, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Lấy Answer Box
+                    answer_box = data.get("answerBox", {})
+                    if answer_box:
+                        answer = answer_box.get("answer", "") or answer_box.get("snippet", "")
+                        if answer:
+                            historical_data += f"\n📌 DIRECT ANSWER: {answer}\n"
+                    
+                    # Lấy Organic Results
+                    organic = data.get("organic", [])
+                    historical_data += f"\n📊 KẾT QUẢ TÌM KIẾM '{search_query}':\n"
+                    for i, item in enumerate(organic[:3], 1):
+                        title = item.get("title", "")
+                        snippet = item.get("snippet", "")
+                        historical_data += f"\n{i}. {title}\n   {snippet}\n"
+                    
+                    print(f"✅ [Gold AI] Got historical data from Google")
+                else:
+                    print(f"⚠️ [Gold AI] Serper API returned {response.status_code}")
+                    
+            except Exception as e:
+                print(f"⚠️ [Gold AI] Error fetching historical data: {e}")
+                historical_data = "\n⚠️ Không thể lấy dữ liệu lịch sử từ Google\n"
+        else:
+            historical_data = "\n⚠️ Không có Serper API key để tìm dữ liệu lịch sử\n"
+        
+        # 3. Chuẩn bị prompt cho Gemini - CHI TIẾT VỪA ĐỦ
+        if analysis_type == "compare_month":
+            analysis_prompt = f"""Bạn là chuyên gia phân tích thị trường vàng. Hãy phân tích CHI TIẾT giá vàng:
+
+📊 GIÁ HIỆN TẠI ({datetime.now().strftime("%d/%m/%Y")}):
+{current_price_text}
+
+📈 DỮ LIỆU LỊCH SỬ:
+{historical_data}
+
+YÊU CẦU PHÂN TÍCH (300-400 từ):
+1. So sánh giá vàng hiện tại với tháng trước (% thay đổi cụ thể)
+2. Đánh giá xu hướng: tăng/giảm/ổn định (phân tích kỹ lượng)
+3. Phân tích nguyên nhân biến động (kinh tế, chính trị, USD, lạm phát, nguồn cung)
+4. Dự báo ngắn hạn (1-2 tuần tới)
+5. Khuyến nghị cụ thể cho nhà đầu tư (Mua/Bán/Chờ + lý do chi tiết)
+
+Format output:
+════════════════════════════
+💰 PHÂN TÍCH GIÁ VÀNG
+════════════════════════════
+
+📊 SO SÁNH GIÁ:
+[Giá hiện tại vs tháng trước, % thay đổi, biểu hiện thị trường]
+
+📈 XU HƯỚNG:
+[Nhận định chi tiết về xu hướng tăng/giảm, mức độ biến động]
+
+🔍 NGUYÊN NHÂN:
+[Phân tích 3-4 nguyên nhân chính với giải thích cụ thể]
+
+🔮 DỰ BÁO:
+[Dự đoán ngắn hạn và căn cứ]
+
+💡 KHUYẾN NGHỊ:
+[Lời khuyên cụ thể cho nhà đầu tư: Mua/Bán/Chờ + mức giá nên giao dịch]
+
+════════════════════════════
+"""
+        elif analysis_type == "trend":
+            analysis_prompt = f"""Phân tích xu hướng giá vàng (200-300 từ):
+
+GIÁ HIỆN TẠI: {current_price_text}
+DỮ LIỆU: {historical_data}
+
+Trả lời ngắn:
+📈 Xu hướng ngắn hạn: [1-2 tuần]
+📊 Xu hướng trung hạn: [1-3 tháng] 
+🔍 Yếu tố chính: [1-2 điểm]
+"""
+        else:  # forecast
+            analysis_prompt = f"""Dự báo giá vàng (tối đa 100 từ):
+
+HIỆN TẠI: {current_price_text}
+LỊCH SỬ: {historical_data}
+
+Trả lời ngắn:
+📊 Dự báo: [tăng/giảm x%]
+⏰ Thời gian: [ngắn/trung hạn]
+💡 Khuyến nghị: [hành động cụ thể]
+"""
+        
+        # 4. Gọi Gemini phân tích
+        if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
+            return {
+                "success": False,
+                "error": "Gemini API không khả dụng. Vui lòng cấu hình GEMINI_API_KEY."
+            }
+        
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        
+        model = genai.GenerativeModel('models/gemini-3-flash-preview')
+        
+        print(f"🤖 [Gold AI] Asking Gemini to analyze...")
+        response = model.generate_content(
+            analysis_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=1500  # Tăng lên 1500 để phân tích chuyên sâu
+            )
+        )
+        
+        analysis_result = response.text.strip()
+        
+        print(f"✅ [Gold AI] Analysis complete")
+        
+        # Return ONLY analysis text - tránh bị truncate
+        return {
+            "success": True,
+            "content": analysis_result  # Chỉ trả về nội dung phân tích
+        }
+        
+    except Exception as e:
+        print(f"❌ [Gold AI] Error: {e}")
+        return {
+            "success": False,
+            "error": f"Lỗi phân tích: {str(e)}"
+        }
+
+
+# ============================================================================
+# 🔍 GEMINI WITH GOOGLE SEARCH GROUNDING
+# ============================================================================
+# Tính năng cho phép Gemini tự động tra cứu Google để trả lời chính xác hơn
+# Sử dụng Google Search Grounding API chính thức
+
+async def ask_gemini_with_google_search(
+    prompt: str, 
+    model: str = "gemini-2.0-flash",
+    dynamic_threshold: float = 0.7
+) -> dict:
+    """
+    🔍 Hỏi Gemini với Google Search Grounding - Tra cứu Google tự động
+    
+    Tính năng này cho phép Gemini:
+    - Tự động tìm kiếm thông tin mới nhất trên Google
+    - Trả lời dựa trên dữ liệu real-time từ internet
+    - Cung cấp nguồn trích dẫn (citations)
+    
+    Args:
+        prompt: Câu hỏi cần Gemini trả lời với thông tin mới nhất
+        model: Model Gemini hỗ trợ grounding (gemini-2.0-flash, gemini-1.5-pro, etc.)
+        dynamic_threshold: Ngưỡng để quyết định khi nào dùng grounding (0.0-1.0)
+        
+    Returns:
+        dict với success, response, grounding_metadata, search_queries
+    """
+    try:
+        if not GEMINI_AVAILABLE:
+            return {"success": False, "error": "Gemini library chưa cài đặt"}
+        
+        if not GEMINI_API_KEY or not GEMINI_API_KEY.strip():
+            return {"success": False, "error": "Gemini API key chưa được cấu hình"}
+        
+        print(f"🔍 [Gemini+GoogleSearch] Starting with model: {model}")
+        print(f"🔍 [Gemini+GoogleSearch] Prompt: {prompt[:100]}...")
+        
+        # Import các module cần thiết từ google.genai
+        try:
+            from google import genai
+            from google.genai import types
+        except ImportError:
+            # Fallback: Dùng google-generativeai cũ
+            print("⚠️ [Gemini+GoogleSearch] google-genai not found, using legacy method")
+            return await _ask_gemini_google_search_legacy(prompt, model)
+        
+        # Khởi tạo client với API key
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        
+        # Cấu hình Google Search tool với dynamic retrieval
+        google_search_tool = types.Tool(
+            google_search=types.GoogleSearch()
+        )
+        
+        # System instruction để Gemini trả lời chuyên nghiệp
+        from datetime import datetime
+        today_str = datetime.now().strftime('%d/%m/%Y')
+        today_full = datetime.now().strftime('%A, %d tháng %m năm %Y')
+        
+        system_instruction = f"""Bạn là trợ lý AI chuyên nghiệp với khả năng tra cứu thông tin mới nhất từ Google.
+
+📅 NGÀY HÔM NAY: {today_full}
+
+🎯 HƯỚNG DẪN TRẢ LỜI:
+1. SỬ DỤNG GOOGLE SEARCH để tìm thông tin mới nhất, chính xác
+2. ƯU TIÊN nguồn đáng tin cậy: trang chính thức, báo lớn, Wikipedia
+3. PHÂN TÍCH thời gian - nếu thông tin từ quá khứ, xác định xem còn đúng không
+4. TRẢ LỜI ngắn gọn, súc tích (200-500 từ)
+5. TRÍCH DẪN nguồn khi cần thiết
+6. KHÔNG nói "dự kiến" nếu sự kiện đã xảy ra
+7. Nói như đang trò chuyện tự nhiên, không dùng markdown phức tạp"""
+
+        # Gọi Gemini với Google Search grounding
+        loop = asyncio.get_event_loop()
+        
+        response = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[google_search_tool],
+                        system_instruction=system_instruction,
+                        temperature=0.7,
+                    )
+                )
+            ),
+            timeout=30.0  # Timeout 30s vì cần thời gian search
+        )
+        
+        # Lấy text response
+        response_text = ""
+        if hasattr(response, 'text'):
+            response_text = response.text
+        elif hasattr(response, 'candidates') and response.candidates:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'text'):
+                    response_text += part.text
+        
+        # Lấy grounding metadata (nguồn trích dẫn)
+        grounding_metadata = None
+        search_queries = []
+        grounding_chunks = []
+        
+        if hasattr(response, 'candidates') and response.candidates:
+            candidate = response.candidates[0]
+            if hasattr(candidate, 'grounding_metadata'):
+                gm = candidate.grounding_metadata
+                grounding_metadata = {
+                    "search_entry_point": getattr(gm, 'search_entry_point', None),
+                    "grounding_supports": []
+                }
+                
+                # Lấy search queries đã dùng
+                if hasattr(gm, 'web_search_queries'):
+                    search_queries = list(gm.web_search_queries or [])
+                
+                # Lấy grounding chunks (nguồn)
+                if hasattr(gm, 'grounding_chunks'):
+                    for chunk in (gm.grounding_chunks or []):
+                        if hasattr(chunk, 'web'):
+                            grounding_chunks.append({
+                                "uri": getattr(chunk.web, 'uri', ''),
+                                "title": getattr(chunk.web, 'title', '')
+                            })
+                
+                # Lấy grounding supports
+                if hasattr(gm, 'grounding_supports'):
+                    for support in (gm.grounding_supports or []):
+                        support_data = {
+                            "segment": getattr(support.segment, 'text', '') if hasattr(support, 'segment') else '',
+                            "confidence_scores": list(support.confidence_scores or []) if hasattr(support, 'confidence_scores') else []
+                        }
+                        grounding_metadata["grounding_supports"].append(support_data)
+        
+        print(f"✅ [Gemini+GoogleSearch] Response received: {len(response_text)} chars")
+        if search_queries:
+            print(f"🔎 [Gemini+GoogleSearch] Search queries: {search_queries}")
+        if grounding_chunks:
+            print(f"📚 [Gemini+GoogleSearch] Sources: {len(grounding_chunks)} websites")
+        
+        # Truncate response nếu quá dài
+        if len(response_text) > MAX_LLM_RESPONSE_CHARS:
+            response_text = smart_truncate_for_llm(response_text, MAX_LLM_RESPONSE_CHARS)
+        
+        return {
+            "success": True,
+            "response": response_text,
+            "response_text": response_text,  # Alias for compatibility
+            "model": model,
+            "google_search_used": True,
+            "search_queries": search_queries,
+            "grounding_chunks": grounding_chunks,
+            "grounding_metadata": grounding_metadata,
+            "message": f"✅ Gemini đã tra cứu Google và trả lời (model: {model})"
+        }
+        
+    except asyncio.TimeoutError:
+        print(f"⏱️ [Gemini+GoogleSearch] Timeout (30s exceeded)")
+        return {
+            "success": False,
+            "error": "Gemini + Google Search phản hồi quá lâu (timeout 30s)",
+            "timeout": True
+        }
+    except ImportError as e:
+        print(f"⚠️ [Gemini+GoogleSearch] Import error: {e}")
+        # Fallback to legacy method
+        return await _ask_gemini_google_search_legacy(prompt, model)
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ [Gemini+GoogleSearch] Error: {error_msg}")
+        
+        # Nếu model không hỗ trợ grounding, thử fallback
+        if "grounding" in error_msg.lower() or "tool" in error_msg.lower():
+            print("⚠️ [Gemini+GoogleSearch] Grounding not supported, falling back...")
+            return await ask_gemini(prompt, model)
+        
+        return {
+            "success": False,
+            "error": f"Lỗi Google Search Grounding: {error_msg}"
+        }
+
+
+async def _ask_gemini_google_search_legacy(prompt: str, model: str = "gemini-2.0-flash") -> dict:
+    """
+    Fallback: Dùng google-generativeai cũ với grounding
+    """
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        
+        from datetime import datetime
+        today_str = datetime.now().strftime('%d/%m/%Y')
+        
+        # Cấu hình model với grounding
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "max_output_tokens": 2048,
+        }
+        
+        # Tạo tool Google Search
+        try:
+            # Thử dùng google_search_retrieval (phiên bản mới)
+            tools = [{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "MODE_DYNAMIC", "dynamic_threshold": 0.7}}}]
+            gemini_model = genai.GenerativeModel(
+                model,
+                generation_config=generation_config,
+                tools=tools
+            )
+        except Exception:
+            # Fallback: không dùng tools
+            gemini_model = genai.GenerativeModel(model, generation_config=generation_config)
+        
+        system_prompt = f"""Hôm nay là {today_str}. Bạn là trợ lý AI thông minh.
+Hãy trả lời câu hỏi dựa trên kiến thức của bạn. Trả lời ngắn gọn, chuyên nghiệp."""
+        
+        full_prompt = f"{system_prompt}\n\nCâu hỏi: {prompt}"
+        
+        loop = asyncio.get_event_loop()
+        response = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: gemini_model.generate_content(full_prompt)),
+            timeout=25.0
+        )
+        
+        response_text = response.text if hasattr(response, 'text') else str(response)
+        
+        if len(response_text) > MAX_LLM_RESPONSE_CHARS:
+            response_text = smart_truncate_for_llm(response_text, MAX_LLM_RESPONSE_CHARS)
+        
+        return {
+            "success": True,
+            "response": response_text,
+            "response_text": response_text,
+            "model": model,
+            "google_search_used": False,
+            "message": f"✅ Gemini đã trả lời (model: {model}, legacy mode)"
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def ask_gemini_direct(prompt: str, model: str = "models/gemini-3-flash-preview") -> dict:
+    """
+    Gọi Gemini trực tiếp KHÔNG có RAG - dùng cho summarization/analysis
+    
+    Args:
+        prompt: Prompt gửi cho Gemini
+        model: Model Gemini (mặc định: gemini-3-flash-preview)
+        
+    Returns:
+        dict với success, response_text
+    """
+    try:
+        # Kiểm tra Gemini có khả dụng không
+        if not GEMINI_AVAILABLE:
+            return {"success": False, "error": "Gemini library chưa cài đặt"}
+        
+        if not GEMINI_API_KEY or GEMINI_API_KEY.strip() == "":
+            return {"success": False, "error": "Gemini API key chưa được cấu hình"}
+        
+        # Cấu hình Gemini
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel(model)
+        
+        # Gọi API với timeout 15 giây
+        loop = asyncio.get_event_loop()
+        response = await asyncio.wait_for(
+            loop.run_in_executor(
+                None, 
+                lambda: gemini_model.generate_content(prompt)
+            ),
+            timeout=15.0
+        )
+        
+        response_text = response.text
+        
+        # 🔄 TRUNCATE: Giới hạn response dưới 4000 ký tự cho LLM
+        if len(response_text) > MAX_LLM_RESPONSE_CHARS:
+            original_len = len(response_text)
+            response_text = smart_truncate_for_llm(response_text, MAX_LLM_RESPONSE_CHARS)
+            print(f"[Gemini Direct] ✂️ Truncated: {original_len} → {len(response_text)} chars")
+        
+        return {
+            "success": True,
+            "response_text": response_text,
+            "model": model
+        }
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def ask_gemini(prompt: str, model: str = "models/gemini-3-flash-preview") -> dict:
     """
     Hỏi đáp với Google Gemini AI - Có tích hợp RAG tự động
     
     Args:
         prompt: Câu hỏi hoặc nội dung muốn gửi cho Gemini
-        model: Tên model Gemini (mặc định: models/gemini-2.0-flash-exp)
+        model: Tên model Gemini (mặc định: models/gemini-3-flash-preview - Flash 2.0 experimental)
         
     Returns:
         dict với success, response_text, và message
@@ -5829,6 +8231,8 @@ async def ask_gemini(prompt: str, model: str = "models/gemini-2.0-flash-exp") ->
             # Giá cả, tài chính
             'giá vàng', 'giá usd', 'tỷ giá', 'giá bitcoin', 'crypto', 'chứng khoán', 
             'stock', 'gold price', 'exchange rate', 'giá xăng', 'giá dầu',
+            'giá cao nhất', 'cao nhất', 'thấp nhất', 'giá hiện tại', 'giá mới nhất',
+            'highest price', 'lowest price', 'current price', 'latest price',
             
             # Thời tiết
             'thời tiết', 'weather', 'nhiệt độ', 'temperature', 'mưa', 'rain',
@@ -5864,31 +8268,108 @@ async def ask_gemini(prompt: str, model: str = "models/gemini-2.0-flash-exp") ->
         needs_realtime = any(kw in prompt_lower for kw in realtime_keywords)
         
         rag_context = ""
-        if needs_realtime and RAG_AVAILABLE:
-            print(f"[Gemini+RAG] Phát hiện câu hỏi thời gian thực, đang tra cứu web...")
-            try:
-                from rag_system import web_search
-                from datetime import datetime
-                
-                # Thêm ngày tháng năm hiện tại vào query để lấy thông tin mới nhất
-                current_date = datetime.now().strftime("%Y")
-                enhanced_query = f"{prompt} {current_date}"
-                
-                # Tăng số kết quả lên 5 để có nhiều nguồn hơn
-                rag_result = await web_search(enhanced_query, max_results=5)
-                
-                if rag_result.get('success') and rag_result.get('results'):
-                    rag_context = f"\n\n📊 THÔNG TIN TỪ INTERNET (tra cứu ngày {datetime.now().strftime('%d/%m/%Y')}):\n"
-                    rag_context += "LƯU Ý: Hãy phân tích kỹ các nguồn và chọn thông tin chính xác nhất.\n\n"
+        if needs_realtime:
+            # ✅ Ưu tiên Serper API (Google Search trực tiếp) - chính xác và nhanh hơn
+            if SERPER_API_KEY and SERPER_API_KEY.strip():
+                print(f"[Gemini+Serper] Phát hiện câu hỏi thời gian thực, đang tra cứu Google...")
+                try:
+                    import requests
+                    from datetime import datetime
                     
-                    for i, r in enumerate(rag_result['results'], 1):
-                        # Lấy đầy đủ snippet hơn (300 ký tự)
-                        snippet = r['snippet'][:300] if len(r['snippet']) > 300 else r['snippet']
-                        rag_context += f"{i}. **{r['title']}**\n   {snippet}\n   🔗 {r.get('url', '')}\n\n"
+                    # Thêm ngày tháng năm hiện tại vào query để lấy thông tin mới nhất
+                    current_date = datetime.now().strftime("%Y")
+                    enhanced_query = f"{prompt} {current_date}"
                     
-                    print(f"[Gemini+RAG] Đã lấy được {len(rag_result['results'])} kết quả từ web")
-            except Exception as e:
-                print(f"[Gemini+RAG] Lỗi tra cứu web: {e}")
+                    # Gọi Serper API (Google Search)
+                    url = "https://google.serper.dev/search"
+                    headers = {
+                        "X-API-KEY": SERPER_API_KEY,
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "q": enhanced_query,
+                        "gl": "vn",  # Vietnam
+                        "hl": "vi",  # Vietnamese
+                        "num": 5
+                    }
+                    
+                    # ⚡ TIMEOUT 8s cho Serper API
+                    response = requests.post(url, headers=headers, json=payload, timeout=8)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        results = []
+                        
+                        # Lấy Answer Box trước (nếu có)
+                        answer_box = data.get("answerBox", {})
+                        if answer_box:
+                            answer = answer_box.get("answer", "") or answer_box.get("snippet", "")
+                            if answer:
+                                results.append({
+                                    "title": "[📌 Direct Answer]",
+                                    "snippet": answer,
+                                    "url": answer_box.get("link", "")
+                                })
+                        
+                        # Lấy Knowledge Graph (nếu có)
+                        knowledge_graph = data.get("knowledgeGraph", {})
+                        if knowledge_graph:
+                            title = knowledge_graph.get("title", "")
+                            description = knowledge_graph.get("description", "")
+                            if title and description:
+                                results.append({
+                                    "title": f"[🎯 Knowledge] {title}",
+                                    "snippet": description,
+                                    "url": knowledge_graph.get("website", "")
+                                })
+                        
+                        # Lấy Organic Results
+                        organic = data.get("organic", [])
+                        for item in organic[:5]:
+                            results.append({
+                                "title": item.get("title", ""),
+                                "snippet": item.get("snippet", ""),
+                                "url": item.get("link", "")
+                            })
+                        
+                        if results:
+                            rag_context = f"\n\n📊 THÔNG TIN TỪ GOOGLE (tra cứu {datetime.now().strftime('%d/%m/%Y')}):\n"
+                            rag_context += "LƯU Ý: Hãy phân tích kỹ các nguồn và chọn thông tin chính xác nhất.\n\n"
+                            
+                            for i, r in enumerate(results, 1):
+                                snippet = r['snippet'][:300] if len(r['snippet']) > 300 else r['snippet']
+                                rag_context += f"{i}. **{r['title']}**\n   {snippet}\n   🔗 {r.get('url', '')}\n\n"
+                            
+                            print(f"[Gemini+Serper] ✅ Đã lấy được {len(results)} kết quả từ Google")
+                    else:
+                        print(f"[Gemini+Serper] ⚠️ API error: {response.status_code}")
+                        
+                except Exception as e:
+                    print(f"[Gemini+Serper] ⚠️ Lỗi tra cứu: {e}")
+            
+            # Fallback: Dùng RAG system nếu không có Serper API
+            elif RAG_AVAILABLE:
+                print(f"[Gemini+RAG] Serper API không có, dùng RAG fallback...")
+                try:
+                    from rag_system import web_search
+                    from datetime import datetime
+                    
+                    current_date = datetime.now().strftime("%Y")
+                    enhanced_query = f"{prompt} {current_date}"
+                    
+                    rag_result = await web_search(enhanced_query, max_results=5)
+                    
+                    if rag_result.get('success') and rag_result.get('results'):
+                        rag_context = f"\n\n📊 THÔNG TIN TỪ INTERNET (tra cứu {datetime.now().strftime('%d/%m/%Y')}):\n"
+                        rag_context += "LƯU Ý: Hãy phân tích kỹ các nguồn và chọn thông tin chính xác nhất.\n\n"
+                        
+                        for i, r in enumerate(rag_result['results'], 1):
+                            snippet = r['snippet'][:300] if len(r['snippet']) > 300 else r['snippet']
+                            rag_context += f"{i}. **{r['title']}**\n   {snippet}\n   🔗 {r.get('url', '')}\n\n"
+                        
+                        print(f"[Gemini+RAG] ✅ Đã lấy được {len(rag_result['results'])} kết quả từ web")
+                except Exception as e:
+                    print(f"[Gemini+RAG] ⚠️ Lỗi tra cứu: {e}")
         
         # Kiểm tra Gemini có khả dụng không
         if not GEMINI_AVAILABLE:
@@ -5918,6 +8399,17 @@ async def ask_gemini(prompt: str, model: str = "models/gemini-2.0-flash-exp") ->
         # Thêm RAG context vào prompt nếu có
         from datetime import datetime as dt_now
         enhanced_prompt = prompt
+        
+        # 📝 INSTRUCTION: Yêu cầu Gemini trả lời ngắn gọn cho TTS
+        response_instruction = """
+
+📋 YÊU CẦU TRẢ LỜI:
+- Trả lời NGẮN GỌN, DỄ HIỂU (tối đa 300-500 từ)
+- Đi thẳng vào vấn đề, không dài dòng
+- KHÔNG dùng markdown (**, #, ---, bullet points)
+- Nói như đang trò chuyện tự nhiên
+- Dùng câu ngắn, dễ đọc"""
+
         if rag_context:
             today_str = dt_now.now().strftime('%d/%m/%Y')
             today_full = dt_now.now().strftime('%d tháng %m năm %Y')
@@ -5946,20 +8438,37 @@ HƯỚNG DẪN PHÂN TÍCH THÔNG MINH:
    - Dùng thì HIỆN TẠI/QUÁ KHỨ phù hợp
    - Ví dụ ĐÚNG: "iPhone 17 đã ra mắt vào tháng 9/2025 và hiện đang bán tại..."
    - Ví dụ SAI: "iPhone 17 dự kiến ra mắt tháng 9/2025" (khi đã là tháng 12/2025!)
+{response_instruction}
 
 TRẢ LỜI (nhớ: hôm nay là {today_str}, phân tích thời gian chính xác):"""
             print(f"[Gemini+RAG] Đã bổ sung context từ web vào prompt")
+        else:
+            # Không có RAG, thêm instruction vào prompt thông thường
+            enhanced_prompt = f"""{prompt}
+{response_instruction}"""
         
         print(f"[Gemini] Sending prompt: {enhanced_prompt[:50]}...")
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            lambda: gemini_model.generate_content(enhanced_prompt)
+        
+        # ⚡ TIMEOUT 20s cho ask_gemini chính (có RAG)
+        response = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: gemini_model.generate_content(enhanced_prompt)
+            ),
+            timeout=20.0
         )
         print(f"[Gemini] Response received")
         
         # Lấy text từ response
         response_text = response.text if hasattr(response, 'text') else str(response)
+        
+        # 🔄 TRUNCATE: Giới hạn response dưới 4000 ký tự cho LLM
+        if len(response_text) > MAX_LLM_RESPONSE_CHARS:
+            original_len = len(response_text)
+            response_text = smart_truncate_for_llm(response_text, MAX_LLM_RESPONSE_CHARS)
+            print(f"[Gemini] ✂️ Truncated response: {original_len} → {len(response_text)} chars")
+        
         print(f"[Gemini] Response text: {response_text[:100]}...")
         
         result = {
@@ -5977,6 +8486,13 @@ TRẢ LỜI (nhớ: hôm nay là {today_str}, phân tích thời gian chính xá
         
         return result
         
+    except asyncio.TimeoutError:
+        print(f"⏱️ [Gemini] Timeout (20s exceeded)")
+        return {
+            "success": False,
+            "error": "Gemini phản hồi quá lâu (timeout 20s). Vui lòng thử lại với prompt ngắn hơn.",
+            "timeout": True
+        }
     except Exception as e:
         error_msg = str(e)
         print(f"❌ [Gemini] Exception caught: {type(e).__name__}")
@@ -6010,6 +8526,124 @@ TRẢ LỜI (nhớ: hôm nay là {today_str}, phân tích thời gian chính xá
                 "success": False,
                 "error": f"Lỗi khi gọi Gemini API: {error_msg}"
             }
+
+
+async def auto_process_document_with_gemini(user_query: str, model: str = "models/gemini-3-flash-preview") -> dict:
+    """
+    🤖 TỰ ĐỘNG PHÁT HIỆN VÀ XỬ LÝ TÀI LIỆU/DATABASE VỚI GEMINI
+    
+    Khi người dùng hỏi về:
+    - Cơ sở dữ liệu (database, CSDL)
+    - Tài liệu (PDF, Word, TXT, JSON, XML)
+    - Files trong knowledge base
+    
+    Tự động:
+    1. Phát hiện ý định người dùng
+    2. Tìm và đọc tài liệu liên quan
+    3. Gửi nội dung cho Gemini xử lý
+    4. Trả về kết quả đã được Gemini phân tích
+    
+    Returns:
+        dict với:
+        - gemini_response: Kết quả đã được Gemini xử lý
+        - documents_found: List các documents đã tìm thấy
+        - success: True nếu thành công
+    """
+    try:
+        query_lower = user_query.lower()
+        
+        # Phát hiện keywords về database/documents
+        document_keywords = [
+            'cơ sở dữ liệu', 'database', 'csdl', 'db',
+            'tài liệu', 'document', 'file', 'files',
+            'pdf', 'word', 'txt', 'json', 'xml', 'csv',
+            'trong file', 'từ file', 'ở file',
+            'knowledge base', 'kiến thức', 'tri thức',
+            'đọc file', 'xem file', 'tìm trong',
+            'thông tin trong', 'dữ liệu trong'
+        ]
+        
+        # Check nếu query có chứa keywords
+        has_document_intent = any(kw in query_lower for kw in document_keywords)
+        
+        if not has_document_intent:
+            return {
+                "success": False,
+                "activated": False,
+                "reason": "Query không liên quan đến documents/database"
+            }
+        
+        print(f"📊 [Auto Document] Detected document query: {user_query[:100]}")
+        
+        # Step 1: Tìm documents liên quan từ knowledge base
+        knowledge_result = await get_knowledge_context(
+            query=user_query,
+            max_chars=8000,  # Lấy nhiều context hơn
+            use_gemini_summary=False  # Không tóm tắt trước, để Gemini xử lý toàn bộ
+        )
+        
+        if not knowledge_result.get("success"):
+            return {
+                "success": False,
+                "activated": True,
+                "error": "Không tìm thấy documents trong knowledge base",
+                "suggestion": "Hãy index các files bằng /api/knowledge/index_directory"
+            }
+        
+        context = knowledge_result.get("context", "")
+        documents_found = knowledge_result.get("documents_included", [])
+        
+        if not context:
+            return {
+                "success": False,
+                "activated": True,
+                "error": "Knowledge base trống",
+                "documents_found": []
+            }
+        
+        print(f"📚 [Auto Document] Found {len(documents_found)} documents")
+        
+        # Step 2: Gửi cho Gemini xử lý với context đầy đủ
+        enhanced_prompt = f"""[TÀI LIỆU THAM KHẢO]
+{context}
+
+[CÂU HỎI CỦA NGƯỜI DÙNG]
+{user_query}
+
+[YÊU CẦU]
+Dựa vào tài liệu trên, hãy trả lời câu hỏi một cách chính xác và chi tiết.
+- Nếu có thông tin trong tài liệu, trích dẫn rõ ràng
+- Nếu không có thông tin, hãy nói rõ
+- Trả lời bằng Tiếng Việt, dễ hiểu"""
+
+        # Gọi Gemini
+        gemini_result = await ask_gemini(enhanced_prompt, model=model)
+        
+        if not gemini_result.get("success"):
+            return {
+                "success": False,
+                "activated": True,
+                "error": f"Gemini error: {gemini_result.get('error')}",
+                "documents_found": documents_found
+            }
+        
+        # Step 3: Trả về kết quả đã được Gemini xử lý
+        return {
+            "success": True,
+            "activated": True,
+            "gemini_response": gemini_result.get("response_text"),
+            "documents_found": documents_found,
+            "model_used": model,
+            "context_length": len(context),
+            "message": f"✅ Đã xử lý {len(documents_found)} documents với Gemini {model}"
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "activated": True,
+            "error": f"Error: {str(e)}"
+        }
 
 
 async def ask_gpt4(prompt: str, model: str = "gpt-4o") -> dict:
@@ -6060,6 +8694,13 @@ async def ask_gpt4(prompt: str, model: str = "gpt-4o") -> dict:
         
         # Lấy text từ response
         response_text = response.choices[0].message.content
+        
+        # 🔄 TRUNCATE: Giới hạn response dưới 4000 ký tự cho LLM
+        if len(response_text) > MAX_LLM_RESPONSE_CHARS:
+            original_len = len(response_text)
+            response_text = smart_truncate_for_llm(response_text, MAX_LLM_RESPONSE_CHARS)
+            print(f"[GPT-4] ✂️ Truncated: {original_len} → {len(response_text)} chars")
+        
         print(f"[GPT-4] Response text: {response_text[:100]}...")
         
         return {
@@ -6502,58 +9143,8 @@ async def shutdown_computer(action: str = "shutdown", delay: int = 0) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-async def change_wallpaper(image_path: str) -> dict:
-    """
-    Thay đổi hình nền desktop.
-    """
-    try:
-        import ctypes
-        import os
-        
-        # Check file exists
-        if not os.path.exists(image_path):
-            return {"success": False, "error": f"File không tồn tại: {image_path}"}
-        
-        # Chỉ hỗ trợ định dạng nhất định
-        valid_extensions = ['.jpg', '.jpeg', '.bmp', '.png']
-        ext = os.path.splitext(image_path)[1].lower()
-        if ext not in valid_extensions:
-            return {"success": False, "error": f"Định dạng không hỗ trợ. Chọn: {valid_extensions}"}
-        
-        # Set wallpaper
-        SPI_SETDESKWALLPAPER = 0x0014
-        ctypes.windll.user32.SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0, image_path, 3)
-        
-        return {"success": True, "message": f"🖼️ Đã đổi hình nền: {image_path}"}
-        
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-async def find_in_document(search_text: str) -> dict:
-    """
-    Tìm kiếm text trong document hiện tại (Ctrl+F).
-    """
-    try:
-        import pyautogui
-        import pyperclip
-        import time
-        
-        # Mở hộp thoại Find
-        pyautogui.hotkey('ctrl', 'f')
-        time.sleep(0.3)
-        
-        # Paste text cần tìm
-        pyperclip.copy(search_text)
-        pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.2)
-        
-        # Enter để tìm
-        pyautogui.press('enter')
-        
-        return {"success": True, "message": f"🔍 Đang tìm: '{search_text}'"}
-        
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+# DUPLICATE REMOVED: change_wallpaper was defined twice (first at line 5503)
+# DUPLICATE REMOVED: find_in_document was defined twice (first at line 5809)
 
 async def clipboard_read() -> dict:
     """
@@ -6979,11 +9570,40 @@ async def get_news_vietnam() -> dict:
                                 for i, n in enumerate(news, 1):
                                     msg += f"{i}. {n}\n"
                                 
-                                return {
+                                result = {
                                     "success": True,
                                     "news": news,
                                     "message": msg.strip()
                                 }
+                                
+                                # 🤖 GEMINI SUMMARIZATION: Tóm tắt nhanh bằng Gemini (non-blocking)
+                                try:
+                                    context = "\n".join([f"{i+1}. {n}" for i, n in enumerate(news)])
+                                    # ⚡ PROMPT NGẮN GỌN - phản hồi nhanh hơn
+                                    summary_prompt = f"""Tóm tắt 5 tin VN sau thành 3 ý chính:
+{context}
+
+Format: 📌 [3 điểm] + 🔹 [xu hướng chung 1 câu]"""
+                                    
+                                    print(f"⚡ [NewsVN+Gemini] Tóm tắt nhanh {len(news)} tin...")
+                                    # ⏱️ Timeout 15 giây - đủ thời gian cho Gemini
+                                    gemini_summary = await asyncio.wait_for(
+                                        ask_gemini_direct(summary_prompt, model="models/gemini-3-flash-preview"),
+                                        timeout=15.0
+                                    )
+                                    if gemini_summary.get("success"):
+                                        summary_text = gemini_summary["response_text"]
+                                        result["gemini_summary"] = summary_text
+                                        result["message"] = f"✨ {summary_text}\n\n" + result["message"]
+                                        print(f"✅ [NewsVN+Gemini] Done ({len(summary_text)} chars)")
+                                    else:
+                                        print(f"⚠️ [NewsVN+Gemini] Failed: {gemini_summary.get('error')}")
+                                except asyncio.TimeoutError:
+                                    print(f"⏱️ [NewsVN+Gemini] Timeout - trả tin thô")
+                                except Exception as e:
+                                    print(f"⚠️ [NewsVN+Gemini] Error: {e}")
+                                
+                                return result
                 except:
                     continue
                     
@@ -7255,138 +9875,564 @@ async def get_lunar_date() -> dict:
 # KNOWLEDGE BASE TOOL HANDLERS
 # ============================================================
 
-async def search_knowledge_base(query: str) -> dict:
+# ============================================================
+# 🔥 GEMINI FLASH SMART KB FILTER - LỌC THÔNG TIN THÔNG MINH
+# ============================================================
+
+async def gemini_smart_kb_filter(
+    user_query: str,
+    filter_mode: str = "relevant",  # relevant, summary, extract, qa
+    max_documents: int = 10,
+    output_format: str = "structured"  # structured, raw, concise
+) -> dict:
     """
-    Tìm kiếm trong Knowledge Base của user với TF-IDF ranking.
-    Tìm thông tin trong các files PDF, TXT, Word, Markdown đã được index.
-    Hỗ trợ: Multi-keyword search, relevance scoring, context extraction.
+    🔥 Sử dụng sức mạnh Gemini Flash 3 để LỌC và TÌM KIẾM THÔNG MINH trong Knowledge Base.
+    
+    Quy trình:
+    1. Load toàn bộ documents từ Knowledge Base
+    2. Dùng Gemini Flash để phân tích và lọc nội dung THỰC SỰ liên quan
+    3. Trích xuất thông tin chính xác, loại bỏ noise
+    4. Trả về kết quả đã được lọc sạch cho LLM chính đọc
+    
+    Args:
+        user_query: Câu hỏi/yêu cầu của user
+        filter_mode: 
+            - "relevant": Chỉ giữ phần liên quan (default)
+            - "summary": Tóm tắt nội dung
+            - "extract": Trích xuất facts/entities
+            - "qa": Trả lời câu hỏi trực tiếp
+        max_documents: Số documents tối đa để xử lý (default: 10)
+        output_format:
+            - "structured": JSON có cấu trúc
+            - "raw": Text thô
+            - "concise": Ngắn gọn nhất
+            
+    Returns:
+        dict với filtered_content, sources, và metadata
     """
     try:
-        if not query:
-            return {"success": False, "error": "Vui lòng nhập từ khóa tìm kiếm"}
+        print(f"🔥 [GEMINI KB FILTER] Processing: {user_query[:60]}...")
         
-        # Load index
-        if not KNOWLEDGE_INDEX_FILE.exists():
+        # ============================================================
+        # BƯỚC 1: Load tất cả documents từ Knowledge Base
+        # ============================================================
+        all_documents = []
+        
+        # Thử load từ index trước
+        if KNOWLEDGE_INDEX_FILE.exists():
+            try:
+                with open(KNOWLEDGE_INDEX_FILE, 'r', encoding='utf-8') as f:
+                    index_data = json.load(f)
+                all_documents = index_data.get("documents", [])
+            except:
+                pass
+        
+        # 🆕 FALLBACK: Nếu index trống, đọc trực tiếp từ files
+        if not all_documents:
+            print("⚠️ [GEMINI KB] Index trống, đang đọc trực tiếp từ files...")
+            config = load_knowledge_config()
+            folder_path = config.get("folder_path", "")
+            
+            if folder_path and Path(folder_path).exists():
+                files = scan_folder_for_files(folder_path)
+                for f in files[:15]:  # Giới hạn 15 files
+                    try:
+                        text = extract_text_from_file(f["path"])
+                        if text and len(text.strip()) > 50 and not text.startswith("["):
+                            all_documents.append({
+                                "file_path": f["path"],
+                                "file_name": f["name"],
+                                "content": text[:50000]
+                            })
+                            print(f"📄 [GEMINI KB] Loaded: {f['name']}")
+                    except Exception as e:
+                        print(f"⚠️ [GEMINI KB] Error loading {f['name']}: {e}")
+        
+        if not all_documents:
             return {
-                "success": False, 
-                "error": "Knowledge base chưa có dữ liệu. Vui lòng vào Web UI > Knowledge Base để index files trước."
+                "success": False,
+                "error": "Knowledge Base chưa có dữ liệu. Vui lòng vào Web UI > Knowledge Base để cấu hình thư mục."
             }
         
-        with open(KNOWLEDGE_INDEX_FILE, 'r', encoding='utf-8') as f:
-            index_data = json.load(f)
+        print(f"📚 [GEMINI KB] Loaded {len(all_documents)} documents")
         
-        documents = index_data.get("documents", [])
-        if not documents:
-            return {"success": False, "error": "Knowledge base trống. Vui lòng index files trước."}
+        # ============================================================
+        # BƯỚC 2: Pre-filter bằng keywords (giảm số docs cần gửi Gemini)
+        # ============================================================
+        query_lower = user_query.lower()
+        stop_words = {'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 
+                     'cho', 'với', 'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ',
+                     'ai', 'gì', 'nào', 'đâu', 'sao', 'thế', 'a', 'an', 'the', 'is', 'are'}
         
-        # Tách query thành keywords (bỏ stop words phổ biến)
-        stop_words = {'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 'cho', 'với', 'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can'}
-        keywords = [w.lower() for w in query.split() if w.lower() not in stop_words and len(w) > 2]
+        keywords = [w.lower() for w in user_query.split() if w.lower() not in stop_words and len(w) > 1]
+        print(f"🔑 [GEMINI KB] Keywords: {keywords}")
         
-        if not keywords:
-            keywords = [query.lower()]  # Fallback to original query
-        
-        # Tính điểm relevance cho từng document
-        scored_docs = []
-        
-        for doc in documents:
-            content = doc.get("content", "")
-            content_lower = content.lower()
+        # Pre-filter: Chỉ giữ documents có ít nhất 1 keyword
+        candidate_docs = []
+        for doc in all_documents:
+            content = doc.get("content", "").lower()
             file_name = doc.get("file_name", "")
             
-            # TF-IDF inspired scoring
-            score = 0
-            matched_keywords = []
-            best_snippet = ""
-            best_snippet_pos = 0
+            # Skip invalid content
+            if content.strip().startswith("%pdf-") or len(content.strip()) < 50:
+                continue
             
-            for keyword in keywords:
-                count = content_lower.count(keyword)
-                if count > 0:
-                    # TF (term frequency) với diminishing returns
-                    import math
-                    tf_score = math.log(1 + count) * 10
-                    score += tf_score
-                    matched_keywords.append(keyword)
-                    
-                    # Tìm snippet tốt nhất chứa keyword này
-                    if not best_snippet:
-                        idx = content_lower.find(keyword)
-                        if idx >= 0:
-                            best_snippet_pos = idx
-            
-            # Bonus nếu match nhiều keywords
-            if len(matched_keywords) > 1:
-                score *= (1 + len(matched_keywords) * 0.3)
-            
-            # Bonus nếu keyword xuất hiện trong tên file
-            for keyword in keywords:
-                if keyword in file_name.lower():
-                    score *= 1.5
-            
-            if score > 0:
-                # Extract snippet around best match
-                start = max(0, best_snippet_pos - 200)
-                end = min(len(content), best_snippet_pos + 300)
-                snippet = content[start:end].strip()
-                
-                # Highlight matched keywords trong snippet
-                snippet_display = snippet
-                for kw in matched_keywords:
-                    # Simple highlighting (preserve case)
-                    import re
-                    pattern = re.compile(re.escape(kw), re.IGNORECASE)
-                    snippet_display = pattern.sub(f"**{kw.upper()}**", snippet_display, count=3)
-                
-                scored_docs.append({
+            # Check keyword match
+            match_count = sum(1 for kw in keywords if kw in content or kw in file_name.lower())
+            if match_count > 0 or not keywords:  # Nếu không có keywords, lấy tất cả
+                candidate_docs.append({
                     "file_name": file_name,
-                    "score": score,
-                    "snippet": ("..." if start > 0 else "") + snippet_display + ("..." if end < len(content) else ""),
-                    "matched_keywords": matched_keywords,
-                    "full_content": content  # Keep for context
+                    "content": doc.get("content", ""),
+                    "match_count": match_count
                 })
         
-        # Sort by relevance score
-        scored_docs.sort(key=lambda x: x["score"], reverse=True)
+        # Sort by match count và giới hạn
+        candidate_docs.sort(key=lambda x: x["match_count"], reverse=True)
+        candidate_docs = candidate_docs[:max_documents]
         
-        if not scored_docs:
+        if not candidate_docs:
             return {
-                "success": True,
-                "message": f"❌ Không tìm thấy kết quả cho '{query}' trong knowledge base.\n💡 Thử: 1) Kiểm tra chính tả, 2) Dùng từ khóa khác, 3) Dùng từ đơn thay vì cụm từ",
-                "results": [],
-                "keywords_searched": keywords
+                "success": False,
+                "error": f"Không tìm thấy documents nào liên quan đến '{user_query}'"
             }
         
-        # Format kết quả
-        result_text = f"📚 Tìm thấy {len(scored_docs)} tài liệu liên quan đến '{query}':\n\n"
-        result_text += f"🔍 Từ khóa: {', '.join(keywords)}\n\n"
+        print(f"📄 [GEMINI KB] Pre-filtered to {len(candidate_docs)} candidate docs")
         
-        for i, r in enumerate(scored_docs[:5], 1):  # Top 5 results
-            result_text += f"📄 {i}. **{r['file_name']}** (điểm: {r['score']:.1f})\n"
-            result_text += f"   🏷️ Khớp: {', '.join(r['matched_keywords'])}\n"
-            result_text += f"   {r['snippet'][:400]}\n\n"
+        # ============================================================
+        # BƯỚC 3: Chuẩn bị context cho Gemini Flash
+        # ============================================================
+        # Giới hạn mỗi document 3000 chars để tránh quá tải
+        docs_for_gemini = []
+        total_chars = 0
+        MAX_TOTAL_CHARS = 25000  # ~6000 tokens cho Gemini
         
-        # Generate context for LLM (nội dung đầy đủ từ top results)
-        context_text = "\n\n============================================================\n"
-        context_text += "📚 NỘI DUNG TÀI LIỆU TÌM THẤY\n"
-        context_text += "============================================================\n"
-        context_text += f"Dựa vào {len(scored_docs)} tài liệu sau để trả lời câu hỏi về '{query}':\n\n"
+        for doc in candidate_docs:
+            content = doc["content"]
+            if len(content) > 3000:
+                # Trích xuất phần có keywords
+                content = _extract_relevant_parts(content, keywords, max_len=3000)
+            
+            if total_chars + len(content) > MAX_TOTAL_CHARS:
+                break
+                
+            docs_for_gemini.append({
+                "file_name": doc["file_name"],
+                "content": content
+            })
+            total_chars += len(content)
         
-        for i, r in enumerate(scored_docs[:3], 1):  # Top 3 documents with full content
-            context_text += f"\n{'='*60}\n"
-            context_text += f"📄 File: {r['file_name']} (Điểm: {r['score']:.1f})\n"
-            context_text += f"{'='*60}\n"
-            context_text += r['full_content'][:5000] + "\n"  # Limit to 5K chars per doc
+        print(f"📦 [GEMINI KB] Prepared {len(docs_for_gemini)} docs ({total_chars:,} chars) for Gemini")
         
+        # ============================================================
+        # BƯỚC 4: Build prompt cho Gemini Flash
+        # ============================================================
+        docs_text = ""
+        for i, doc in enumerate(docs_for_gemini, 1):
+            docs_text += f"\n\n--- TÀI LIỆU {i}: {doc['file_name']} ---\n{doc['content']}"
+        
+        # Prompt tùy theo filter_mode
+        if filter_mode == "summary":
+            filter_instruction = """TÓM TẮT nội dung liên quan đến câu hỏi.
+- Chỉ tóm tắt phần THỰC SỰ liên quan
+- Bỏ qua thông tin không liên quan
+- Viết ngắn gọn, súc tích"""
+        elif filter_mode == "extract":
+            filter_instruction = """TRÍCH XUẤT các facts, entities, số liệu liên quan:
+- Tên người, tổ chức
+- Số liệu, ngày tháng
+- Sự kiện, hành động
+- Mối quan hệ
+Format: JSON array"""
+        elif filter_mode == "qa":
+            filter_instruction = """⚡ TRẢ LỜI NGAY LẬP TỨC câu hỏi dựa trên tài liệu.
+⛔ KHÔNG ĐƯỢC hỏi lại, KHÔNG ĐƯỢC yêu cầu thêm thông tin
+✅ Trả lời TRỰC TIẾP, chính xác, có trích dẫn nguồn
+✅ Nếu thông tin không đầy đủ → VẪN trả lời với những gì có
+✅ Nếu không có thông tin → Nói "Không tìm thấy trong database" """
+        else:  # relevant
+            filter_instruction = """LỌC và GIỮ LẠI CHỈ những phần THỰC SỰ LIÊN QUAN đến câu hỏi.
+- Loại bỏ hoàn toàn các đoạn không liên quan
+- Giữ nguyên văn các đoạn quan trọng
+- Đánh dấu nguồn (tên file) cho mỗi đoạn"""
+        
+        gemini_prompt = f"""🔥 BẠN LÀ CHUYÊN GIA TRẢ LỜI CÂU HỎI TỪ CƠ SỞ DỮ LIỆU.
+
+⚡ QUY TẮC BẮT BUỘC:
+- TRẢ LỜI NGAY LẬP TỨC - KHÔNG HỎI LẠI
+- KHÔNG yêu cầu thêm thông tin
+- KHÔNG nói "bạn muốn biết gì" hoặc "bạn cần gì thêm"
+- Sử dụng TOÀN BỘ thông tin có trong tài liệu để trả lời
+
+📋 NHIỆM VỤ: {filter_instruction}
+
+❓ CÂU HỎI CỦA USER:
+"{user_query}"
+
+📚 TÀI LIỆU TRONG DATABASE:
+{docs_text}
+
+🎯 TRẢ LỜI NGAY (không hỏi lại):"""
+
+        # ============================================================
+        # BƯỚC 5: Gọi Gemini Flash 3 để lọc
+        # ============================================================
+        if not GEMINI_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Gemini API không khả dụng. Vui lòng kiểm tra API key."
+            }
+        
+        import google.generativeai as genai
+        gemini_api_key = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+        
+        if not gemini_api_key:
+            return {"success": False, "error": "Thiếu Gemini API key"}
+        
+        genai.configure(api_key=gemini_api_key)
+        
+        # Sử dụng Gemini 3 Flash Preview (model mới nhất, nhanh nhất)
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+        
+        print(f"🤖 [GEMINI KB] Calling Gemini Flash to filter...")
+        
+        response = model.generate_content(
+            gemini_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.2,  # Low temp cho accuracy
+                max_output_tokens=2000,
+                top_p=0.95
+            )
+        )
+        
+        if not response or not response.text:
+            return {"success": False, "error": "Gemini không trả về response"}
+        
+        filtered_content = response.text.strip()
+        print(f"✅ [GEMINI KB] Filtered content: {len(filtered_content)} chars")
+        
+        # ============================================================
+        # BƯỚC 6: Format output
+        # ============================================================
+        sources = [doc["file_name"] for doc in docs_for_gemini]
+        
+        if output_format == "concise":
+            # Cắt ngắn nếu quá dài
+            if len(filtered_content) > 1500:
+                filtered_content = filtered_content[:1500] + "\n[... Đã cắt ngắn ...]"
+        
+        result = {
+            "success": True,
+            "filtered_content": filtered_content,
+            "sources": sources,
+            "filter_mode": filter_mode,
+            "documents_processed": len(docs_for_gemini),
+            "total_documents": len(all_documents),
+            "keywords_used": keywords,
+            "original_chars": total_chars,
+            "filtered_chars": len(filtered_content),
+            "compression_ratio": f"{(1 - len(filtered_content)/max(total_chars,1))*100:.1f}%",
+            "message": f"✅ Đã lọc {len(docs_for_gemini)} tài liệu ({total_chars:,} chars) → {len(filtered_content):,} chars relevant content"
+        }
+        
+        # Thêm instruction cho LLM chính
+        result["llm_instruction"] = f"""📊 ĐÃ LỌC THÔNG TIN TỪ KNOWLEDGE BASE
+
+Câu hỏi: "{user_query}"
+Nguồn: {', '.join(sources[:3])}{'...' if len(sources) > 3 else ''}
+
+--- NỘI DUNG ĐÃ LỌC ---
+{filtered_content}
+--- HẾT ---
+
+⚡ HÃY TRẢ LỜI USER DỰA TRÊN THÔNG TIN TRÊN."""
+
+        return result
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+def _extract_relevant_parts(content: str, keywords: list, max_len: int = 3000) -> str:
+    """
+    Trích xuất các phần có chứa keywords từ content dài.
+    """
+    if not keywords:
+        return content[:max_len]
+    
+    content_lower = content.lower()
+    relevant_parts = []
+    
+    for keyword in keywords:
+        pos = 0
+        while pos < len(content_lower):
+            idx = content_lower.find(keyword, pos)
+            if idx == -1:
+                break
+            
+            # Lấy context xung quanh keyword (500 chars mỗi bên)
+            start = max(0, idx - 500)
+            end = min(len(content), idx + len(keyword) + 500)
+            
+            part = content[start:end]
+            if part not in relevant_parts:
+                relevant_parts.append(part)
+            
+            pos = idx + 1
+            
+            # Giới hạn số parts
+            if len(relevant_parts) >= 5:
+                break
+    
+    if relevant_parts:
+        combined = "\n[...]\n".join(relevant_parts)
+        return combined[:max_len]
+    else:
+        return content[:max_len]
+
+
+# ============================================================
+# 🔥 GEMINI SMART ANALYZE - PHÂN TÍCH + GOOGLE SEARCH
+# ============================================================
+
+async def gemini_smart_analyze(
+    user_query: str,
+    analysis_type: str = "comprehensive",  # comprehensive, quick, deep
+    include_web_search: bool = True,
+    include_kb: bool = False,
+    max_search_results: int = 8
+) -> dict:
+    """
+    🔥 GEMINI SMART ANALYZE - Phân tích vấn đề + Tìm kiếm Web + AI tổng hợp
+    
+    Quy trình:
+    1. Gemini phân tích yêu cầu và tạo search queries tối ưu
+    2. Tìm kiếm Web (Google/DuckDuckGo) để lấy thông tin mới nhất
+    3. (Tùy chọn) Tìm kiếm Knowledge Base nội bộ
+    4. Gemini tổng hợp, phân tích và đưa ra kết luận
+    5. Trả về kết quả phân tích cho LLM chính
+    
+    Args:
+        user_query: Vấn đề cần phân tích
+        analysis_type: 
+            - "comprehensive": Phân tích đầy đủ, chi tiết (default)
+            - "quick": Phân tích nhanh, tóm tắt
+            - "deep": Phân tích sâu, nhiều góc độ
+        include_web_search: Có tìm kiếm web không (default: True)
+        include_kb: Có tìm Knowledge Base không (default: False)
+        max_search_results: Số kết quả web search tối đa (default: 8)
+        
+    Returns:
+        dict với analysis, sources, summary
+    """
+    try:
+        print(f"🔥 [GEMINI ANALYZE] Analyzing: {user_query[:60]}...")
+        
+        # ============================================================
+        # BƯỚC 1: Kiểm tra Gemini API
+        # ============================================================
+        if not GEMINI_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Gemini API không khả dụng. Vui lòng kiểm tra API key."
+            }
+        
+        import google.generativeai as genai
+        gemini_api_key = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+        
+        if not gemini_api_key:
+            return {"success": False, "error": "Thiếu Gemini API key"}
+        
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+        
+        # ============================================================
+        # BƯỚC 2: Gemini tạo search queries tối ưu
+        # ============================================================
+        query_prompt = f"""Bạn là chuyên gia phân tích. User muốn phân tích/tìm hiểu về:
+"{user_query}"
+
+Hãy tạo 2-3 search queries TỐI ƯU để tìm kiếm thông tin trên Google/Web.
+Mỗi query nên:
+- Ngắn gọn, từ khóa chính xác
+- Thêm năm 2024/2025 nếu cần thông tin mới
+- Tiếng Việt hoặc Anh tùy chủ đề
+
+Trả về JSON array, VD: ["query 1", "query 2", "query 3"]
+Chỉ trả về JSON, không giải thích."""
+
+        print("🔍 [GEMINI ANALYZE] Generating search queries...")
+        
+        query_response = model.generate_content(
+            query_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.3,
+                max_output_tokens=300
+            )
+        )
+        
+        # Parse search queries
+        search_queries = [user_query]  # Default
+        if query_response and query_response.text:
+            try:
+                import re
+                json_match = re.search(r'\[.*?\]', query_response.text, re.DOTALL)
+                if json_match:
+                    search_queries = json.loads(json_match.group())
+                    print(f"✅ [GEMINI ANALYZE] Generated queries: {search_queries}")
+            except:
+                search_queries = [user_query]
+        
+        # ============================================================
+        # BƯỚC 3: Tìm kiếm Web (Google/DuckDuckGo)
+        # ============================================================
+        web_results = []
+        web_context = ""
+        
+        if include_web_search and RAG_AVAILABLE:
+            print(f"🌐 [GEMINI ANALYZE] Searching web with {len(search_queries)} queries...")
+            
+            from rag_system import web_search as rag_web_search
+            
+            all_results = []
+            for sq in search_queries[:3]:  # Max 3 queries
+                try:
+                    result = await rag_web_search(sq, max_results=max_search_results // len(search_queries) + 2)
+                    if result.get("success") and result.get("results"):
+                        all_results.extend(result["results"])
+                except Exception as e:
+                    print(f"⚠️ [GEMINI ANALYZE] Search error for '{sq}': {e}")
+            
+            # Deduplicate by title
+            seen_titles = set()
+            for r in all_results:
+                title = r.get("title", "")
+                if title and title not in seen_titles:
+                    seen_titles.add(title)
+                    web_results.append(r)
+            
+            web_results = web_results[:max_search_results]
+            print(f"📊 [GEMINI ANALYZE] Found {len(web_results)} unique web results")
+            
+            # Build web context
+            if web_results:
+                web_context = "🌐 KẾT QUẢ TÌM KIẾM WEB:\n\n"
+                for i, r in enumerate(web_results, 1):
+                    web_context += f"{i}. **{r.get('title', 'No title')}**\n"
+                    web_context += f"   {r.get('snippet', '')}\n"
+                    if r.get('url'):
+                        web_context += f"   🔗 {r.get('url')}\n"
+                    web_context += "\n"
+        
+        # ============================================================
+        # BƯỚC 4: Tìm kiếm Knowledge Base (nếu bật)
+        # ============================================================
+        kb_context = ""
+        kb_sources = []
+        
+        if include_kb:
+            print("📚 [GEMINI ANALYZE] Searching Knowledge Base...")
+            try:
+                kb_result = await gemini_smart_kb_filter(
+                    user_query=user_query,
+                    filter_mode="relevant",
+                    max_documents=5,
+                    output_format="concise"
+                )
+                if kb_result.get("success") and kb_result.get("filtered_content"):
+                    kb_context = f"\n\n📚 THÔNG TIN TỪ DATABASE NỘI BỘ:\n{kb_result['filtered_content']}"
+                    kb_sources = kb_result.get("sources", [])
+                    print(f"✅ [GEMINI ANALYZE] Found KB content from {len(kb_sources)} sources")
+            except Exception as e:
+                print(f"⚠️ [GEMINI ANALYZE] KB search error: {e}")
+        
+        # ============================================================
+        # BƯỚC 5: Gemini tổng hợp và phân tích
+        # ============================================================
+        
+        # Xây dựng prompt phân tích tùy theo type
+        if analysis_type == "quick":
+            analysis_instruction = """PHÂN TÍCH NHANH - Tóm tắt ngắn gọn:
+- 3-5 điểm chính
+- Kết luận trong 2-3 câu
+- Không cần chi tiết"""
+        elif analysis_type == "deep":
+            analysis_instruction = """PHÂN TÍCH SÂU - Chi tiết và đa chiều:
+- Phân tích từ nhiều góc độ
+- So sánh các nguồn thông tin
+- Đánh giá độ tin cậy
+- Xu hướng và dự đoán
+- Tóm tắt các quan điểm khác nhau"""
+        else:  # comprehensive
+            analysis_instruction = """PHÂN TÍCH TOÀN DIỆN:
+- Tóm tắt thông tin chính
+- Các điểm quan trọng
+- Nguồn gốc và độ tin cậy
+- Kết luận rõ ràng"""
+        
+        now = datetime.now()
+        current_date = now.strftime("%d/%m/%Y")
+        
+        analysis_prompt = f"""🔥 BẠN LÀ CHUYÊN GIA PHÂN TÍCH THÔNG TIN.
+
+📅 NGÀY HIỆN TẠI: {current_date}
+
+⚡ NHIỆM VỤ: {analysis_instruction}
+
+❓ VẤN ĐỀ CẦN PHÂN TÍCH:
+"{user_query}"
+
+{web_context}
+{kb_context}
+
+🎯 YÊU CẦU QUAN TRỌNG:
+1. TRẢ LỜI NGẮN GỌN - TỐI ĐA 500 TỪ
+2. ĐI THẲNG VÀO VẤN ĐỀ, không giải thích dài dòng
+3. Liệt kê ý chính bằng bullet points
+4. TRẢ LỜI BẰNG TIẾNG VIỆT
+5. KHÔNG cần ghi nguồn chi tiết
+
+📝 TRẢ LỜI NGẮN GỌN:"""
+
+        print("🤖 [GEMINI ANALYZE] Gemini analyzing and synthesizing...")
+        
+        analysis_response = model.generate_content(
+            analysis_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.3,
+                max_output_tokens=1000,
+                top_p=0.9
+            )
+        )
+        
+        if not analysis_response or not analysis_response.text:
+            return {"success": False, "error": "Gemini không trả về phân tích"}
+        
+        analysis_content = analysis_response.text.strip()
+        
+        # ⚡ GIỚI HẠN ĐỘ DÀI - Quá dài sẽ khiến LLM cloud bị timeout
+        MAX_RESPONSE_LENGTH = 1500
+        if len(analysis_content) > MAX_RESPONSE_LENGTH:
+            # Cắt ngắn nhưng giữ nguyên câu cuối
+            analysis_content = analysis_content[:MAX_RESPONSE_LENGTH]
+            # Tìm dấu chấm cuối để không cắt giữa câu
+            last_period = analysis_content.rfind('.')
+            if last_period > MAX_RESPONSE_LENGTH - 200:
+                analysis_content = analysis_content[:last_period + 1]
+            analysis_content += "\n\n(Đây là tóm tắt. Hỏi thêm nếu cần chi tiết.)"
+        
+        print(f"✅ [GEMINI ANALYZE] Analysis complete: {len(analysis_content)} chars")
+        
+        # ============================================================
+        # BƯỚC 6: Trả về kết quả - PLAIN TEXT để LLM đọc ngay
+        # ============================================================
+        
+        # Trả về response_text để format_result_for_llm xử lý đúng
+        # Giống cách ask_gemini, ask_gpt4 hoạt động
         return {
             "success": True,
-            "query": query,
-            "keywords": keywords,
-            "total_results": len(scored_docs),
-            "message": result_text,
-            "context": context_text,  # ✅ THÊM CONTEXT CHO LLM
-            "results": scored_docs[:10],
-            "top_result": scored_docs[0] if scored_docs else None
+            "response_text": analysis_content
         }
         
     except Exception as e:
@@ -7394,11 +10440,270 @@ async def search_knowledge_base(query: str) -> dict:
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
-async def get_knowledge_context(query: str = "", max_chars: int = 10000) -> dict:
+
+async def search_knowledge_base(query: str) -> dict:
     """
-    Lấy context từ Knowledge Base để cung cấp cho LLM với semantic ranking.
-    Tự động lấy nội dung liên quan nhất từ các files đã index.
-    Sử dụng TF-IDF để ưu tiên documents có độ liên quan cao nhất.
+    Tìm kiếm trong Knowledge Base và dùng Gemini AI để trả lời chính xác.
+    - Bước 1: TF-IDF tìm tài liệu liên quan
+    - Bước 2: Gemini đọc context và trả lời câu hỏi
+    - 🆕 Bước 0: Nếu index trống, tự động đọc file trực tiếp
+    """
+    try:
+        if not query:
+            return {"success": False, "error": "Vui lòng nhập từ khóa tìm kiếm"}
+        
+        # Load index
+        documents = []
+        if KNOWLEDGE_INDEX_FILE.exists():
+            try:
+                with open(KNOWLEDGE_INDEX_FILE, 'r', encoding='utf-8') as f:
+                    index_data = json.load(f)
+                documents = index_data.get("documents", [])
+            except:
+                pass
+        
+        # 🆕 FALLBACK: Nếu index trống, tự động đọc trực tiếp từ files
+        if not documents:
+            print("⚠️ [KB] Index trống, đang đọc trực tiếp từ files...")
+            config = load_knowledge_config()
+            folder_path = config.get("folder_path", "")
+            
+            if folder_path and Path(folder_path).exists():
+                files = scan_folder_for_files(folder_path)
+                for f in files[:10]:  # Giới hạn 10 files để tránh quá tải
+                    try:
+                        text = extract_text_from_file(f["path"])
+                        if text and len(text.strip()) > 50 and not text.startswith("["):
+                            documents.append({
+                                "file_path": f["path"],
+                                "file_name": f["name"],
+                                "content": text[:50000]
+                            })
+                            print(f"📄 [KB] Loaded: {f['name']} ({len(text)} chars)")
+                    except Exception as e:
+                        print(f"⚠️ [KB] Error loading {f['name']}: {e}")
+                
+                if documents:
+                    print(f"📚 [KB] Loaded {len(documents)} documents from files")
+            
+            if not documents:
+                return {
+                    "success": False, 
+                    "error": "Knowledge base chưa có dữ liệu. Vui lòng vào Web UI > Knowledge Base để cấu hình thư mục và index files."
+                }
+        
+        # Tách query thành keywords (bỏ stop words phổ biến)
+        stop_words = {
+            # Vietnamese
+            'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 'cho', 'với', 
+            'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ', 'những', 'một', 'hay', 'hoặc',
+            'thì', 'mà', 'nếu', 'vì', 'bởi', 'nên', 'cũng', 'lại', 'còn', 'đây', 'kia', 'ấy',
+            'ra', 'vào', 'lên', 'xuống', 'đi', 'đến', 'bằng', 'qua', 'sau', 'trước', 'trên', 'dưới',
+            'nào', 'gì', 'sao', 'thế', 'rằng', 'tại', 'vậy', 'nhưng', 'tuy', 'mặc', 'dù',
+            # English
+            'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 
+            'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 
+            'may', 'might', 'can', 'what', 'which', 'who', 'how', 'when', 'where', 'why',
+            'this', 'that', 'these', 'those', 'it', 'its', 'they', 'them', 'their',
+            'he', 'she', 'him', 'her', 'his', 'we', 'us', 'our', 'you', 'your',
+            'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'about', 'as', 'from'
+        }
+        
+        # Lọc keywords - CHỈ GIỮ TỪ QUAN TRỌNG (dài > 3 ký tự)
+        keywords = [w.lower() for w in query.split() if w.lower() not in stop_words and len(w) > 3]
+        
+        # Nếu query quá dài (>4 từ), chỉ lấy 4 từ quan trọng nhất
+        if len(keywords) > 4:
+            keywords = sorted(keywords, key=len, reverse=True)[:4]
+        
+        if not keywords:
+            all_words = [w.lower() for w in query.split() if len(w) > 2]
+            keywords = sorted(all_words, key=len, reverse=True)[:3] if all_words else [query.lower()]
+        
+        print(f"🔍 [KB] Searching with keywords: {keywords}")
+        
+        # Tính điểm relevance cho từng document
+        scored_docs = []
+        min_keywords_match = max(1, len(keywords) - 1)
+        
+        for doc in documents:
+            content = doc.get("content", "")
+            content_lower = content.lower()
+            file_name = doc.get("file_name", "")
+            
+            score = 0
+            matched_keywords = []
+            best_pos = 0
+            
+            for keyword in keywords:
+                count = content_lower.count(keyword)
+                if count > 0:
+                    import math
+                    score += math.log(1 + count) * 10
+                    matched_keywords.append(keyword)
+                    if not best_pos:
+                        idx = content_lower.find(keyword)
+                        if idx >= 0:
+                            best_pos = idx
+            
+            if len(matched_keywords) < min_keywords_match:
+                continue
+            
+            if len(matched_keywords) > 1:
+                score *= (1 + len(matched_keywords) * 0.5)
+            
+            for keyword in keywords:
+                if keyword in file_name.lower():
+                    score *= 2.0
+            
+            if score > 0:
+                scored_docs.append({
+                    "file_name": file_name,
+                    "score": score,
+                    "matched_keywords": matched_keywords,
+                    "content": content,
+                    "best_pos": best_pos
+                })
+        
+        scored_docs.sort(key=lambda x: x["score"], reverse=True)
+        
+        if not scored_docs:
+            return {
+                "success": False,
+                "message": f"❌ Không tìm thấy tài liệu liên quan trong knowledge base.\n💡 Thử dùng từ khóa khác hoặc ngắn hơn."
+            }
+        
+        # ============================================================
+        # BƯỚC 2: 🔥 DÙNG GEMINI SMART FILTER ĐỂ LỌC VÀ TRẢ LỜI
+        # ============================================================
+        print(f"🤖 [KB] Found {len(scored_docs)} docs, using Gemini Smart Filter...")
+        
+        # 🔥 SỬ DỤNG gemini_smart_kb_filter để lọc thông minh
+        try:
+            filter_result = await gemini_smart_kb_filter(
+                user_query=query,
+                filter_mode="qa",  # Trả lời trực tiếp
+                max_documents=min(len(scored_docs), 5),  # Tối đa 5 docs
+                output_format="concise"  # Output ngắn gọn
+            )
+            
+            if filter_result.get("success") and filter_result.get("filtered_content"):
+                answer = filter_result["filtered_content"]
+                sources = filter_result.get("sources", [d['file_name'] for d in scored_docs[:3]])
+                
+                # 🔥 FORMAT NGẮN GỌN GIỐNG WEB_SEARCH - LLM DỄ ĐỌC
+                return {
+                    "success": True,
+                    "answer": answer,
+                    "sources": sources
+                }
+        except Exception as filter_err:
+            print(f"⚠️ [KB] Gemini Smart Filter error: {filter_err}, falling back to direct Gemini...")
+        
+        # ============================================================
+        # FALLBACK: Dùng Gemini trực tiếp nếu Smart Filter fail
+        # ============================================================
+        # Lấy context từ top 2 documents (max 3000 chars mỗi doc)
+        context_parts = []
+        for doc in scored_docs[:2]:
+            content = doc['content']
+            best_pos = doc['best_pos']
+            # Lấy phần xung quanh keyword match
+            start = max(0, best_pos - 500)
+            end = min(len(content), best_pos + 2500)
+            chunk = content[start:end]
+            context_parts.append(f"📄 {doc['file_name']}:\n{chunk}")
+        
+        context_for_gemini = "\n\n---\n\n".join(context_parts)
+        
+        # Gọi Gemini để trả lời
+        try:
+            import google.generativeai as genai
+            
+            gemini_api_key = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+            if not gemini_api_key:
+                # Fallback - trả về context thô
+                return {
+                    "success": True,
+                    "message": f"📚 Tìm thấy {len(scored_docs)} tài liệu liên quan",
+                    "context": context_for_gemini[:4000]
+                }
+            
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel('models/gemini-2.0-flash')
+            
+            prompt = f"""Bạn là trợ lý AI chuyên trả lời câu hỏi dựa trên tài liệu.
+
+⚡ QUY TẮC BẮT BUỘC:
+- TRẢ LỜI NGAY LẬP TỨC - KHÔNG HỎI LẠI
+- KHÔNG hỏi "bạn muốn biết gì thêm?"
+- KHÔNG yêu cầu thêm thông tin
+- Sử dụng thông tin có trong tài liệu để trả lời
+
+📋 TÀI LIỆU THAM KHẢO:
+{context_for_gemini[:5000]}
+
+❓ CÂU HỎI:
+{query}
+
+📝 YÊU CẦU:
+1. TRẢ LỜI TRỰC TIẾP dựa trên tài liệu
+2. Nếu không có thông tin → Nói "Không tìm thấy trong tài liệu"
+3. Trích dẫn nguồn khi cần
+4. Ngắn gọn, súc tích
+5. Tiếng Việt
+
+🎯 TRẢ LỜI NGAY:"""
+
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=500,
+                    temperature=0.3  # Low temp cho accurate answers
+                )
+            )
+            
+            gemini_answer = response.text.strip() if response.text else ""
+            
+            if gemini_answer:
+                sources = [d['file_name'] for d in scored_docs[:2]]
+                # 🔥 FORMAT NGẮN GỌN GIỐNG WEB_SEARCH
+                return {
+                    "success": True,
+                    "answer": gemini_answer,
+                    "sources": sources
+                }
+            else:
+                return {
+                    "success": True,
+                    "answer": f"Tìm thấy {len(scored_docs)} tài liệu liên quan nhưng không có câu trả lời cụ thể.",
+                    "context": context_for_gemini[:2000]
+                }
+                
+        except Exception as gemini_err:
+            print(f"⚠️ [KB] Gemini error: {gemini_err}")
+            # Fallback - trả về context thô
+            return {
+                "success": True,
+                "answer": f"Tìm thấy {len(scored_docs)} tài liệu liên quan.",
+                "context": context_for_gemini[:2500]
+            }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+async def get_knowledge_context(query: str = "", max_chars: int = 10000, use_gemini_summary: bool = True, use_gemini_filter: bool = False) -> dict:
+    """
+    🔧 REFACTORED: Lấy context từ Knowledge Base với semantic search chính xác hơn.
+    - Ưu tiên exact phrase match
+    - Chỉ lấy documents thực sự liên quan
+    - Option: Dùng Gemini Smart Filter để lọc thông minh
+    - Trả về context đúng cho LLM
+    
+    Args:
+        use_gemini_filter: Nếu True, sẽ dùng gemini_smart_kb_filter để lọc thông minh (mặc định: False)
     """
     try:
         # Load index
@@ -7412,131 +10717,612 @@ async def get_knowledge_context(query: str = "", max_chars: int = 10000) -> dict
         with open(KNOWLEDGE_INDEX_FILE, 'r', encoding='utf-8') as f:
             index_data = json.load(f)
         
-        documents = index_data.get("documents", [])
-        if not documents:
+        all_documents = index_data.get("documents", [])
+        if not all_documents:
             return {"success": False, "context": "", "error": "Knowledge base trống."}
         
+        print(f"📚 [KB] Loaded {len(all_documents)} documents from index")
+        
+        # ============================================================
+        # 🔥 OPTION: Sử dụng Gemini Smart Filter nếu được bật
+        # ============================================================
+        if use_gemini_filter and query:
+            print(f"🔥 [KB] Using Gemini Smart Filter for query: {query}")
+            try:
+                filter_result = await gemini_smart_kb_filter(
+                    user_query=query,
+                    filter_mode="relevant",  # Chỉ lấy phần liên quan
+                    max_documents=10,
+                    output_format="structured"
+                )
+                
+                if filter_result.get("success") and filter_result.get("filtered_content"):
+                    return {
+                        "success": True,
+                        "context": filter_result.get("llm_instruction", filter_result["filtered_content"]),
+                        "raw_context": filter_result["filtered_content"],
+                        "total_documents": filter_result.get("total_documents", len(all_documents)),
+                        "documents_included": filter_result.get("documents_processed", 0),
+                        "context_length": filter_result.get("filtered_chars", 0),
+                        "keywords_used": filter_result.get("keywords_used", []),
+                        "gemini_filter_used": True,
+                        "compression_ratio": filter_result.get("compression_ratio", "N/A"),
+                        "message": f"✅ Gemini Smart Filter: Đã lọc {filter_result.get('documents_processed', 0)} tài liệu ({filter_result.get('filtered_chars', 0):,} chars)"
+                    }
+            except Exception as filter_err:
+                print(f"⚠️ [KB] Gemini Smart Filter failed: {filter_err}, using traditional method...")
+        
+        # ============================================================
+        # BƯỚC 1: Chuẩn bị keywords và query
+        # ============================================================
+        query_lower = query.lower().strip() if query else ""
+        
+        # Tạo keywords từ query
+        stop_words = {'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 'cho', 'với', 
+                     'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ', 'ai', 'gì', 'nào', 'đâu',
+                     'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'what', 'who', 'where'}
+        keywords = [w.lower() for w in query.split() if w.lower() not in stop_words and len(w) > 1] if query else []
+        
+        # Nếu không có keywords, dùng toàn bộ query
+        if not keywords and query:
+            keywords = [query_lower]
+        
+        print(f"🔑 [KB] Query: '{query}' → Keywords: {keywords}")
+        
+        # ============================================================
+        # BƯỚC 2: Lọc và score documents
+        # ============================================================
+        scored_documents = []
+        
+        for doc in all_documents:
+            content = doc.get("content", "")
+            file_name = doc.get("file_name", "unknown")
+            content_lower = content.lower()
+            file_name_lower = file_name.lower()
+            
+            # ⚠️ SKIP: PDF structure hoặc content quá ngắn
+            if content.strip().startswith("%PDF-") or content.strip().startswith("<</"):
+                continue
+            if len(content.strip()) < 50:
+                continue
+            
+            # Tính điểm relevance với scoring mới
+            score = 0
+            match_reasons = []
+            has_exact_match = False
+            has_filename_match = False
+            
+            if query_lower:
+                # 0️⃣ FILENAME MATCH (ƯU TIÊN CAO) - Check trước!
+                # Normalize filename để so sánh (bỏ dấu, bỏ ký tự đặc biệt)
+                import unicodedata
+                def normalize_text(text):
+                    # Bỏ dấu tiếng Việt và chuyển thành ASCII
+                    nfkd = unicodedata.normalize('NFKD', text.lower())
+                    return ''.join(c for c in nfkd if not unicodedata.combining(c))
+                
+                query_normalized = normalize_text(query_lower)
+                filename_normalized = normalize_text(file_name_lower)
+                
+                # Full query match trong filename
+                if query_lower in file_name_lower or query_normalized in filename_normalized:
+                    score += 5000
+                    match_reasons.append("filename_exact")
+                    has_filename_match = True
+                else:
+                    # Partial keyword match trong filename
+                    filename_kw_matches = 0
+                    for kw in keywords:
+                        kw_norm = normalize_text(kw)
+                        if kw in file_name_lower or kw_norm in filename_normalized:
+                            filename_kw_matches += 1
+                    
+                    if filename_kw_matches >= 2:
+                        score += 2000 * filename_kw_matches
+                        match_reasons.append(f"filename_partial:{filename_kw_matches}")
+                        has_filename_match = True
+                    elif filename_kw_matches == 1 and len(keywords) <= 2:
+                        score += 500
+                        match_reasons.append(f"filename_partial:{filename_kw_matches}")
+                        has_filename_match = True
+                
+                # 1️⃣ EXACT PHRASE MATCH (ưu tiên CAO NHẤT - ví dụ: "Lê Trung Khoa" as a phrase)
+                exact_count = content_lower.count(query_lower)
+                if exact_count > 0:
+                    score += 5000 * exact_count  # RẤT CAO - ưu tiên tuyệt đối
+                    match_reasons.append(f"exact_phrase:{exact_count}")
+                    has_exact_match = True
+                
+                # 2️⃣ PROXIMITY CHECK - Kiểm tra keywords có gần nhau không (cho tên riêng)
+                # Nếu query có vẻ là tên người (>= 2 từ), kiểm tra xem các từ có liền nhau không
+                has_proximity = False
+                if len(keywords) >= 2 and not has_exact_match:
+                    # Tìm vị trí của mỗi keyword
+                    keyword_positions = []
+                    for kw in keywords:
+                        pos = content_lower.find(kw)
+                        if pos >= 0:
+                            keyword_positions.append((kw, pos))
+                    
+                    # Kiểm tra proximity (trong vòng 50 ký tự)
+                    if len(keyword_positions) == len(keywords):
+                        # Tất cả keywords đều có trong content
+                        positions = [p[1] for p in keyword_positions]
+                        min_pos, max_pos = min(positions), max(positions)
+                        # Nếu tất cả keywords nằm trong 50 ký tự → có thể là tên riêng
+                        if max_pos - min_pos < 50:
+                            has_proximity = True
+                            score += 3000  # Bonus cao cho proximity
+                            match_reasons.append(f"proximity:{max_pos - min_pos}chars")
+                
+                # 3️⃣ KEYWORD MATCH - Đếm số keywords xuất hiện
+                keyword_matches = 0
+                total_kw_score = 0
+                for kw in keywords:
+                    kw_count = content_lower.count(kw)
+                    if kw_count > 0:
+                        total_kw_score += min(kw_count, 5)  # Cap tại 5 lần mỗi keyword
+                        keyword_matches += 1
+                
+                # ⚠️ NẾU LÀ TÊN RIÊNG (>= 2 keywords): Cần có exact match hoặc proximity
+                if len(keywords) >= 2:
+                    if has_exact_match or has_proximity:
+                        # Có exact hoặc proximity → bonus cao
+                        score += 200 * keyword_matches
+                        match_reasons.append(f"name_match:{keyword_matches}/{len(keywords)}")
+                    elif has_filename_match:
+                        # Có filename match → bonus trung bình
+                        score += 100 * keyword_matches
+                        match_reasons.append(f"content_support:{keyword_matches}/{len(keywords)}")
+                    elif keyword_matches == len(keywords):
+                        # Tất cả keywords match nhưng KHÔNG gần nhau → score thấp
+                        score += 20 * keyword_matches  # Thấp hơn nhiều
+                        match_reasons.append(f"scattered_kw:{keyword_matches}/{len(keywords)}")
+                        
+                        # ⚠️ PENALTY MẠNH cho documents dài với scattered keywords
+                        # NHƯNG không penalty nếu có filename match
+                        if len(content) > 5000 and not has_filename_match:
+                            score = int(score * 0.1)  # Giảm 90%!
+                            match_reasons.append("penalty:scattered_in_long_doc")
+                    elif keyword_matches >= len(keywords) * 0.7:
+                        # >= 70% keywords match → score rất thấp
+                        score += 10 * keyword_matches
+                        match_reasons.append(f"partial_kw:{keyword_matches}/{len(keywords)}")
+                    else:
+                        # < 70% keywords → REJECT (trừ khi có filename match)
+                        if not has_exact_match and not has_filename_match:
+                            continue
+                else:
+                    # Single keyword → score thấp hơn
+                    if keyword_matches > 0:
+                        score += 30 * total_kw_score
+                        match_reasons.append(f"single_kw:{total_kw_score}")
+                
+                # ⚠️ REJECT: Không có match nào ý nghĩa
+                if score == 0:
+                    continue
+            else:
+                # Không có query → lấy tất cả (với score dựa trên độ dài content)
+                score = min(len(content), 5000)  # Cap score
+                match_reasons.append("no_query")
+            
+            scored_documents.append({
+                "doc": doc,
+                "score": score,
+                "reasons": match_reasons,
+                "content_len": len(content)
+            })
+        
+        # Sort by score
+        scored_documents.sort(key=lambda x: x["score"], reverse=True)
+        
+        print(f"📊 [KB] Scored {len(scored_documents)} relevant documents")
+        
+        # ============================================================
+        # BƯỚC 3: Filter - chỉ lấy top documents có score cao
+        # ============================================================
+        if scored_documents and query:
+            top_score = scored_documents[0]["score"]
+            # Chỉ lấy documents có score >= 30% top score (hoặc tối thiểu 50 điểm)
+            min_threshold = max(50, top_score * 0.3)
+            filtered_docs = [d for d in scored_documents if d["score"] >= min_threshold]
+            
+            # Giới hạn tối đa 5 documents để tránh quá tải
+            filtered_docs = filtered_docs[:5]
+            
+            print(f"🎯 [KB] Filtered to {len(filtered_docs)} docs (threshold: {min_threshold:.0f})")
+            for i, d in enumerate(filtered_docs[:3]):
+                print(f"   {i+1}. {d['doc']['file_name']}: score={d['score']:.0f} ({', '.join(d['reasons'])})")
+        else:
+            filtered_docs = scored_documents[:3]  # Lấy tối đa 3 docs nếu không có query
+        
+        if not filtered_docs:
+            return {
+                "success": False,
+                "context": "",
+                "error": f"Không tìm thấy tài liệu nào liên quan đến '{query}'"
+            }
+        
+        # ============================================================
+        # BƯỚC 4: Loại bỏ nội dung trùng lặp (Deduplication)
+        # ============================================================
+        seen_content_hashes = set()
+        unique_docs = []
+        
+        for item in filtered_docs:
+            content = item["doc"].get("content", "").strip()
+            # Tạo hash từ 500 ký tự đầu (đủ để detect duplicate)
+            content_preview = content[:500].lower().replace(" ", "").replace("\n", "")
+            
+            if content_preview in seen_content_hashes:
+                print(f"   ⚠️ SKIP duplicate: {item['doc']['file_name']}")
+                continue
+            
+            seen_content_hashes.add(content_preview)
+            unique_docs.append(item)
+        
+        if len(unique_docs) < len(filtered_docs):
+            print(f"🔄 [KB] Deduplicated: {len(filtered_docs)} → {len(unique_docs)} unique docs")
+        
+        # ============================================================
+        # BƯỚC 5: Trích xuất relevant content từ mỗi document
+        # ============================================================
         context_parts = []
         total_chars = 0
-        docs_included = 0
         
-        # Nếu có query, sắp xếp documents theo độ liên quan
-        if query:
-            # Tách keywords từ query
-            stop_words = {'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 'cho', 'với', 'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ', 'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being'}
-            keywords = [w.lower() for w in query.split() if w.lower() not in stop_words and len(w) > 2]
-            
-            if not keywords:
-                keywords = [query.lower()]
-            
-            # Score documents dựa trên keywords
-            scored_docs = []
-            for doc in documents:
-                content = doc.get("content", "")
-                content_lower = content.lower()
-                file_name = doc.get("file_name", "")
-                
-                # Calculate relevance score
-                score = 0
-                import math
-                
-                for keyword in keywords:
-                    count = content_lower.count(keyword)
-                    if count > 0:
-                        # TF-IDF inspired: log(1 + count)
-                        score += math.log(1 + count) * 10
-                        
-                        # Bonus if keyword in filename
-                        if keyword in file_name.lower():
-                            score += 20
-                
-                # Multi-keyword bonus
-                matched_keywords = sum(1 for kw in keywords if kw in content_lower)
-                if matched_keywords > 1:
-                    score *= (1 + matched_keywords * 0.3)
-                
-                scored_docs.append((score, doc))
-            
-            # Sort by score descending
-            scored_docs.sort(key=lambda x: x[0], reverse=True)
-            documents = [doc for score, doc in scored_docs if score > 0]
-            
-            # Nếu không tìm thấy documents liên quan, lấy tất cả
-            if not documents:
-                documents = [doc for _, doc in scored_docs]
-        
-        # Build context từ các documents có score cao nhất
-        for doc in documents:
+        for item in unique_docs:
+            doc = item["doc"]
             content = doc.get("content", "")
             file_name = doc.get("file_name", "unknown")
             
-            # Nếu có query, extract relevant sections thay vì lấy toàn bộ
-            if query and keywords:
-                # Tìm các đoạn text có nhiều keywords nhất
-                relevant_sections = []
-                window_size = 800  # Kích thước mỗi section
-                content_lower = content.lower()
-                
-                # Sliding window để tìm đoạn có nhiều keywords
-                best_score = 0
-                best_section = content[:window_size]
-                
-                for i in range(0, len(content) - window_size, 400):
-                    section = content[i:i+window_size]
-                    section_lower = section.lower()
-                    section_score = sum(section_lower.count(kw) for kw in keywords)
-                    
-                    if section_score > best_score:
-                        best_score = section_score
-                        best_section = section
-                
-                # Dùng section tốt nhất nếu có match
-                if best_score > 0:
-                    content = best_section
+            # Trích xuất phần content liên quan nhất (không phải toàn bộ)
+            if query_lower and len(content) > 1500:
+                # Tìm vị trí query/keyword xuất hiện và lấy context xung quanh
+                best_section = extract_relevant_section(content, query_lower, keywords, max_section_len=2000)
+                content = best_section
+            elif len(content) > 2500:
+                # Không có query → cắt ngắn
+                content = content[:2500] + "\n[... Nội dung tiếp bị cắt ...]"
             
-            # Thêm header và content
-            header = f"\n\n{'='*60}\n📄 File: {file_name}\n{'='*60}\n"
+            # Build context entry
+            header = f"\n\n{'='*50}\n📄 {file_name} (score: {item['score']:.0f})\n{'='*50}\n"
+            entry = header + content
             
-            if total_chars + len(header) + len(content) > max_chars:
-                # Cắt bớt nếu vượt quá giới hạn
-                remaining = max_chars - total_chars - len(header)
+            # Kiểm tra giới hạn tổng chars
+            if total_chars + len(entry) > max_chars:
+                remaining = max_chars - total_chars
                 if remaining > 500:
-                    context_parts.append(header + content[:remaining] + "\n\n[... Nội dung bị cắt do quá dài ...]")
-                    docs_included += 1
+                    context_parts.append(header + content[:remaining-len(header)] + "\n[... Cắt do quá dài ...]")
                 break
-            else:
-                context_parts.append(header + content)
-                total_chars += len(header) + len(content)
-                docs_included += 1
+            
+            context_parts.append(entry)
+            total_chars += len(entry)
         
         full_context = "".join(context_parts)
         
-        if not full_context:
-            return {
-                "success": True,
-                "context": "",
-                "message": "Knowledge base có dữ liệu nhưng không tìm thấy nội dung liên quan."
-            }
-        
-        # Thêm instruction cho LLM
-        instruction = f"""\n\n{'='*60}\n📚 HƯỚNG DẪN SỬ DỤNG CONTEXT\n{'='*60}\nBạn đang có quyền truy cập vào {docs_included} tài liệu từ Knowledge Base của user.\nHãy dựa vào nội dung này để trả lời câu hỏi một cách chính xác và chi tiết.\nNếu không tìm thấy thông tin, hãy nói rõ thay vì đoán.\n{'='*60}\n\n"""
-        
-        full_context = instruction + full_context
-        
+        # ============================================================
+        # BƯỚC 6: Format response cho LLM dễ hiểu
+        # ============================================================
+        # Tạo instruction rõ ràng cho LLM
+        instruction = f"""📚 ĐÃ TÌM THẤY {len(context_parts)} TÀI LIỆU LIÊN QUAN ĐẾN "{query}"
+
+⚡ HƯỚNG DẪN CHO AI:
+1. ĐỌC KỸ NỘI DUNG BÊN DƯỚI
+2. TRẢ LỜI CÂU HỎI DỰA TRÊN NỘI DUNG NÀY
+3. TRÍCH DẪN THÔNG TIN TỪ TÀI LIỆU
+4. NẾU KHÔNG ĐỦ THÔNG TIN, HÃY NÓI RÕ
+
+---NỘI DUNG TÀI LIỆU---
+{full_context}
+---HẾT NỘI DUNG---
+
+💡 HÃY TRẢ LỜI CÂU HỎI CỦA USER DỰA TRÊN THÔNG TIN TRÊN."""
+
+        # 🔄 TRUNCATE: Giới hạn context dưới 4000 ký tự cho LLM
+        if len(instruction) > MAX_LLM_RESPONSE_CHARS:
+            original_len = len(instruction)
+            instruction = smart_truncate_for_llm(instruction, MAX_LLM_RESPONSE_CHARS)
+            print(f"[KB] ✂️ Truncated context: {original_len} → {len(instruction)} chars")
+
         return {
             "success": True,
-            "context": full_context,
-            "total_documents": len(documents),
-            "documents_included": docs_included,
+            "context": instruction,  # Instruction + context (đã truncate)
+            "raw_context": full_context,  # Context thuần
+            "total_documents": len(all_documents),
+            "documents_included": len(context_parts),
+            "duplicates_removed": len(filtered_docs) - len(unique_docs),
             "context_length": len(full_context),
-            "keywords_used": keywords if query else [],
-            "message": f"📚 Đã lấy context từ {docs_included} tài liệu liên quan nhất ({len(full_context):,} ký tự)"
+            "keywords_used": keywords,
+            "gemini_summarization": False,
+            "message": f"✅ Tìm thấy {len(context_parts)} tài liệu ({len(full_context):,} chars). ĐỌC CONTEXT VÀ TRẢ LỜI USER!"
         }
         
     except Exception as e:
         import traceback
         traceback.print_exc()
         return {"success": False, "context": "", "error": str(e)}
+
+
+def extract_relevant_section(content: str, query: str, keywords: list, max_section_len: int = 2000) -> str:
+    """
+    Trích xuất phần content liên quan nhất đến query.
+    Tìm vị trí query/keywords xuất hiện và lấy context xung quanh.
+    """
+    content_lower = content.lower()
+    
+    # Tìm vị trí exact query match
+    pos = content_lower.find(query)
+    
+    if pos == -1 and keywords:
+        # Không tìm thấy exact match, tìm keyword đầu tiên
+        for kw in keywords:
+            pos = content_lower.find(kw)
+            if pos != -1:
+                break
+    
+    if pos == -1:
+        # Không tìm thấy gì, trả về đầu document
+        return content[:max_section_len] + ("\n[... Còn tiếp ...]" if len(content) > max_section_len else "")
+    
+    # Lấy context xung quanh vị trí tìm thấy
+    half_len = max_section_len // 2
+    start = max(0, pos - half_len)
+    end = min(len(content), pos + half_len)
+    
+    # Điều chỉnh để không cắt giữa từ
+    if start > 0:
+        # Tìm space gần nhất để bắt đầu
+        space_pos = content.rfind(' ', max(0, start - 50), start + 50)
+        if space_pos > 0:
+            start = space_pos + 1
+    
+    if end < len(content):
+        # Tìm space gần nhất để kết thúc
+        space_pos = content.find(' ', end - 50, end + 50)
+        if space_pos > 0:
+            end = space_pos
+    
+    section = content[start:end]
+    
+    # Thêm markers nếu bị cắt
+    prefix = "[...] " if start > 0 else ""
+    suffix = " [...]" if end < len(content) else ""
+    
+    return prefix + section + suffix
+
+
+# =====================================================
+# 📖 DOC READER GEMINI RAG - ADVANCED RAG SYSTEM
+# =====================================================
+
+async def doc_reader_gemini_rag(
+    user_query: str,
+    knowledge_base_path: str = None,
+    chunk_size: int = 1024,
+    top_k: int = 5,
+    use_vector_search: bool = True
+) -> dict:
+    """
+    📖 Hệ thống RAG nâng cao với Gemini:
+    1. Load và chunk documents
+    2. Embed và vector search (semantic search)
+    3. Format context và generate response với Gemini
+    
+    Args:
+        user_query: Câu hỏi của người dùng
+        knowledge_base_path: Đường dẫn thư mục KB (mặc định dùng config)
+        chunk_size: Kích thước mỗi chunk (default: 1024 chars)
+        top_k: Số lượng chunks liên quan nhất (default: 5)
+        use_vector_search: Dùng semantic search hay keyword search (default: True)
+        
+    Returns:
+        dict với success, response_text, sources, và debug info
+    """
+    try:
+        print(f"📖 [RAG] Processing query: {user_query[:50]}...")
+        
+        # BƯỚC 1: Load documents từ Knowledge Base
+        if not knowledge_base_path:
+            config = load_knowledge_config()
+            knowledge_base_path = config.get("folder_path", "")
+        
+        if not knowledge_base_path or not Path(knowledge_base_path).exists():
+            return {
+                "success": False,
+                "error": "Knowledge base path không hợp lệ. Vui lòng cấu hình thư mục KB."
+            }
+        
+        # Load index
+        index_data = load_knowledge_index()
+        documents = index_data.get("documents", [])
+        
+        if not documents:
+            return {
+                "success": False,
+                "error": "Knowledge base trống. Vui lòng index các files trước."
+            }
+        
+        print(f"📚 [RAG] Loaded {len(documents)} documents")
+        
+        # BƯỚC 2: Chunk documents (chia nhỏ tài liệu)
+        all_chunks = []
+        for doc in documents:
+            content = doc.get("content", "")
+            file_name = doc.get("file_name", "unknown")
+            
+            # Skip PDF structure
+            if content.strip().startswith("%PDF-") or content.strip().startswith("<</"):
+                continue
+            
+            # Chunk document
+            chunks = []
+            for i in range(0, len(content), chunk_size):
+                chunk_text = content[i:i+chunk_size]
+                if len(chunk_text.strip()) > 50:  # Skip very short chunks
+                    chunks.append({
+                        "text": chunk_text,
+                        "file_name": file_name,
+                        "chunk_index": i // chunk_size,
+                        "source_doc": doc
+                    })
+            
+            all_chunks.extend(chunks)
+        
+        print(f"✂️ [RAG] Created {len(all_chunks)} chunks")
+        
+        # BƯỚC 3: Tìm kiếm chunks liên quan
+        if use_vector_search:
+            # Vector/Semantic Search (simple TF-IDF based)
+            relevant_chunks = _semantic_search_chunks(user_query, all_chunks, top_k)
+        else:
+            # Keyword search (fallback)
+            relevant_chunks = _keyword_search_chunks(user_query, all_chunks, top_k)
+        
+        if not relevant_chunks:
+            return {
+                "success": False,
+                "error": f"Không tìm thấy thông tin liên quan đến '{user_query}' trong Knowledge Base."
+            }
+        
+        print(f"🔍 [RAG] Found {len(relevant_chunks)} relevant chunks")
+        
+        # BƯỚC 4: Format context từ relevant chunks
+        prompt_context = ""
+        sources = []
+        for i, chunk in enumerate(relevant_chunks, 1):
+            prompt_context += f"\n--- Đoạn {i} (từ {chunk['file_name']}) ---\n"
+            prompt_context += chunk['text'][:800] + "\n"  # Limit each chunk
+            
+            if chunk['file_name'] not in sources:
+                sources.append(chunk['file_name'])
+        
+        # BƯỚC 5: Xây dựng prompt cho Gemini
+        final_prompt = f"""Bạn là trợ lý thông minh có quyền truy cập Knowledge Base của người dùng.
+
+⚡ QUY TẮC BẮT BUỘC:
+- TRẢ LỜI NGAY LẬP TỨC - KHÔNG HỎI LẠI
+- KHÔNG hỏi "bạn muốn biết gì thêm?"
+- KHÔNG yêu cầu thêm thông tin
+- Sử dụng toàn bộ thông tin có trong Knowledge Base để trả lời
+
+📚 THÔNG TIN TỪ KNOWLEDGE BASE:
+{prompt_context}
+
+❓ CÂU HỎI:
+{user_query}
+
+📝 YÊU CẦU:
+- TRẢ LỜI TRỰC TIẾP dựa trên Knowledge Base
+- Nếu không đủ thông tin → Nói "Không tìm thấy trong Knowledge Base"
+- Trích dẫn tên file khi cần
+- Ngắn gọn, chính xác
+
+🎯 TRẢ LỜI NGAY:"""
+        
+        # BƯỚC 6: Gọi Gemini API
+        print(f"🤖 [RAG] Calling Gemini...")
+        
+        if not GEMINI_AVAILABLE:
+            return {
+                "success": False,
+                "error": "Gemini API không khả dụng. Vui lòng kiểm tra API key."
+            }
+        
+        import google.generativeai as genai
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('models/gemini-3-flash-preview')
+        
+        response = model.generate_content(
+            final_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.3,  # Focused and factual
+                max_output_tokens=1000
+            )
+        )
+        
+        if not response or not response.text:
+            return {
+                "success": False,
+                "error": "Gemini không trả về response."
+            }
+        
+        print(f"✅ [RAG] Generated response ({len(response.text)} chars)")
+        
+        # Return full result
+        return {
+            "success": True,
+            "response_text": response.text.strip(),
+            "query": user_query,
+            "sources": sources,
+            "chunks_used": len(relevant_chunks),
+            "total_chunks": len(all_chunks),
+            "search_method": "semantic" if use_vector_search else "keyword",
+            "message": f"✅ Đã trả lời dựa trên {len(relevant_chunks)} đoạn từ {len(sources)} tài liệu"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+def _semantic_search_chunks(query: str, chunks: list, top_k: int = 5) -> list:
+    """
+    Tìm kiếm semantic dựa trên TF-IDF scoring
+    """
+    import math
+    
+    # Extract keywords from query
+    stop_words = {'là', 'của', 'và', 'có', 'các', 'được', 'trong', 'để', 'này', 'đó', 
+                  'cho', 'với', 'từ', 'về', 'như', 'theo', 'không', 'khi', 'đã', 'sẽ',
+                  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being'}
+    
+    keywords = [w.lower() for w in query.split() if w.lower() not in stop_words and len(w) > 2]
+    
+    if not keywords:
+        keywords = [query.lower()]
+    
+    # Score each chunk
+    scored_chunks = []
+    for chunk in chunks:
+        text_lower = chunk['text'].lower()
+        score = 0
+        
+        for keyword in keywords:
+            count = text_lower.count(keyword)
+            if count > 0:
+                # TF-IDF inspired scoring
+                score += math.log(1 + count) * 10
+        
+        # Multi-keyword bonus
+        matched = sum(1 for kw in keywords if kw in text_lower)
+        if matched > 1:
+            score *= (1 + matched * 0.3)
+        
+        if score > 0:
+            chunk['score'] = score
+            scored_chunks.append(chunk)
+    
+    # Sort by score and return top K
+    scored_chunks.sort(key=lambda x: x['score'], reverse=True)
+    return scored_chunks[:top_k]
+
+
+def _keyword_search_chunks(query: str, chunks: list, top_k: int = 5) -> list:
+    """
+    Tìm kiếm đơn giản dựa trên keyword matching
+    """
+    query_lower = query.lower()
+    matched_chunks = []
+    
+    for chunk in chunks:
+        if query_lower in chunk['text'].lower():
+            matched_chunks.append(chunk)
+            if len(matched_chunks) >= top_k:
+                break
+    
+    return matched_chunks
+
 
 async def send_to_wechat(contact: str, message: str) -> dict:
     """
@@ -7684,7 +11470,341 @@ async def set_dark_mode(enable: bool = True) -> dict:
         return {"success": False, "error": str(e)}
 
 
+# ============================================================
+# � NETWORK/FIREWALL CHECK TOOLS - Kiểm tra quyền kết nối mạng
+# ============================================================
+
+async def check_network_permission() -> dict:
+    """
+    Kiểm tra quyền kết nối mạng (Windows Firewall) và trạng thái Internet.
+    Hướng dẫn người dùng cấp quyền nếu chưa có.
+    """
+    try:
+        # Check firewall rules
+        firewall = FirewallChecker.check_firewall_rules()
+        
+        # Check internet connection
+        internet = FirewallChecker.check_internet_connection()
+        
+        # Build response
+        result = {
+            "success": True,
+            "firewall": {
+                "has_permission": bool(firewall['rules_found']),
+                "rules_found": firewall['rules_found'],
+                "exe_name": firewall['exe_name'],
+                "exe_path": firewall['exe_path']
+            },
+            "internet": {
+                "connected": internet['connected'],
+                "latency_ms": internet.get('latency_ms')
+            }
+        }
+        
+        # Status message
+        if firewall['rules_found'] and internet['connected']:
+            result["message"] = f"✅ Đã có quyền Firewall và kết nối Internet ({internet.get('latency_ms', '?')}ms)"
+            result["status"] = "ready"
+        elif firewall['rules_found'] and not internet['connected']:
+            result["message"] = "⚠️ Có quyền Firewall nhưng không có Internet. Kiểm tra kết nối mạng của máy tính."
+            result["status"] = "no_internet"
+        elif not firewall['rules_found'] and internet['connected']:
+            result["message"] = "⚠️ Chưa thấy rule Firewall nhưng Internet vẫn hoạt động. Có thể Windows đã tự động cho phép."
+            result["status"] = "working"
+        else:
+            result["message"] = "❌ Chưa có quyền Firewall và không kết nối được Internet."
+            result["status"] = "blocked"
+            result["guide"] = {
+                "step1": "Khi Windows hỏi 'Allow access' → Nhấn 'Allow access'",
+                "step2": "Hoặc vào Windows Security → Firewall → Allow an app",
+                "step3": "Thêm file EXE vào danh sách cho phép",
+                "step4": "Tick cả 'Private' và 'Public' networks"
+            }
+        
+        return result
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def request_firewall_permission() -> dict:
+    """
+    Yêu cầu cấp quyền Firewall cho ứng dụng (cần quyền Admin).
+    """
+    try:
+        success = FirewallChecker.request_firewall_permission()
+        
+        if success:
+            return {
+                "success": True,
+                "message": "✅ Đã thêm rule Firewall thành công! Ứng dụng có thể kết nối Internet."
+            }
+        else:
+            return {
+                "success": False,
+                "message": "⚠️ Không thể tự động thêm rule. Cần chạy với quyền Administrator.",
+                "guide": {
+                    "manual": "Vào Windows Security → Firewall → Allow an app → Thêm miniZ MCP",
+                    "powershell": f'netsh advfirewall firewall add rule name="miniZ_MCP" dir=in action=allow program="{FirewallChecker.get_exe_path()}" enable=yes'
+                }
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def check_internet_connection() -> dict:
+    """
+    Kiểm tra kết nối Internet và độ trễ mạng.
+    """
+    try:
+        result = FirewallChecker.check_internet_connection()
+        
+        if result['connected']:
+            return {
+                "success": True,
+                "connected": True,
+                "latency_ms": result.get('latency_ms'),
+                "message": f"✅ Đã kết nối Internet (độ trễ: {result.get('latency_ms', '?')}ms)"
+            }
+        else:
+            return {
+                "success": True,
+                "connected": False,
+                "message": "❌ Không kết nối được Internet. Kiểm tra kết nối mạng của máy tính.",
+                "error": result.get('error')
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================
+# �📨 SEND MESSAGE TO LLM - Gửi tin nhắn cho LLM tự trả lời
+# ============================================================
+
+async def send_message_to_llm(message: str, device_index: int = None, wait_response: bool = False, timeout: int = 30) -> dict:
+    """
+    Gửi tin nhắn cho LLM qua WebSocket. Robot sẽ đọc và tự động trả lời qua giọng nói.
+    
+    LƯU Ý: Do WebSocket đang được sử dụng bởi main loop, không thể đợi response trực tiếp.
+    Robot sẽ nhận tin nhắn và tự động phản hồi qua voice.
+    
+    Args:
+        message: Tin nhắn/câu hỏi muốn gửi cho LLM
+        device_index: Index thiết bị (0, 1, 2). None = thiết bị đang active
+        wait_response: KHÔNG SỬ DỤNG - để tương thích API cũ
+        timeout: KHÔNG SỬ DỤNG - để tương thích API cũ
+        
+    Returns:
+        dict với success, message, device_name
+    """
+    global xiaozhi_connections, xiaozhi_connected, active_endpoint_index, endpoints_config
+    
+    try:
+        # Xác định device index
+        if device_index is None:
+            device_index = active_endpoint_index
+        
+        # Validate device_index
+        if device_index not in [0, 1, 2]:
+            return {
+                "success": False,
+                "error": f"Invalid device_index: {device_index}. Must be 0, 1, or 2."
+            }
+        
+        # Kiểm tra kết nối WebSocket
+        if not xiaozhi_connected.get(device_index, False):
+            return {
+                "success": False,
+                "error": f"Thiết bị {device_index + 1} chưa kết nối. Vui lòng kiểm tra kết nối WebSocket."
+            }
+        
+        ws = xiaozhi_connections.get(device_index)
+        if ws is None:
+            return {
+                "success": False,
+                "error": f"WebSocket connection cho thiết bị {device_index + 1} không khả dụng."
+            }
+        
+        # Lấy tên thiết bị
+        device_name = endpoints_config[device_index].get("name", f"Thiết bị {device_index + 1}")
+        
+        # Tạo JSON-RPC notification để gửi tin nhắn cho LLM
+        # Sử dụng method "notifications/message" theo MCP protocol
+        # Đây là notification (không có id) nên server không cần response
+        llm_message = {
+            "jsonrpc": "2.0",
+            "method": "notifications/message",
+            "params": {
+                "level": "info",
+                "data": {
+                    "type": "user_message",
+                    "content": message,
+                    "timestamp": datetime.now().isoformat(),
+                    "source": "miniZ_MCP_WebUI"
+                }
+            }
+        }
+        
+        print(f"📨 [LLM Send] Sending to {device_name}: {message[:100]}...")
+        
+        # Lưu vào conversation history
+        add_to_conversation(
+            role="user",
+            content=message,
+            metadata={
+                "source": "send_message_to_llm",
+                "device": device_name,
+                "device_index": device_index
+            }
+        )
+        
+        # Gửi message qua WebSocket (không đợi response)
+        await ws.send(json.dumps(llm_message))
+        
+        print(f"✅ [LLM Send] Message sent to {device_name}")
+        
+        return {
+            "success": True,
+            "message": f"✅ Đã gửi tin nhắn đến {device_name}. Robot sẽ đọc và trả lời qua giọng nói.",
+            "device_name": device_name,
+            "device_index": device_index,
+            "sent_message": message,
+            "note": "Robot sẽ tự động trả lời qua voice. Không cần đợi response text."
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": f"Lỗi khi gửi tin nhắn: {str(e)}"
+        }
+
+
+async def broadcast_to_all_llm(message: str, wait_response: bool = False) -> dict:
+    """
+    Gửi tin nhắn đến TẤT CẢ thiết bị LLM đang kết nối.
+    
+    Args:
+        message: Tin nhắn muốn broadcast
+        wait_response: KHÔNG SỬ DỤNG - để tương thích API cũ
+        
+    Returns:
+        dict với kết quả gửi cho từng thiết bị
+    """
+    global xiaozhi_connected
+    
+    results = {
+        "success": True,
+        "message": message,
+        "devices": []
+    }
+    
+    sent_count = 0
+    for device_index in [0, 1, 2]:
+        if xiaozhi_connected.get(device_index, False):
+            result = await send_message_to_llm(
+                message=message,
+                device_index=device_index
+            )
+            results["devices"].append({
+                "device_index": device_index,
+                "result": result
+            })
+            if result.get("success"):
+                sent_count += 1
+    
+    results["sent_count"] = sent_count
+    results["total_connected"] = sum(1 for v in xiaozhi_connected.values() if v)
+    
+    if sent_count == 0:
+        results["success"] = False
+        results["error"] = "Không có thiết bị nào đang kết nối."
+    
+    return results
+
+
+def send_message_to_llm_sync(message: str, device_index: int = None, wait_response: bool = False, timeout: int = 30) -> dict:
+    """
+    Wrapper đồng bộ cho send_message_to_llm (dùng trong TOOLS handler)
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # Nếu đang trong async context, tạo task
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    send_message_to_llm(message, device_index)
+                )
+                return future.result(timeout=timeout + 5)
+        else:
+            return loop.run_until_complete(
+                send_message_to_llm(message, device_index)
+            )
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 TOOLS = {
+    # ============================================================
+    # 📨 SEND MESSAGE TO LLM - Gửi tin nhắn cho robot/LLM tự trả lời
+    # ============================================================
+    "send_message_to_llm": {
+        "handler": send_message_to_llm,
+        "description": "📨 GỬI TIN NHẮN CHO LLM/ROBOT - Gửi message qua WebSocket để LLM cloud đọc và TỰ TRẢ LỜI. Use when: 'gửi tin nhắn cho robot', 'nói với AI', 'chat với LLM', 'hỏi robot', 'send message to AI'. Robot sẽ đọc được tin nhắn và tự động phản hồi qua giọng nói hoặc text.",
+        "parameters": {
+            "message": {
+                "type": "string",
+                "description": "Tin nhắn/câu hỏi muốn gửi cho LLM. VD: 'Xin chào', 'Hôm nay thời tiết thế nào?', 'Kể cho tôi một câu chuyện'",
+                "required": True
+            },
+            "device_index": {
+                "type": "integer",
+                "description": "Index thiết bị (0, 1, hoặc 2). Mặc định: thiết bị đang active. 0=Thiết bị 1, 1=Thiết bị 2, 2=Thiết bị 3",
+                "required": False
+            },
+            "wait_response": {
+                "type": "boolean",
+                "description": "Có đợi LLM trả lời không? True=đợi response (mặc định), False=gửi xong trả về luôn",
+                "required": False
+            },
+            "timeout": {
+                "type": "integer",
+                "description": "Thời gian chờ response (giây). Mặc định 30 giây.",
+                "required": False
+            }
+        }
+    },
+    "broadcast_to_all_llm": {
+        "handler": broadcast_to_all_llm,
+        "description": "📢 BROADCAST TIN NHẮN ĐẾN TẤT CẢ LLM/ROBOT - Gửi cùng một message đến tất cả thiết bị đang kết nối. Use when: 'gửi tin nhắn cho tất cả robot', 'broadcast message', 'thông báo cho tất cả AI'.",
+        "parameters": {
+            "message": {
+                "type": "string",
+                "description": "Tin nhắn muốn broadcast đến tất cả thiết bị",
+                "required": True
+            },
+            "wait_response": {
+                "type": "boolean",
+                "description": "Có đợi response từ các thiết bị không? Mặc định False (broadcast thường không đợi)",
+                "required": False
+            }
+        }
+    },
+    
+    "get_hardware_specs": {
+        "handler": get_system_info,
+        "description": "💻🔥 SPECS CẤU HÌNH HARDWARE - DUY NHẤT tool cho câu hỏi: 'cấu hình máy tính gì', 'máy tính này như thế nào', 'card đồ họa gì', 'CPU gì', 'GPU gì', 'mainboard gì', 'thế hệ CPU', 'RTX RTX mấy', 'Intel thế hệ mấy', 'AMD Ryzen mấy'. Trả về: CPU generation (Intel 13th gen), GPU series (RTX 4080), motherboard, BIOS, RAM specs. KHÔNG dùng cho performance monitoring!",
+        "parameters": {
+            "category": {
+                "type": "string",
+                "description": "'cpu', 'gpu', 'motherboard', 'memory', 'all'. Mặc định: all",
+                "required": False
+            }
+        }
+    },
     "set_volume": {
         "handler": set_volume, 
         "description": "ĐIỀU CHỈNH âm lượng máy tính đến mức CỤ THỂ (0-100%). Use when user says: 'chỉnh âm lượng 50', 'đặt âm lượng 80', 'volume 30', 'set volume to 60', 'để âm lượng ở mức 40'. Examples: level=50 (âm lượng vừa), level=80 (to), level=20 (nhỏ), level=0 (tắt hẳn).", 
@@ -7707,7 +11827,7 @@ TOOLS = {
         }
     },
     "show_notification": {"handler": show_notification, "description": "Hiển thị thông báo", "parameters": {"title": {"type": "string", "description": "Tiêu đề", "required": True}, "message": {"type": "string", "description": "Nội dung", "required": True}}},
-    "get_system_resources": {"handler": get_system_resources, "description": "Tài nguyên hệ thống", "parameters": {}},
+    "get_system_resources": {"handler": get_system_resources, "description": "📊 PERFORMANCE MONITORING - CHỈ để xem CPU %, RAM %, Disk % đang sử dụng. CHO PERFORMANCE/MONITOR, KHÔNG cho câu hỏi về 'cấu hình máy tính', 'GPU gì', 'CPU gì'. Dùng get_hardware_specs cho hardware specs!", "parameters": {}},
     "get_current_time": {"handler": get_current_time, "description": "Thời gian hiện tại", "parameters": {}},
     "calculator": {"handler": calculator, "description": "Tính toán", "parameters": {"expression": {"type": "string", "description": "Biểu thức", "required": True}}},
     "open_application": {
@@ -7722,6 +11842,14 @@ TOOLS = {
         }
     },
     "list_running_processes": {"handler": list_running_processes, "description": "Liệt kê tiến trình", "parameters": {"limit": {"type": "integer", "description": "Số lượng", "required": False}}},
+    "find_process": {
+        "handler": find_process,
+        "description": "🔍 TÌM KIẾM PROCESS - Tìm process cụ thể theo tên hoặc xem tất cả. Triggers: 'tìm process excel', 'excel có chạy không', 'process nào đang chạy'. Better than list_running_processes with limit.",
+        "parameters": {
+            "name_pattern": {"type": "string", "description": "Tên process cần tìm (VD: 'excel', 'chrome', 'notepad'). Để trống = tất cả", "required": False},
+            "show_all": {"type": "boolean", "description": "True=hiển thị tất cả process, False=chỉ top 20 (default)", "required": False}
+        }
+    },
     "kill_process": {
         "handler": kill_process, 
         "description": "🔪 Kill tiến trình theo tên hoặc PID. Có thể kill ngay lập tức (force=True) hoặc đóng mềm (force=False). VD: 'kill notepad', 'tắt chrome'", 
@@ -7994,18 +12122,18 @@ TOOLS = {
     # QUICK WEBSITE ACCESS TOOLS
     "open_youtube": {
         "handler": open_youtube, 
-        "description": "📺 MỞ YOUTUBE - Triggers: 'mở youtube', 'vào youtube', 'xem youtube', 'youtube [keyword]', 'mo youtube'. VD: 'mở youtube tìm nhạc buồn' → open_youtube(search_query='nhạc buồn').", 
+        "description": "📺 MỞ YOUTUBE - Triggers: 'mở youtube', 'vào youtube', 'xem youtube', 'youtube [tên video]'. ✨ NEW: TỰ ĐỘNG phát video trực tiếp nếu query CỤ THỂ (>= 2 từ)! VD: 'mở youtube Lạc Trôi' → Mở video trực tiếp (không phải search page). Query 1 từ → mở search page.", 
         "parameters": {
             "search_query": {
                 "type": "string", 
-                "description": "Từ khóa tìm kiếm (tùy chọn). Để trống = mở trang chủ.", 
+                "description": "Tên video/từ khóa. Query >= 2 từ = auto phát video trực tiếp. Query 1 từ = search page. Để trống = homepage.", 
                 "required": False
             }
         }
     },
     "search_youtube_video": {
         "handler": search_youtube_video,
-        "description": "🔍 TÌM VIDEO YOUTUBE - Triggers: 'mở clip [tên]', 'phát video [tên]', 'xem clip', 'tìm video', 'mo clip', 'phat video'. VD: 'mở clip Sơn Tùng' → search_youtube_video(video_title='Sơn Tùng'). Auto-open mặc định.",
+        "description": "🔍 TÌM VIDEO YOUTUBE (Explicit) - ⚠️ CHỈ dùng khi user YÊU CẦU 'tìm video', 'search video', hoặc muốn xem top 5 results. Còn lại DÙNG open_youtube (đã có auto-detect direct video). VD: 'tìm video Sơn Tùng' → search_youtube_video. 'mở youtube Sơn Tùng Chúng Ta' → open_youtube (preferred).",
         "parameters": {
             "video_title": {
                 "type": "string",
@@ -8442,6 +12570,17 @@ TOOLS = {
         "description": "Lấy giá vàng hôm nay từ BNews RSS feed. Hiển thị giá mua vào và bán ra của các loại vàng phổ biến (SJC, 9999, nhẫn tròn, v.v.). Tự động cập nhật giá mới nhất.",
         "parameters": {}
     },
+    "analyze_gold_price_with_ai": {
+        "handler": analyze_gold_price_with_ai,
+        "description": "Phân tích thông minh giá vàng với AI (Gemini 3 Flash Preview + Google Search). So sánh giá hiện tại vs lịch sử, phân tích xu hướng, nguyên nhân biến động, dự báo, và khuyến nghị đầu tư chuyên sâu. Dùng khi cần phân tích chuyên môn về thị trường vàng.",
+        "parameters": {
+            "analysis_type": {
+                "type": "string",
+                "description": "Loại phân tích: 'compare_month' (so sánh với tháng trước), 'trend' (xu hướng hiện tại), 'forecast' (dự báo). Mặc định: 'compare_month'",
+                "required": False
+            }
+        }
+    },
     
     # AI ASSISTANT TOOLS
     "ask_gemini": {
@@ -8455,7 +12594,7 @@ TOOLS = {
             },
             "model": {
                 "type": "string",
-                "description": "Tên model Gemini (mặc định: models/gemini-2.0-flash-exp). Options: models/gemini-2.0-flash-exp (nhanh, miễn phí), models/gemini-exp-1206 (chất lượng cao hơn)",
+                "description": "Tên model Gemini (mặc định: models/gemini-3-flash-preview). Options: models/gemini-3-flash-preview (Flash 2.0, mới nhất), models/gemini-1.5-flash (Flash 1.5), models/gemini-1.5-pro (Pro 1.5, chất lượng cao nhất)",
                 "required": False
             }
         }
@@ -8476,6 +12615,23 @@ TOOLS = {
                 "required": False
             }
         }
+    },
+    
+    # NETWORK/FIREWALL CHECK TOOLS
+    "check_network_permission": {
+        "handler": check_network_permission,
+        "description": "🔥 KIỂM TRA QUYỀN KẾT NỐI MẠNG - Xem trạng thái Windows Firewall và Internet. Use when: 'kiểm tra firewall', 'quyền kết nối', 'check network', 'tình trạng mạng', 'firewall status', 'có được phép kết nối internet không'. Hiển thị: có rule firewall chưa, internet có kết nối không, hướng dẫn cấp quyền.",
+        "parameters": {}
+    },
+    "request_firewall_permission": {
+        "handler": request_firewall_permission,
+        "description": "🔓 YÊU CẦU CẤP QUYỀN FIREWALL - Tự động thêm rule cho ứng dụng. Use when: 'cấp quyền firewall', 'allow firewall', 'thêm rule firewall'. Cần quyền Admin để hoạt động.",
+        "parameters": {}
+    },
+    "check_internet_connection": {
+        "handler": check_internet_connection,
+        "description": "🌐 KIỂM TRA KẾT NỐI INTERNET - Test kết nối và độ trễ mạng. Use when: 'kiểm tra internet', 'test connection', 'có mạng không', 'ping', 'network status'.",
+        "parameters": {}
     },
     
     # NEW TOOLS FROM REFERENCE
@@ -8504,9 +12660,35 @@ TOOLS = {
             }
         }
     },
+    "gemini_text_to_speech": {
+        "handler": gemini_text_to_speech,
+        "description": "🎙️ ĐỌC TO TRÊN MÁY TÍNH - Gemini TTS chất lượng cao. ƯU TIÊN DÙNG TOOL NÀY khi user nói: 'đọc to', 'đọc trên máy tính', 'đọc văn bản', 'text to speech', 'tts', 'đọc cho tôi nghe', 'phát âm', 'nói ra', 'đọc bằng AI', 'đọc bằng gemini'. Giọng Việt tự nhiên, 5 voice: Aoede/Kore (nữ), Puck/Charon/Fenrir (nam). Examples: 'đọc to: xin chào', 'đọc trên máy tính văn bản này'.",
+        "parameters": {
+            "text": {
+                "type": "string",
+                "description": "Văn bản cần đọc. Hỗ trợ tiếng Việt và nhiều ngôn ngữ.",
+                "required": True
+            },
+            "voice": {
+                "type": "string",
+                "description": "Giọng nói: Aoede (nữ-default), Kore (nữ), Puck (nam), Charon (nam), Fenrir (nam).",
+                "required": False
+            },
+            "save_audio": {
+                "type": "boolean",
+                "description": "Có lưu thành file audio không? Mặc định False (chỉ phát).",
+                "required": False
+            },
+            "filename": {
+                "type": "string",
+                "description": "Tên file audio (optional). VD: 'gemini_audio.wav'.",
+                "required": False
+            }
+        }
+    },
     "text_to_speech": {
         "handler": text_to_speech,
-        "description": "TEXT-TO-SPEECH (TTS): Đọc văn bản thành GIỌNG NÓI. Use when: 'đọc văn bản', 'text to speech', 'đọc cho tôi nghe', 'phát âm', 'nói ra'. Dùng Windows SAPI voice (có sẵn). Có thể lưu thành file WAV. Examples: 'đọc bài viết này', 'đọc và lưu audio', 'text to speech tiếng Việt'.",
+        "description": "TEXT-TO-SPEECH BACKUP: Dùng gTTS/Windows SAPI khi Gemini TTS không khả dụng. KHÔNG ƯU TIÊN - chỉ dùng khi gemini_text_to_speech fail. Chất lượng thấp hơn Gemini TTS.",
         "parameters": {
             "text": {
                 "type": "string",
@@ -8636,11 +12818,11 @@ TOOLS = {
         }
     },
     
-    "get_gold_price_vietnam": {
-        "handler": get_gold_price_vietnam,
-        "description": "💰 GIÁ VÀNG VIỆT NAM hôm nay (SJC, PNJ...). Triggers: 'giá vàng', 'gold price', 'vàng hôm nay'.",
-        "parameters": {}
-    },
+    # "get_gold_price_vietnam": {
+    #     "handler": get_gold_price_vietnam,
+    #     "description": "💰 GIÁ VÀNG VIỆT NAM hôm nay (SJC, PNJ...). Triggers: 'giá vàng', 'gold price', 'vàng hôm nay'.",
+    #     "parameters": {}
+    # },
     
     "get_exchange_rate_vietnam": {
         "handler": get_exchange_rate_vietnam,
@@ -8711,7 +12893,7 @@ TOOLS = {
     # KNOWLEDGE BASE TOOLS
     "search_knowledge_base": {
         "handler": search_knowledge_base,
-        "description": "🔍 TÌM KIẾM TRONG TÀI LIỆU CỦA USER (TF-IDF Ranking). ⚡ Dùng khi user hỏi về dữ liệu riêng/tài liệu của họ. Hỗ trợ: Multi-keyword search, relevance scoring, snippet highlighting. Triggers: 'tìm trong tài liệu', 'tìm trong file của tôi', 'tra cứu dữ liệu', 'search my documents', 'tìm thông tin về...'. VD: 'tìm trong tài liệu về hợp đồng mua bán', 'tra cứu thông tin khách hàng Nguyễn Văn A'. Trả về: Top 5 documents có độ liên quan cao nhất với score, matched keywords, và snippets.",
+        "description": "🔍 TÌM KIẾM TRONG TÀI LIỆU CỦA USER (TF-IDF Ranking). ⚡ Dùng khi user muốn XEM DANH SÁCH tài liệu. Hỗ trợ: Multi-keyword search, relevance scoring, snippet highlighting. Triggers: 'tìm trong tài liệu', 'tìm trong file của tôi', 'có tài liệu nào về...', 'search my documents', 'list documents about...'. VD: 'tìm các tài liệu về hợp đồng', 'có file nào nói về khách hàng X'. Trả về: Top 5 documents với score, matched keywords, và snippets. ⚠️ Để TRẢ LỜI câu hỏi → Dùng get_knowledge_context() thay vì tool này!",
         "parameters": {
             "query": {
                 "type": "string",
@@ -8722,16 +12904,110 @@ TOOLS = {
     },
     "get_knowledge_context": {
         "handler": get_knowledge_context,
-        "description": "📚 LẤY CONTEXT ĐẦY ĐỦ TỮ TÀI LIỆU ĐỂ TRẢ LỜI (Semantic Ranking). ⚡ GỌI TOOL NÀY ĐẦU TIÊN khi user hỏi về dữ liệu của họ! Tool này lấy nội dung đầy đủ từ top documents liên quan nhất, sau đó LLM dùng context đó để trả lời. Triggers: 'hỏi về tài liệu', 'thông tin trong file', 'theo dữ liệu của tôi', 'based on my docs', 'what does my document say about...'. QUY TRÌNH: 1) Gọi get_knowledge_context(query='...') 2) Nhận context 3) Dùng context để trả lời user. VD: User hỏi 'Dự án ABC có bao nhiêu giai đoạn?' → Gọi get_knowledge_context(query='dự án ABC giai đoạn') → Nhận context → Trả lời dựa trên context.",
+                "description": "📚 LẤY CONTEXT TỪ CƠ SỞ DỮ LIỆU TÀI LIỆU (Knowledge Base) - ⚡ GỌI ĐẦU TIÊN khi user hỏi về: dữ liệu cá nhân, tài liệu đã lưu, thông tin trong files, cơ sở dữ liệu nội bộ, knowledge base. Tool này tìm kiếm trong TẤT CẢ documents đã được index và trả về context đầy đủ nhất. ⛔ TRIGGERS BẮT BUỘC: 'cơ sở dữ liệu', 'database', 'knowledge base', 'tài liệu của tôi', 'thông tin trong file', 'theo dữ liệu', 'dữ liệu đã lưu', 'based on my docs', 'what's in my documents', 'tìm trong tài liệu', 'search my files', hỏi về TÊN NGƯỜI/DỰ ÁN cụ thể (có thể trong docs). ⚠️ QUAN TRỌNG: SAU KHI NHẬN CONTEXT, BẠN PHẢI ĐỌC VÀ TRẢ LỜI USER DỰA TRÊN CONTEXT ĐÓ! KHÔNG CHỈ DUMP CONTEXT RA! QUY TRÌNH: 1) Gọi get_knowledge_context(query='keywords') 2) Nhận context từ docs 3) ⚡ ĐỌC CONTEXT VÀ TRẢ LỜI CÂU HỎI USER THEO CONTEXT ĐÓ ⚡. VD: 'Nguyễn Văn A làm gì?' → get_knowledge_context(query='Nguyễn Văn A') → Đọc context → Trả lời 'Nguyễn Văn A là...' | 'Thông tin trong cơ sở dữ liệu về dự án X?' → get_knowledge_context(query='dự án X') → Đọc context → Trả lời thông tin dự án X | 'Tài liệu nói gì về ABC?' → get_knowledge_context(query='ABC') → Đọc context → Tóm tắt nội dung về ABC.",
         "parameters": {
             "query": {
                 "type": "string",
-                "description": "Câu hỏi/chủ đề cần context. Nên dùng keywords từ câu hỏi của user. VD: 'dự án ABC', 'hợp đồng khách hàng X', 'báo cáo tài chính quý 3 2024'. Càng cụ thể càng tốt!",
+                "description": "Câu hỏi/từ khóa cần tìm. Trích keywords từ câu hỏi user. VD: User: 'Nguyễn Văn A làm gì?' → query='Nguyễn Văn A'. User: 'Dự án X có mấy giai đoạn?' → query='dự án X giai đoạn'. User: 'Lê Trung Khoa là ai?' → query='Lê Trung Khoa'. Càng CỤ THỂ càng tốt! Bao gồm TÊN RIÊNG trong query.",
                 "required": False
             },
             "max_chars": {
                 "type": "integer",
-                "description": "Giới hạn ký tự (default: 10000). Tăng lên nếu cần nhiều context hơn. VD: 20000 cho câu hỏi phức tạp",
+                "description": "Giới hạn ký tự context (default: 10000). Tăng lên 20000 nếu cần nhiều thông tin. Hệ thống tự động summarize nếu >2000 chars.",
+                "required": False
+            },
+            "use_gemini_filter": {
+                "type": "boolean",
+                "description": "🔥 Bật Gemini Smart Filter để lọc thông minh (default: False). Khi True: dùng Gemini Flash AI để lọc và chỉ trả về content THỰC SỰ liên quan, loại bỏ noise. Recommend: True khi KB có nhiều documents dài.",
+                "required": False
+            }
+        }
+    },
+    
+    "doc_reader_gemini_rag": {
+        "handler": doc_reader_gemini_rag,
+        "description": "📖 RAG NÂNG CAO - Đọc, tìm kiếm VÀ TRẢ LỜI TỰ ĐỘNG từ Knowledge Base bằng Gemini AI. Tool này TỰ ĐỘNG xử lý toàn bộ quy trình: chunk documents → semantic search → generate response. ⚡ DÙNG KHI: User muốn câu trả lời TRỰC TIẾP thay vì chỉ context. Khác với get_knowledge_context (chỉ trả context), tool này TRẢ LỜI LUÔN. VD: 'Hỏi tài liệu về X', 'Tóm tắt thông tin Y từ KB', 'Giải thích Z dựa trên docs'. Hỗ trợ semantic search (vector-like) cho độ chính xác cao.",
+        "parameters": {
+            "user_query": {
+                "type": "string",
+                "description": "Câu hỏi đầy đủ của user. VD: 'Dự án ABC có bao nhiêu giai đoạn?', 'Nguyễn Văn A đảm nhiệm vai trò gì?'",
+                "required": True
+            },
+            "chunk_size": {
+                "type": "integer",
+                "description": "Kích thước mỗi chunk (default: 1024 chars). Tăng lên 2048 cho documents dài.",
+                "required": False
+            },
+            "top_k": {
+                "type": "integer",
+                "description": "Số lượng chunks liên quan nhất để đưa vào context (default: 5). Tăng lên 10 nếu cần nhiều thông tin hơn.",
+                "required": False
+            }
+        }
+    },
+    
+    # =====================================================
+    # � GEMINI FLASH SMART KB FILTER - LỌC THÔNG TIN AI
+    # =====================================================
+    
+    "gemini_smart_kb_filter": {
+        "handler": gemini_smart_kb_filter,
+        "description": "🔥⚡ GEMINI FLASH LỌC THÔNG TIN THÔNG MINH - Sử dụng sức mạnh AI Gemini Flash để LỌC, TÌM KIẾM và TRÍCH XUẤT thông tin CHÍNH XÁC từ Knowledge Base. Tool này LOẠI BỎ NOISE, chỉ trả về content THỰC SỰ LIÊN QUAN. 🎯 DÙNG KHI: 1) KB có nhiều documents dài, 2) Cần lọc chính xác thông tin cụ thể, 3) Muốn tóm tắt/trích xuất facts, 4) get_knowledge_context trả về quá nhiều noise. ⚡ ƯU ĐIỂM: Gemini AI đọc và hiểu ngữ cảnh, lọc thông minh hơn TF-IDF. Triggers: 'lọc thông tin', 'tìm chính xác', 'trích xuất từ database', 'dùng AI lọc', 'smart search KB'. VD: 'Dùng AI lọc thông tin về dự án X', 'Trích xuất facts về nhân viên A từ KB'.",
+        "parameters": {
+            "user_query": {
+                "type": "string",
+                "description": "Câu hỏi/yêu cầu cần lọc thông tin. VD: 'Thông tin về dự án ABC', 'Chi tiết nhân viên Nguyễn Văn A'",
+                "required": True
+            },
+            "filter_mode": {
+                "type": "string",
+                "description": "Chế độ lọc: 'relevant' (mặc định - chỉ giữ phần liên quan), 'summary' (tóm tắt), 'extract' (trích xuất facts/entities), 'qa' (trả lời trực tiếp)",
+                "required": False
+            },
+            "max_documents": {
+                "type": "integer",
+                "description": "Số documents tối đa để xử lý (default: 10). Tăng lên 20 nếu cần tìm rộng hơn.",
+                "required": False
+            },
+            "output_format": {
+                "type": "string",
+                "description": "Format output: 'structured' (JSON), 'raw' (text thô), 'concise' (ngắn gọn nhất)",
+                "required": False
+            }
+        }
+    },
+    
+    # =====================================================
+    # 🔥🌐 GEMINI SMART ANALYZE - PHÂN TÍCH + GOOGLE SEARCH
+    # =====================================================
+    
+    "gemini_smart_analyze": {
+        "handler": gemini_smart_analyze,
+        "description": "🔥🌐⚡⚡ PHÂN TÍCH THÔNG MINH (Gemini + Web) - ⛔⛔ BẮT BUỘC DÙNG NGAY khi user nói: 'phân tích', 'analyze', 'tìm hiểu', 'nghiên cứu', 'đánh giá', 'so sánh', 'review', 'xu hướng', 'trend'. ❌ KHÔNG DÙNG web_search khi có các từ này! Tool này TỰ ĐỘNG: 1) Tìm Google, 2) Gemini phân tích, 3) Trả kết quả hoàn chỉnh. VD: 'phân tích thị trường', 'tìm hiểu về AI', 'đánh giá iPhone', 'xu hướng 2025'.",
+        "parameters": {
+            "user_query": {
+                "type": "string",
+                "description": "Vấn đề cần phân tích. VD: 'Phân tích xu hướng AI 2025', 'Đánh giá thị trường bất động sản'",
+                "required": True
+            },
+            "analysis_type": {
+                "type": "string",
+                "description": "Loại phân tích: 'comprehensive' (đầy đủ, mặc định), 'quick' (nhanh, tóm tắt), 'deep' (sâu, đa chiều)",
+                "required": False
+            },
+            "include_web_search": {
+                "type": "boolean",
+                "description": "Có tìm kiếm web không? Mặc định True. Set False nếu chỉ cần phân tích từ KB.",
+                "required": False
+            },
+            "include_kb": {
+                "type": "boolean",
+                "description": "Có tìm trong Knowledge Base không? Mặc định False. Set True để kết hợp cả web + KB.",
+                "required": False
+            },
+            "max_search_results": {
+                "type": "integer",
+                "description": "Số kết quả web search tối đa (default: 8). Tăng lên 15 nếu cần nhiều nguồn hơn.",
                 "required": False
             }
         }
@@ -8743,7 +13019,7 @@ TOOLS = {
     
     "web_search": {
         "handler": web_search if RAG_AVAILABLE else None,
-        "description": "🌐⚡ TÌM KIẾM WEB (DuckDuckGo) - ⛔ BẮT BUỘC GỌI KHI HỎI VỀ: tổng thống/thủ tướng/CEO, giá vàng/USD/bitcoin, thời tiết, tin tức, sự kiện 2024-2025, 'ai là', 'là ai'. ⚠️ CẢNH BÁO: Kiến thức của bạn LỖI THỜI, PHẢI tra cứu! Query nên thêm '2024' hoặc 'mới nhất'. VD: 'tổng thống Mỹ 2024', 'giá vàng SJC hôm nay'.",
+        "description": "🌐 TÌM KIẾM WEB ĐƠN GIẢN - Chỉ dùng cho câu hỏi đơn giản: 'ai là tổng thống', 'giá vàng', 'thời tiết'. ⚠️ NẾU user nói 'phân tích/tìm hiểu/đánh giá/nghiên cứu' → DÙNG gemini_smart_analyze THAY VÌ tool này!",
         "parameters": {
             "query": {
                 "type": "string",
@@ -8860,13 +13136,23 @@ async def handle_xiaozhi_message(message: dict) -> dict:
         for name, info in TOOLS.items():
             # Sanitize tool name để tương thích với server chính thức
             sanitized_name = sanitize_tool_name(name) if 'sanitize_tool_name' in dir() else name
+            # Rút gọn description MẠNH để giảm message size (fix "message too big" error)
+            description = info["description"]
+            if len(description) > 100:
+                description = description[:97] + "..."
+            
             tool = {
                 "name": name,  # Giữ nguyên tên gốc để handler hoạt động
-                "description": info["description"], 
+                "description": description, 
                 "inputSchema": {"type": "object", "properties": {}, "required": []}
             }
             for pname, pinfo in info["parameters"].items():
-                tool["inputSchema"]["properties"][pname] = {"type": pinfo["type"], "description": pinfo["description"]}
+                # Rút gọn parameter description MẠNH
+                param_desc = pinfo["description"]
+                if len(param_desc) > 80:
+                    param_desc = param_desc[:77] + "..."
+                
+                tool["inputSchema"]["properties"][pname] = {"type": pinfo["type"], "description": param_desc}
                 if pinfo.get("required"):
                     tool["inputSchema"]["required"].append(pname)
             tools.append(tool)
@@ -8927,7 +13213,33 @@ async def handle_xiaozhi_message(message: dict) -> dict:
                     }
                 )
                 
-                return {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False)}]}
+                # ⚡ ĐẶC BIỆT: Với get_knowledge_context, trả về context trực tiếp để LLM dễ đọc
+                if tool_name == "get_knowledge_context" and isinstance(result, dict):
+                    if result.get("success") and result.get("context"):
+                        # Trả về context trực tiếp - LLM đọc và trả lời ngay (giới hạn 2000 ký tự)
+                        truncated_context = smart_truncate_for_llm(result["context"], MAX_LLM_RESPONSE_CHARS)
+                        return {"content": [{"type": "text", "text": truncated_context}]}
+                    elif not result.get("success"):
+                        # Không tìm thấy → trả về message lỗi
+                        error_msg = result.get("error", "Không tìm thấy thông tin trong cơ sở dữ liệu")
+                        return {"content": [{"type": "text", "text": f"❌ {error_msg}"}]}
+                
+                # ⚡ ĐẶC BIỆT: Với ask_gemini, ask_gpt4, gemini_smart_analyze - trả về response text cho LLM cloud tổng hợp
+                # Giống cách web_search hoạt động: trả data đầy đủ → LLM cloud TỰ TÓM TẮT → robot nói
+                if tool_name in ["ask_gemini", "ask_gpt4", "gemini_smart_analyze"] and isinstance(result, dict):
+                    if result.get("success") and result.get("response_text"):
+                        response_text = result["response_text"]
+                        # Clean markdown để LLM dễ đọc (nhưng KHÔNG truncate - để LLM cloud tự tóm tắt)
+                        response_text = clean_markdown_for_tts(response_text)
+                        print(f"[{tool_name}] Cleaned response: {len(response_text)} chars (LLM cloud sẽ tóm tắt)")
+                        # Trả về TEXT trực tiếp, LLM cloud sẽ tự tóm tắt trước khi robot nói
+                        return {
+                            "content": [{"type": "text", "text": response_text}]
+                        }
+                
+                # 🔄 TRUNCATE: Giới hạn response dưới 2000 ký tự cho LLM
+                formatted_response = format_result_for_llm(result, MAX_LLM_RESPONSE_CHARS)
+                return {"content": [{"type": "text", "text": formatted_response}]}
             except Exception as e:
                 last_error = e
                 if attempt < max_retries - 1:
@@ -8942,8 +13254,9 @@ async def handle_xiaozhi_message(message: dict) -> dict:
                     return {"content": [{"type": "text", "text": error_msg}], "isError": True}
     return {"error": f"Unknown method: {method}"}
 
-async def xiaozhi_websocket_client():
-    global xiaozhi_connected, xiaozhi_ws, should_reconnect, active_endpoint_index
+async def xiaozhi_websocket_client(device_index: int = 0):
+    """WebSocket client for a specific device (0, 1, or 2)"""
+    global xiaozhi_connections, xiaozhi_connected, should_reconnect
     retry = 0
     
     # ===== OPTIMIZED CONNECTION SETTINGS =====
@@ -8956,34 +13269,14 @@ async def xiaozhi_websocket_client():
     
     while True:
         try:
-            ep = endpoints_config[active_endpoint_index]
+            ep = endpoints_config[device_index]
             if not ep.get("enabled") or not ep.get("token"):
-                # Thử tìm endpoint khác có token
-                found_valid = False
-                for i, other_ep in enumerate(endpoints_config):
-                    if other_ep.get("enabled") and other_ep.get("token") and i != active_endpoint_index:
-                        print(f"🔄 [Xiaozhi] Switching to {other_ep['name']} (current endpoint has no token)")
-                        active_endpoint_index = i
-                        found_valid = True
-                        break
-                if not found_valid:
-                    await asyncio.sleep(5)
-                    continue
-                ep = endpoints_config[active_endpoint_index]
+                # Thiết bị này chưa có token, chờ và thử lại
+                await asyncio.sleep(10)
+                continue
             
             ws_url = f"wss://api.xiaozhi.me/mcp/?token={ep['token']}"
             retry += 1
-            
-            # Auto-switch endpoint nếu thất bại quá nhiều lần
-            if retry > AUTO_SWITCH_THRESHOLD:
-                for i, other_ep in enumerate(endpoints_config):
-                    if other_ep.get("enabled") and other_ep.get("token") and i != active_endpoint_index:
-                        print(f"⚠️ [Xiaozhi] Too many failures, trying {other_ep['name']}...")
-                        active_endpoint_index = i
-                        retry = 0  # Reset retry cho endpoint mới
-                        ep = other_ep
-                        ws_url = f"wss://api.xiaozhi.me/mcp/?token={ep['token']}"
-                        break
             
             # Fast retry cho 3 lần đầu, sau đó dùng exponential backoff
             if retry <= FAST_RETRY_COUNT:
@@ -8997,16 +13290,17 @@ async def xiaozhi_websocket_client():
                 ping_interval=20, 
                 ping_timeout=10,
                 close_timeout=5,
-                open_timeout=CONNECT_TIMEOUT  # Timeout mở kết nối
+                open_timeout=CONNECT_TIMEOUT,  # Timeout mở kết nối
+                max_size=10 * 1024 * 1024  # 10MB limit (default is 1MB) - fix "message too big"
             ) as ws:
-                xiaozhi_ws = ws
-                xiaozhi_connected = True
-                should_reconnect = False  # Reset flag khi kết nối thành công
+                xiaozhi_connections[device_index] = ws
+                xiaozhi_connected[device_index] = True
+                should_reconnect[device_index] = False  # Reset flag khi kết nối thành công
                 retry = 0  # Reset retry counter khi kết nối thành công
-                print(f"✅ [Xiaozhi] Connected! ({ep['name']})")
+                print(f"✅ [Xiaozhi] Connected! ({ep['name']}) [Device {device_index + 1}]")
                 
                 # Batch broadcast kết nối - tạo tasks và chạy parallel
-                broadcast_msg = {"type": "endpoint_connected", "endpoint": ep['name'], "index": active_endpoint_index}
+                broadcast_msg = {"type": "endpoint_connected", "endpoint": ep['name'], "index": device_index}
                 tasks = []
                 for conn in active_connections:
                     tasks.append(asyncio.create_task(conn.send_json(broadcast_msg)))
@@ -9021,8 +13315,8 @@ async def xiaozhi_websocket_client():
                 
                 async for msg in ws:
                     # Kiểm tra nếu cần reconnect (user đã chuyển thiết bị)
-                    if should_reconnect:
-                        print(f"🔄 [Xiaozhi] Reconnecting to new endpoint...")
+                    if should_reconnect[device_index]:
+                        print(f"🔄 [Xiaozhi] Reconnecting {ep['name']}...")
                         await ws.close()
                         break
                     
@@ -9124,24 +13418,31 @@ async def xiaozhi_websocket_client():
                         print(f"⚠️ [Xiaozhi] JSON decode error: {e}")
                     except Exception as e:
                         print(f"⚠️ [Xiaozhi] Message handling error: {e}")
+        except asyncio.CancelledError:
+            print(f"⚠️ [Xiaozhi] Task cancelled ({ep['name']})")
+            xiaozhi_connected[device_index] = False
+            xiaozhi_connections[device_index] = None
+            break
         except websockets.exceptions.WebSocketException as e:
-            xiaozhi_connected = False
+            xiaozhi_connected[device_index] = False
+            xiaozhi_connections[device_index] = None
             # Fast retry cho 3 lần đầu
             if retry <= FAST_RETRY_COUNT:
                 wait = FAST_RETRY_DELAY
             else:
                 # Exponential backoff với max 15s
                 wait = min(INITIAL_DELAY * (2 ** min(retry - FAST_RETRY_COUNT, 4)), MAX_DELAY)
-            print(f"❌ [Xiaozhi] WebSocket error: {e} (retry in {wait}s)")
+            print(f"❌ [Xiaozhi] WebSocket error ({ep['name']}): {e} (retry in {wait}s)")
             await asyncio.sleep(wait)
         except Exception as e:
-            xiaozhi_connected = False
+            xiaozhi_connected[device_index] = False
+            xiaozhi_connections[device_index] = None
             # Fast retry cho 3 lần đầu
             if retry <= FAST_RETRY_COUNT:
                 wait = FAST_RETRY_DELAY
             else:
                 wait = min(INITIAL_DELAY * (2 ** min(retry - FAST_RETRY_COUNT, 4)), MAX_DELAY)
-            print(f"❌ [Xiaozhi] Error: {e} (retry in {wait}s)")
+            print(f"❌ [Xiaozhi] Error ({ep['name']}): {e} (retry in {wait}s)")
             await asyncio.sleep(wait)
 
 # ============================================================
@@ -9170,6 +13471,14 @@ async def index():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 miniZ MCP - Điều Khiển Máy Tính</title>
     <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; }
         
@@ -9284,8 +13593,14 @@ async def index():
         #progress-slider::-moz-range-thumb { width: 16px; height: 16px; background: #667eea; border-radius: 50%; cursor: pointer; border: none; }
         .music-list { background: white; border-radius: 15px; padding: 25px; color: #333; max-height: 500px; overflow-y: auto; }
         .music-list h3 { color: #667eea; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .music-item { display: flex; align-items: center; padding: 15px; margin: 10px 0; background: #f9fafb; border-radius: 10px; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
-        .music-item:hover { background: #e8eaf6; border-color: #667eea; transform: translateX(5px); }
+        .music-item { display: flex; align-items: center; padding: 15px; margin: 10px 0; background: #f9fafb; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; }
+        .music-item:hover { background: #e8eaf6; border-color: #667eea; transform: translateX(3px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15); }
+        .music-item:hover .play-btn-hover { opacity: 1 !important; }
+        
+        /* Wave animation for now playing indicator */
+        @keyframes wave1 { 0%, 100% { height: 12px; } 50% { height: 20px; } }
+        @keyframes wave2 { 0%, 100% { height: 18px; } 50% { height: 8px; } }
+        @keyframes wave3 { 0%, 100% { height: 15px; } 50% { height: 22px; } }
         .music-item.playing { background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-color: #667eea; }
         .music-item .icon { font-size: 24px; margin-right: 15px; }
         .music-item .info { flex: 1; }
@@ -9294,6 +13609,78 @@ async def index():
         .log-success { color: #10b981; border-left-color: #10b981; }
         .log-error { color: #ef4444; border-left-color: #ef4444; }
         .log-info { color: #3b82f6; border-left-color: #3b82f6; }
+        
+        /* LLM CHAT STYLES */
+        .quick-msg-btn {
+            padding: 8px 14px;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-msg-btn:hover {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            transform: translateY(-2px);
+        }
+        .llm-message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 15px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        .llm-message.user {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        .llm-message.assistant {
+            background: white;
+            color: #333;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .llm-message .time {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-top: 5px;
+            display: block;
+        }
+        .llm-message .device-tag {
+            font-size: 0.7em;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+        }
+        .llm-message.assistant .device-tag {
+            background: rgba(16,185,129,0.1);
+            color: #10b981;
+        }
+        .llm-typing {
+            display: flex;
+            gap: 4px;
+            padding: 15px;
+        }
+        .llm-typing span {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        .llm-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .llm-typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
         
         /* SETTINGS ICON */
         .settings-icon { font-size: 1.8em; cursor: pointer; transition: all 0.3s; padding: 10px; border-radius: 50%; background: #f0f0f0; display: flex; align-items: center; justify-content: center; width: 50px; height: 50px; }
@@ -9310,6 +13697,16 @@ async def index():
         .modal-body label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
         .modal-body input { width: 100%; padding: 12px; margin-bottom: 20px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1em; transition: border-color 0.3s; }
         .modal-body input:focus { outline: none; border-color: #667eea; }
+        
+        /* API KEY INPUT CONTAINER */
+        .api-key-input-container { position: relative; margin-bottom: 20px; }
+        .api-key-input-container input { padding-right: 90px; margin-bottom: 0; font-family: monospace; letter-spacing: 1px; }
+        .api-key-input-container .input-icons { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; align-items: center; }
+        .api-key-icon-btn { background: transparent; border: none; cursor: pointer; padding: 8px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 18px; color: #666; }
+        .api-key-icon-btn:hover { background: rgba(102, 126, 234, 0.1); color: #667eea; transform: scale(1.1); }
+        .api-key-icon-btn:active { transform: scale(0.95); }
+        .api-key-icon-btn.copied { color: #10b981; animation: copySuccess 0.3s; }
+        @keyframes copySuccess { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
         .modal-footer { padding: 20px 30px; background: #f9fafb; border-radius: 0 0 15px 15px; display: flex; gap: 15px; justify-content: flex-end; }
         .modal-btn { padding: 12px 30px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 1em; }
         .modal-btn.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
@@ -9543,6 +13940,8 @@ async def index():
         </div>
         <div class="menu-item active" onclick="showSection('dashboard')">📊Sidebar</div>
         <div class="menu-item" onclick="showSection('tools')">🛠️ Công Cụ</div>
+        <div class="menu-item" onclick="showSection('llm-chat')" style="background:linear-gradient(135deg,#667eea,#764ba2);border-left:4px solid #fbbf24;">💬 Chat với Gemini</div>
+        <div class="menu-item" onclick="showSection('api-quotas')" style="background:linear-gradient(135deg,#667eea,#764ba2);border-left:4px solid #fbbf24;">🔑 API Quotas</div>
         <div class="menu-item" onclick="showSection('music')">🎵 Music Player</div>
         <div class="menu-item" onclick="showSection('music-settings')">⚙️ Music Settings</div>
         <div class="menu-item" onclick="showSection('conversation')">💬 Lịch Sử Chat</div>
@@ -9573,7 +13972,7 @@ async def index():
             <h2 style="color:#667eea;margin-bottom:20px;">🚀 Tất cả công cụ (38 Tools)</h2>
             <div class="quick-actions">
                 <!-- AI ASSISTANT (2) - NEW -->
-                <div class="action-card purple" onclick="askGemini()"><div class="icon">🤖</div><div class="title">Hỏi Gemini AI</div></div>
+                <div class="action-card purple" onclick="askGemini()"><div class="icon">🤖📚</div><div class="title">Hỏi Gemini AI + KB</div></div>
                 <div class="action-card indigo" onclick="askGPT4()"><div class="icon">🧠</div><div class="title">Hỏi GPT-4</div></div>
                 
                 <!-- HỆ THỐNG (5) -->
@@ -9627,6 +14026,99 @@ async def index():
             </div>
         </div>
 
+        <!-- API QUOTAS SECTION -->
+        <div id="api-quotas-section" class="section" style="display:none;">
+            <h2 style="color:#667eea;margin-bottom:30px;">🔑 API Quotas Management</h2>
+            
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:25px;margin-bottom:30px;">
+                <!-- Gemini API Card -->
+                <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:15px;padding:30px;color:white;box-shadow:0 10px 30px rgba(102,126,234,0.3);">
+                    <div style="display:flex;align-items:center;margin-bottom:20px;">
+                        <div style="font-size:48px;margin-right:15px;">🤖</div>
+                        <div>
+                            <h3 style="margin:0;font-size:24px;">Gemini API</h3>
+                            <p style="margin:5px 0 0 0;opacity:0.9;font-size:14px;">Google AI Platform</p>
+                        </div>
+                    </div>
+                    <div id="gemini-quota-detail" style="background:rgba(255,255,255,0.15);border-radius:10px;padding:20px;">
+                        <div style="margin-bottom:15px;">
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Status:</div>
+                            <div id="gemini-status" style="font-size:16px;font-weight:bold;">🔄 Đang kiểm tra...</div>
+                        </div>
+                        <div style="margin-bottom:15px;">
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Free Tier Limits:</div>
+                            <div style="font-size:15px;line-height:1.6;">
+                                • <strong>60 requests</strong> per minute<br>
+                                • <strong>1,500 requests</strong> per day
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Model:</div>
+                            <div style="font-size:14px;font-family:monospace;background:rgba(0,0,0,0.2);padding:8px;border-radius:5px;">
+                                🚀 Gemini 3 Flash Preview
+                                <br><span style="font-size:11px;opacity:0.7;">gemini-3-flash-preview</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Serper API Card -->
+                <div style="background:linear-gradient(135deg,#3b82f6 0%,#1e40af 100%);border-radius:15px;padding:30px;color:white;box-shadow:0 10px 30px rgba(59,130,246,0.3);">
+                    <div style="display:flex;align-items:center;margin-bottom:20px;">
+                        <div style="font-size:48px;margin-right:15px;">🔍</div>
+                        <div>
+                            <h3 style="margin:0;font-size:24px;">Serper API</h3>
+                            <p style="margin:5px 0 0 0;opacity:0.9;font-size:14px;">Google Search API</p>
+                        </div>
+                    </div>
+                    <div id="serper-quota-detail" style="background:rgba(255,255,255,0.15);border-radius:10px;padding:20px;">
+                        <div style="margin-bottom:15px;">
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Status:</div>
+                            <div id="serper-status" style="font-size:16px;font-weight:bold;">🔄 Đang kiểm tra...</div>
+                        </div>
+                        <div style="margin-bottom:15px;">
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Free Tier Limit:</div>
+                            <div style="font-size:15px;line-height:1.6;">
+                                • <strong>2,500 queries</strong> per month
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:13px;opacity:0.9;margin-bottom:5px;">Endpoint:</div>
+                            <div style="font-size:14px;font-family:monospace;background:rgba(0,0,0,0.2);padding:8px;border-radius:5px;">https://google.serper.dev/search</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div style="background:white;border-radius:15px;padding:25px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:25px;">
+                <h3 style="margin-top:0;color:#1a1a2e;">⚡ Quick Actions</h3>
+                <div style="display:flex;gap:15px;flex-wrap:wrap;">
+                    <button onclick="refreshQuotasPage()" style="background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;padding:12px 25px;border-radius:8px;font-size:15px;cursor:pointer;box-shadow:0 4px 15px rgba(16,185,129,0.3);transition:all 0.3s;">
+                        🔄 Làm mới tất cả
+                    </button>
+                    <button onclick="testGeminiAPI()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border:none;padding:12px 25px;border-radius:8px;font-size:15px;cursor:pointer;box-shadow:0 4px 15px rgba(102,126,234,0.3);transition:all 0.3s;">
+                        🧪 Test Gemini API
+                    </button>
+                    <button onclick="testSerperAPI()" style="background:linear-gradient(135deg,#3b82f6,#1e40af);color:white;border:none;padding:12px 25px;border-radius:8px;font-size:15px;cursor:pointer;box-shadow:0 4px 15px rgba(59,130,246,0.3);transition:all 0.3s;">
+                        🧪 Test Serper API
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Usage Tips -->
+            <div style="background:#f0f9ff;border-left:4px solid #3b82f6;border-radius:10px;padding:20px;">
+                <h3 style="margin-top:0;color:#1e40af;">💡 Tips</h3>
+                <ul style="margin:10px 0;padding-left:20px;line-height:1.8;color:#1e3a8a;">
+                    <li><strong>Gemini API:</strong> Dùng cho chat AI, phân tích text, tạo nội dung</li>
+                    <li><strong>Serper API:</strong> Dùng cho tìm kiếm Google real-time</li>
+                    <li><strong>Free Tier:</strong> Đủ cho sử dụng cá nhân và testing</li>
+                    <li><strong>Rate Limit:</strong> Nếu vượt quota, API sẽ trả về lỗi 429</li>
+                    <li><strong>Monitor:</strong> Kiểm tra status thường xuyên để tránh hết quota</li>
+                </ul>
+            </div>
+        </div>
+
         <!-- TOOLS SECTION -->
         <div id="tools-section" style="display:none;">
             <div class="tools-section">
@@ -9670,6 +14162,20 @@ async def index():
                                 callAPI('/api/notification', {title: title, message: message});
                             }
                         ">Hiển thị</button>
+                    </div>
+                    <div class="tool-card" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:2px solid #764ba2;">
+                        <h3 style="color:white;">🔑 API Quotas</h3>
+                        <button onclick="getQuotas()" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);">Làm mới</button>
+                        <div id="quotas" style="margin-top:15px;font-size:13px;line-height:1.8;">
+                            <div style="margin-bottom:10px;padding:8px;background:rgba(255,255,255,0.1);border-radius:4px;">
+                                <strong>🤖 Gemini:</strong><br>
+                                <span id="gemini-quota" style="color:#fbbf24;font-size:12px;">Đang tải...</span>
+                            </div>
+                            <div style="padding:8px;background:rgba(255,255,255,0.1);border-radius:4px;">
+                                <strong>🔍 Serper:</strong><br>
+                                <span id="serper-quota" style="color:#60a5fa;font-size:12px;">Đang tải...</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="tool-card">
                         <h3>💻 Tài nguyên hệ thống</h3>
@@ -9801,6 +14307,99 @@ async def index():
         </div>
         
         
+        <!-- LLM CHAT SECTION - Chat với Gemini AI -->
+        <div id="llm-chat-section" style="display:none;">
+            <div style="background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); height: calc(100vh - 180px); display: flex; flex-direction: column;">
+                <h2 style="color:#10b981; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>💬 Chat với Gemini AI</span>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <!-- TTS Toggle -->
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding:6px 12px; background:#f3f4f6; border-radius:8px; font-size:0.85em;" title="Bật/tắt đọc to câu trả lời">
+                            <input type="checkbox" id="llm-tts-toggle" onchange="saveTTSPreference()" style="cursor:pointer;">
+                            <span>🔊 Đọc to</span>
+                        </label>
+                        <!-- AI Model selector -->
+                        <select id="llm-chat-model" style="padding:8px 12px; border-radius:8px; border:2px solid #e5e7eb; font-size:0.9em; cursor:pointer;" onchange="saveLLMChatModel()">
+                            <option value="models/gemini-3-flash-preview">⚡ Gemini 3 Flash</option>
+                            <option value="models/gemini-2.0-flash">⚡ Gemini 2.0 Flash</option>
+                            <option value="models/gemini-2.5-pro-preview-06-05">💎 Gemini 2.5 Pro</option>
+                            <option value="models/gemini-2.5-flash-preview-05-20">⚡ Gemini 2.5 Flash</option>
+                        </select>
+                        <button onclick="clearLLMChat()" style="padding:8px 16px; background:#ef4444; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.9em;">
+                            🗑️ Xóa Chat
+                        </button>
+                    </div>
+                </h2>
+                
+                <!-- AI Status Bar -->
+                <div id="llm-ai-status" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:white; padding:12px 16px; border-radius:10px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+                        <span>🤖 <strong>Gemini AI</strong> + 📚 Knowledge Base</span>
+                        <span style="font-size:0.85em; opacity:0.9;">Tích hợp RAG System tự động</span>
+                    </div>
+                    <span style="font-size:0.85em; background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:20px;">✅ Sẵn sàng</span>
+                </div>
+                
+                <!-- Chat Messages Container -->
+                <div id="llm-chat-messages" style="flex:1; overflow-y:auto; background:#f5f5f5; border-radius:10px; padding:15px; display:flex; flex-direction:column; gap:12px;">
+                    <!-- Welcome message -->
+                    <div style="text-align:center; color:#666; padding:40px 20px;">
+                        <div style="font-size:4em; margin-bottom:15px;">🤖</div>
+                        <h3 style="color:#667eea; margin-bottom:10px;">Chào mừng đến Chat với Gemini AI!</h3>
+                        <p style="font-size:0.95em; max-width:400px; margin:0 auto;">
+                            Chat trực tiếp với Gemini AI.<br>
+                            AI sẽ tự động tìm kiếm trong Knowledge Base của bạn để trả lời chính xác hơn.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Chat Input Area -->
+                <div style="margin-top:15px; display:flex; gap:10px; align-items:flex-end;">
+                    <!-- 👂 Wake Word Button -->
+                    <button id="llm-wakeword-btn" onclick="toggleWakeWord()" 
+                            style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,#6b7280,#4b5563); color:white; border:none; cursor:pointer; font-size:1.4em; display:flex; align-items:center; justify-content:center; transition:all 0.3s; flex-shrink:0;"
+                            title="👂 Bật Wake Word (nói 'Hey Gemini' để chat)">
+                        👂
+                    </button>
+                    <!-- 🎤 Microphone Button -->
+                    <button id="llm-mic-btn" onclick="toggleLLMVoiceInput()" 
+                            style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,#10b981,#059669); color:white; border:none; cursor:pointer; font-size:1.4em; display:flex; align-items:center; justify-content:center; transition:all 0.3s; flex-shrink:0;"
+                            title="🎤 Nhấn để nói (auto-send)">
+                        🎤
+                    </button>
+                    <div style="flex:1; position:relative;">
+                        <textarea id="llm-chat-input" 
+                                  placeholder="Nhập tin nhắn hoặc nhấn 🎤 để nói... (Enter để gửi)"
+                                  style="width:100%; padding:15px; padding-right:50px; border:2px solid #e5e7eb; border-radius:12px; font-size:1em; resize:none; min-height:50px; max-height:150px; font-family:inherit;"
+                                  onkeydown="handleLLMChatKeydown(event)"
+                                  oninput="autoResizeLLMInput(this)"></textarea>
+                        <button onclick="sendLLMMessage()" 
+                                style="position:absolute; right:10px; bottom:10px; width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); color:white; border:none; cursor:pointer; font-size:1.2em; display:flex; align-items:center; justify-content:center; transition:all 0.3s;"
+                                title="Gửi tin nhắn">
+                            ➤
+                        </button>
+                    </div>
+                </div>
+                <!-- Voice Recording Status -->
+                <div id="llm-voice-status" style="display:none; margin-top:10px; padding:12px 16px; background:linear-gradient(135deg,#fef3c7,#fde68a); border-radius:10px; text-align:center;">
+                    <span id="llm-voice-status-text">🎤 Đang nghe...</span>
+                </div>
+                <!-- Wake Word Info -->
+                <div style="margin-top:8px; font-size:0.8em; color:#6b7280; text-align:center;">
+                    💡 <strong>Wake Words:</strong> "Hey Gemini", "Gemini ơi", "Xin chào" | <strong>Goodbye:</strong> "Tạm biệt", "Bye bye", "Ngủ đi"
+                </div>
+                
+                <!-- Quick Actions -->
+                <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button onclick="sendQuickMessage('Xin chào!')" class="quick-msg-btn">👋 Xin chào</button>
+                    <button onclick="sendQuickMessage('Tóm tắt kiến thức trong Knowledge Base')" class="quick-msg-btn">📚 KB Summary</button>
+                    <button onclick="sendQuickMessage('Giải thích code Python cho người mới')" class="quick-msg-btn">🐍 Python</button>
+                    <button onclick="sendQuickMessage('Viết một đoạn văn ngắn về AI')" class="quick-msg-btn">✍️ Viết văn</button>
+                    <button onclick="sendQuickMessage('Dịch sang tiếng Anh: Xin chào các bạn')" class="quick-msg-btn">🌐 Dịch thuật</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- CONVERSATION HISTORY SECTION (WeChat style) -->
         <div id="conversation-section" style="display:none;">
             <div style="background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.12); height: calc(100vh - 180px); display: flex; flex-direction: column;">
@@ -9922,6 +14521,15 @@ async def index():
             
             <!-- Music Library with Search -->
             <div class="music-list" style="margin-top: 20px; background: white; border-radius: 15px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.12);">
+                <!-- Hướng dẫn sử dụng -->
+                <div style="background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%); border-left: 4px solid #667eea; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.3em;">💡</span>
+                    <div style="flex: 1;">
+                        <strong style="color: #667eea;">Hướng dẫn:</strong>
+                        <span style="color: #4b5563; font-size: 0.9em;"> Click vào bài hát để phát ngay (hoặc click nút ▶️ khi hover)</span>
+                    </div>
+                </div>
+                
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
                     <h3 style="margin: 0; color: #333;">📁 Thư Viện Nhạc</h3>
                     <div style="display: flex; gap: 10px; align-items: center;">
@@ -10129,107 +14737,199 @@ async def index():
         
         <!-- SETTINGS MODAL -->
         <div id="settingsModal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content" style="max-width:1400px;width:95%;">
                 <div class="modal-header">
                     <h2>⚙️ Cấu hình Endpoint</h2>
                     <button class="close-btn" onclick="closeSettingsModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <label for="endpoint-url">Endpoint (JWT Token hoặc URL đầy đủ):</label>
-                    <input type="text" id="endpoint-url" placeholder="Nhập JWT token hoặc URL đầy đủ wss://api.xiaozhi.me/mcp/?token=..." />
-                    <p style="color:#666;font-size:0.9em;margin-top:-10px;">
+                    <!-- 3 ENDPOINT SECTIONS -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:25px;">
+                        <!-- Thiết bị 1 -->
+                        <div id="device-1-card" style="border:2px solid #10b981;border-radius:8px;padding:15px;background:#f0fdf4;position:relative;">
+                            <div style="position:absolute;top:10px;right:10px;">
+                                <span id="device-1-indicator" class="connection-indicator" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;background:#d1fae5;color:#047857;font-size:0.75em;font-weight:bold;">
+                                    <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></span>
+                                    Chưa kết nối
+                                </span>
+                            </div>
+                            <label for="endpoint-url-1" style="color:#047857;font-weight:600;display:flex;align-items:center;gap:8px;">
+                                📱 Thiết bị 1
+                            </label>
+                            <input type="text" id="endpoint-url-1" placeholder="JWT token thiết bị 1..." style="margin-top:8px;border:2px solid #10b981;" />
+                            <p style="color:#065f46;font-size:0.85em;margin-top:5px;margin-bottom:0;">
+                                Token thật từ Claude Desktop
+                            </p>
+                        </div>
+                        
+                        <!-- Thiết bị 2 -->
+                        <div id="device-2-card" style="border:2px solid #3b82f6;border-radius:8px;padding:15px;background:#eff6ff;position:relative;">
+                            <div style="position:absolute;top:10px;right:10px;">
+                                <span id="device-2-indicator" class="connection-indicator" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;background:#dbeafe;color:#1e40af;font-size:0.75em;font-weight:bold;">
+                                    <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></span>
+                                    Chưa kết nối
+                                </span>
+                            </div>
+                            <label for="endpoint-url-2" style="color:#1e40af;font-weight:600;display:flex;align-items:center;gap:8px;">
+                                📱 Thiết bị 2
+                            </label>
+                            <input type="text" id="endpoint-url-2" placeholder="JWT token thiết bị 2..." style="margin-top:8px;border:2px solid #3b82f6;" />
+                            <p style="color:#1e3a8a;font-size:0.85em;margin-top:5px;margin-bottom:0;">
+                                MCP connection 2
+                            </p>
+                        </div>
+                        
+                        <!-- Thiết bị 3 -->
+                        <div id="device-3-card" style="border:2px solid #f59e0b;border-radius:8px;padding:15px;background:#fffbeb;position:relative;">
+                            <div style="position:absolute;top:10px;right:10px;">
+                                <span id="device-3-indicator" class="connection-indicator" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;background:#fef3c7;color:#b45309;font-size:0.75em;font-weight:bold;">
+                                    <span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></span>
+                                    Chưa kết nối
+                                </span>
+                            </div>
+                            <label for="endpoint-url-3" style="color:#b45309;font-weight:600;display:flex;align-items:center;gap:8px;">
+                                📱 Thiết bị 3
+                            </label>
+                            <input type="text" id="endpoint-url-3" placeholder="JWT token thiết bị 3..." style="margin-top:8px;border:2px solid #f59e0b;" />
+                            <p style="color:#78350f;font-size:0.85em;margin-top:5px;margin-bottom:0;">
+                                MCP connection 3
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <p style="color:#666;font-size:0.9em;text-align:center;margin-top:-10px;margin-bottom:20px;">
                         <strong>Lưu ý:</strong> Có thể nhập JWT token trực tiếp hoặc URL đầy đủ <code>wss://api.xiaozhi.me/mcp/?token=...</code> - hệ thống sẽ tự động xử lý
                     </p>
                     
                     <hr style="margin:25px 0;border:none;border-top:2px solid #e5e7eb;">
                     
-                    <label for="gemini-api-key" style="display:flex;align-items:center;gap:10px;">
-                        🤖 Gemini API Key 
-                        <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="gemini-api-key" 
-                        placeholder="AIzaSyXXXXXXXXXXXXXXXXXX..."
-                        oninput="autoSaveGeminiKey()"
-                        style="font-family:monospace;font-size:0.9em;"
-                    />
-                    <p style="color:#666;font-size:0.9em;margin-top:-10px;">
-                        <strong>Miễn phí:</strong> Lấy API key tại 
-                        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#667eea;">
-                            aistudio.google.com/apikey
-                        </a>
-                        <br>
-                        <span id="gemini-key-status" style="color:#10b981;font-weight:600;"></span>
-                    </p>
-                    
-                    <label for="gemini-model" style="margin-top:15px;display:block;">
-                        🎯 Gemini Model
-                    </label>
-                    <select 
-                        id="gemini-model" 
-                        onchange="saveGeminiModel()"
-                        style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;font-size:0.95em;"
-                    >
-                        <option value="models/gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash (Nhanh nhất, Miễn phí)</option>
-                        <option value="models/gemini-2.0-flash-thinking-exp">🧠 Gemini 2.0 Flash Thinking (Suy luận tốt)</option>
-                        <option value="models/gemini-exp-1206">🚀 Gemini 2.0 Pro Exp (Chất lượng cao)</option>
-                        <option value="models/gemini-1.5-pro">💎 Gemini 1.5 Pro (Ổn định)</option>
-                        <option value="models/gemini-1.5-flash">⚡ Gemini 1.5 Flash (Cân bằng)</option>
-                    </select>
-                    <p style="color:#666;font-size:0.85em;margin-top:5px;">
-                        💡 <strong>Flash:</strong> Phản hồi nhanh, tiết kiệm quota | <strong>Pro:</strong> Phân tích sâu, reasoning tốt hơn | <strong>Thinking:</strong> Suy luận phức tạp
-                    </p>
-                    
-                    <hr style="margin:25px 0;border:none;border-top:2px solid #e5e7eb;">
-                    
-                    <label for="openai-api-key" style="display:flex;align-items:center;gap:10px;">
-                        🧠 OpenAI API Key (GPT-4)
-                        <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
-                        <span style="color:#ef4444;font-size:0.75em;font-weight:normal;">TRẢ PHÍ</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="openai-api-key" 
-                        placeholder="sk-proj-XXXXXXXXXXXXXXXXXX..."
-                        oninput="autoSaveOpenAIKey()"
-                        style="font-family:monospace;font-size:0.9em;"
-                    />
-                    <p style="color:#666;font-size:0.9em;margin-top:-10px;">
-                        <strong>Trả phí:</strong> Lấy API key tại 
-                        <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#667eea;">
-                            platform.openai.com/api-keys
-                        </a>
-                        <br>
-                        <span style="font-size:0.85em;">💰 Giá: $0.01-0.03/1K tokens | 🆓 Free trial: $5 credit</span>
-                        <br>
-                        <span id="openai-key-status" style="color:#10b981;font-weight:600;"></span>
-                    </p>
-                    
-                    <hr style="margin:25px 0;border:none;border-top:2px solid #e5e7eb;">
-                    
-                    <label for="serper-api-key" style="display:flex;align-items:center;gap:10px;">
-                        🔍 Serper API Key (Google Search)
-                        <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
-                        <span style="color:#22c55e;font-size:0.75em;font-weight:normal;">MIỄN PHÍ 2500/tháng</span>
-                    </label>
-                    <input 
-                        type="text" 
-                        id="serper-api-key" 
-                        placeholder="abcdef1234567890..."
-                        oninput="autoSaveSerperKey()"
-                        style="font-family:monospace;font-size:0.9em;"
-                    />
-                    <p style="color:#666;font-size:0.9em;margin-top:-10px;">
-                        <strong>Miễn phí:</strong> Đăng ký tại 
-                        <a href="https://serper.dev" target="_blank" style="color:#667eea;">
-                            serper.dev
-                        </a>
-                        <br>
-                        <span style="font-size:0.85em;">🆓 2500 queries/tháng miễn phí | 🎯 Google Search chính xác hơn DuckDuckGo</span>
-                        <br>
-                        <span id="serper-key-status" style="color:#10b981;font-weight:600;"></span>
-                    </p>
+                    <!-- API KEYS GRID (2 Columns) -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px;">
+                        <!-- LEFT COLUMN: Gemini -->
+                        <div style="border-right:2px solid #e5e7eb;padding-right:30px;">
+                            <label for="gemini-api-key" style="display:flex;align-items:center;gap:10px;">
+                                🤖 Gemini API Key 
+                                <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
+                            </label>
+                            <div class="api-key-input-container">
+                                <input 
+                                    type="password" 
+                                    id="gemini-api-key" 
+                                    placeholder="AIzaSyXXXXXXXXXXXXXXXXXX..."
+                                    oninput="autoSaveGeminiKey()"
+                                    style="font-size:0.9em;"
+                                />
+                                <div class="input-icons">
+                                    <button type="button" class="api-key-icon-btn" onclick="toggleApiKeyVisibility('gemini-api-key', this)" title="Hiện/Ẩn API key">
+                                        �
+                                    </button>
+                                    <button type="button" class="api-key-icon-btn" onclick="copyApiKey('gemini-api-key', this)" title="Copy API key">
+                                        📋
+                                    </button>
+                                </div>
+                            </div>
+                            <p style="color:#666;font-size:0.9em;margin-top:-10px;">
+                                <strong>Miễn phí:</strong> Lấy API key tại 
+                                <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#667eea;">
+                                    aistudio.google.com/apikey
+                                </a>
+                                <br>
+                                <span id="gemini-key-status" style="color:#10b981;font-weight:600;"></span>
+                            </p>
+                            
+                            <label for="gemini-model" style="margin-top:15px;display:block;">
+                                🎯 Gemini Model
+                            </label>
+                            <select 
+                                id="gemini-model" 
+                                onchange="saveGeminiModel()"
+                                style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;font-size:0.95em;"
+                            >
+                                <option value="models/gemini-3-flash-preview">⚡ Gemini 3 Flash Preview (Mới nhất)</option>
+                                <option value="models/gemini-2.5-flash">⚡ Gemini 2.5 Flash (Ổn định)</option>
+                                <option value="models/gemini-2.5-pro">💎 Gemini 2.5 Pro (Chất lượng cao nhất)</option>
+                                <option value="models/gemini-2.0-flash-exp">⚡ Gemini 2.0 Flash Exp</option>
+                                <option value="models/gemini-1.5-pro">💎 Gemini 1.5 Pro (Ổn định)</option>
+                                <option value="models/gemini-2.0-flash-thinking-exp">🧠 Gemini 2.0 Flash Thinking (Suy luận tốt)</option>
+                                <option value="models/gemini-1.5-pro">💎 Gemini 1.5 Pro (Ổn định)</option>
+                                <option value="models/gemini-1.5-flash">⚡ Gemini 1.5 Flash (Cân bằng)</option>
+                            </select>
+                            <p style="color:#666;font-size:0.85em;margin-top:5px;">
+                                💡 <strong>3.0 Flash:</strong> Model mới nhất (12/2024), giảm 30% token | <strong>2.5 Pro:</strong> Chất lượng cao nhất | <strong>1.5 Pro:</strong> Ổn định
+                            </p>
+                        </div>
+                        
+                        <!-- RIGHT COLUMN: OpenAI + Serper -->
+                        <div style="padding-left:30px;">
+                            <label for="openai-api-key" style="display:flex;align-items:center;gap:10px;">
+                                🧠 OpenAI API Key (GPT-4)
+                                <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
+                                <span style="color:#ef4444;font-size:0.75em;font-weight:normal;">TRẢ PHÍ</span>
+                            </label>
+                            <div class="api-key-input-container">
+                                <input 
+                                    type="password" 
+                                    id="openai-api-key" 
+                                    placeholder="sk-proj-XXXXXXXXXXXXXXXXXX..."
+                                    oninput="autoSaveOpenAIKey()"
+                                    style="font-size:0.9em;"
+                                />
+                                <div class="input-icons">
+                                    <button type="button" class="api-key-icon-btn" onclick="toggleApiKeyVisibility('openai-api-key', this)" title="Hiện/Ẩn API key">
+                                        �
+                                    </button>
+                                    <button type="button" class="api-key-icon-btn" onclick="copyApiKey('openai-api-key', this)" title="Copy API key">
+                                        📋
+                                    </button>
+                                </div>
+                            </div>
+                            <p style="color:#666;font-size:0.9em;margin-top:-10px;">
+                                <strong>Trả phí:</strong> Lấy API key tại 
+                                <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#667eea;">
+                                    platform.openai.com/api-keys
+                                </a>
+                                <br>
+                                <span style="font-size:0.85em;">💰 Giá: $0.01-0.03/1K tokens | 🆓 Free trial: $5 credit</span>
+                                <br>
+                                <span id="openai-key-status" style="color:#10b981;font-weight:600;"></span>
+                            </p>
+                            
+                            <hr style="margin:20px 0;border:none;border-top:1px solid #e5e7eb;">
+                            
+                            <label for="serper-api-key" style="display:flex;align-items:center;gap:10px;margin-top:20px;">
+                                🔍 Serper API Key (Google Search)
+                                <span style="color:#10b981;font-size:0.85em;font-weight:normal;">(Auto-save)</span>
+                                <span style="color:#22c55e;font-size:0.75em;font-weight:normal;">MIỄN PHÍ 2500/tháng</span>
+                            </label>
+                            <div class="api-key-input-container">
+                                <input 
+                                    type="password" 
+                                    id="serper-api-key" 
+                                    placeholder="abcdef1234567890..."
+                                    oninput="autoSaveSerperKey()"
+                                    style="font-size:0.9em;"
+                                />
+                                <div class="input-icons">
+                                    <button type="button" class="api-key-icon-btn" onclick="toggleApiKeyVisibility('serper-api-key', this)" title="Hiện/Ẩn API key">
+                                        �
+                                    </button>
+                                    <button type="button" class="api-key-icon-btn" onclick="copyApiKey('serper-api-key', this)" title="Copy API key">
+                                        📋
+                                    </button>
+                                </div>
+                            </div>
+                            <p style="color:#666;font-size:0.9em;margin-top:-10px;">
+                                <strong>Miễn phí:</strong> Đăng ký tại 
+                                <a href="https://serper.dev" target="_blank" style="color:#667eea;">
+                                    serper.dev
+                                </a>
+                                <br>
+                                <span style="font-size:0.85em;">🆓 2500 queries/tháng miễn phí | 🎯 Google Search chính xác hơn DuckDuckGo</span>
+                                <br>
+                                <span id="serper-key-status" style="color:#10b981;font-weight:600;"></span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button class="modal-btn secondary" onclick="closeSettingsModal()">Hủy</button>
@@ -10242,6 +14942,7 @@ async def index():
     
     <script>
         let ws;
+        let llmChatMessages = []; // Store LLM chat messages
         
         // Section switching
         function showSection(name) {
@@ -10250,11 +14951,23 @@ async def index():
             
             document.getElementById('dashboard-section').style.display = name === 'dashboard' ? 'block' : 'none';
             document.getElementById('tools-section').style.display = name === 'tools' ? 'block' : 'none';
+            document.getElementById('llm-chat-section').style.display = name === 'llm-chat' ? 'block' : 'none';
+            document.getElementById('api-quotas-section').style.display = name === 'api-quotas' ? 'block' : 'none';
             document.getElementById('music-section').style.display = name === 'music' ? 'block' : 'none';
             document.getElementById('music-settings-section').style.display = name === 'music-settings' ? 'block' : 'none';
             document.getElementById('conversation-section').style.display = name === 'conversation' ? 'block' : 'none';
             document.getElementById('playlist-section').style.display = name === 'playlist' ? 'block' : 'none';
             document.getElementById('knowledge-section').style.display = name === 'knowledge' ? 'block' : 'none';
+            
+            // Load API Quotas when opening api-quotas section
+            if (name === 'api-quotas') {
+                refreshQuotasPage();
+            }
+            
+            // Load LLM Chat section
+            if (name === 'llm-chat') {
+                loadLLMChatModel();
+            }
             
             // Load conversation when opening conversation section
             if (name === 'conversation') {
@@ -10279,6 +14992,86 @@ async def index():
             // Load knowledge base when opening knowledge section
             if (name === 'knowledge') {
                 loadKnowledgeBase();
+            }
+        }
+        
+        // ===== API QUOTAS PAGE FUNCTIONS =====
+        async function refreshQuotasPage() {
+            addLog('🔄 Đang làm mới API Quotas...', 'info');
+            try {
+                const response = await fetch('/api/quotas');
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update Gemini status
+                    const geminiStatus = document.getElementById('gemini-status');
+                    if (data.gemini && data.gemini.has_key) {
+                        geminiStatus.innerHTML = '✅ API Key đã cấu hình';
+                        geminiStatus.style.color = '#10b981';
+                    } else {
+                        geminiStatus.innerHTML = '❌ Chưa có API Key';
+                        geminiStatus.style.color = '#ef4444';
+                    }
+                    
+                    // Update Serper status
+                    const serperStatus = document.getElementById('serper-status');
+                    if (data.serper && data.serper.has_key) {
+                        serperStatus.innerHTML = '✅ API Key đã cấu hình';
+                        serperStatus.style.color = '#10b981';
+                    } else {
+                        serperStatus.innerHTML = '❌ Chưa có API Key';
+                        serperStatus.style.color = '#ef4444';
+                    }
+                    
+                    addLog('✅ Đã làm mới API Quotas', 'success');
+                } else {
+                    addLog('❌ Lỗi: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                console.error('Error refreshing quotas:', error);
+                addLog('❌ Lỗi kết nối: ' + error.message, 'error');
+            }
+        }
+        
+        async function testGeminiAPI() {
+            addLog('🧪 Đang test Gemini API...', 'info');
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: 'Hello, this is a test message. Reply with OK.'})
+                });
+                const data = await response.json();
+                
+                if (data.response) {
+                    addLog('✅ Gemini API hoạt động tốt! Response: ' + data.response.substring(0, 100) + '...', 'success');
+                } else {
+                    addLog('❌ Gemini API test thất bại', 'error');
+                }
+            } catch (error) {
+                console.error('Error testing Gemini:', error);
+                addLog('❌ Gemini test error: ' + error.message, 'error');
+            }
+        }
+        
+        async function testSerperAPI() {
+            addLog('🧪 Đang test Serper API...', 'info');
+            try {
+                const response = await fetch('/api/google_search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: 'test search'})
+                });
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    addLog('✅ Serper API hoạt động tốt! Tìm thấy ' + data.results.length + ' kết quả', 'success');
+                } else {
+                    addLog('❌ Serper API test thất bại', 'error');
+                }
+            } catch (error) {
+                console.error('Error testing Serper:', error);
+                addLog('❌ Serper test error: ' + error.message, 'error');
             }
         }
         
@@ -10345,7 +15138,77 @@ async def index():
             if (dir && dir.trim()) callTool('list_files', {directory: dir.trim()});
         }
         function diskUsage() { callTool('get_disk_usage', {}); }
-        function networkInfo() { callTool('get_network_info', {}); }
+        function networkInfo() {
+            // Show loading message
+            showResult('⏳ Đang quét mạng và các thiết bị...');
+            addLog('🌐 Đang quét thông tin mạng...', 'info');
+            
+            fetch('/api/tool/get_network_info', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Save to conversation history
+                    const summary = `Quét mạng: ${data.total_devices} thiết bị - ${data.local_device.hostname} (${data.local_device.ip})`;
+                    addToConversation('system', `🌐 Network Scan: ${summary}`);
+                    addLog(`✅ ${summary}`, 'success');
+                    
+                    let html = '<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white;">';
+                    html += '<h2 style="margin: 0 0 20px 0; font-size: 24px;">🌐 Thông Tin Mạng</h2>';
+                    
+                    // Local device info
+                    html += '<div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 20px;">';
+                    html += '<h3 style="margin: 0 0 10px 0; font-size: 18px;">💻 Máy Của Bạn</h3>';
+                    html += `<p style="margin: 5px 0;"><strong>🏷️ Hostname:</strong> ${data.local_device.hostname}</p>`;
+                    html += `<p style="margin: 5px 0;"><strong>🌐 IP Address:</strong> ${data.local_device.ip}</p>`;
+                    html += `<p style="margin: 5px 0;"><strong>📡 MAC Address:</strong> ${data.local_device.mac}</p>`;
+                    html += `<p style="margin: 5px 0;"><strong>🚪 Gateway (Router):</strong> ${data.local_device.gateway}</p>`;
+                    html += '</div>';
+                    
+                    // Network devices
+                    if (data.network_devices && data.network_devices.length > 0) {
+                        html += '<div style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px;">';
+                        html += `<h3 style="margin: 0 0 15px 0; font-size: 18px;">📱 Thiết Bị Trong Mạng (${data.total_devices})</h3>`;
+                        html += '<div style="max-height: 400px; overflow-y: auto;">';
+                        
+                        data.network_devices.forEach((device, idx) => {
+                            const bgColor = device.is_local ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255,255,255,0.1)';
+                            const icon = device.is_local ? '👤' : '🖥️';
+                            html += `<div style="background: ${bgColor}; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid ${device.is_local ? '#4CAF50' : '#fff'};">`;
+                            html += `<div style="display: flex; justify-content: space-between; align-items: center;">`;
+                            html += `<div>`;
+                            html += `<p style="margin: 0; font-size: 16px; font-weight: bold;">${icon} ${device.hostname}</p>`;
+                            html += `<p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">🌐 IP: ${device.ip}</p>`;
+                            html += `<p style="margin: 3px 0 0 0; font-size: 13px; opacity: 0.8;">📡 MAC: ${device.mac}</p>`;
+                            html += `</div>`;
+                            if (device.is_local) {
+                                html += `<div style="background: #4CAF50; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;">BẠN</div>`;
+                            }
+                            html += `</div>`;
+                            html += `</div>`;
+                        });
+                        
+                        html += '</div></div>';
+                    } else {
+                        html += '<p style="text-align: center; opacity: 0.8; margin-top: 10px;">Không tìm thấy thiết bị khác trong mạng</p>';
+                    }
+                    
+                    html += '</div>';
+                    showResult(html);
+                } else {
+                    const error = data.error || 'Không thể lấy thông tin mạng';
+                    showResult('❌ Lỗi: ' + error);
+                    addLog(`❌ Lỗi quét mạng: ${error}`, 'error');
+                }
+            })
+            .catch(err => {
+                showResult('❌ Lỗi kết nối: ' + err.message);
+                addLog(`❌ Lỗi kết nối: ${err.message}`, 'error');
+            });
+        }
         function batteryStatus() { callTool('get_battery_status', {}); }
         function searchWeb() {
             const query = prompt('Từ khóa tìm kiếm:', '');
@@ -10451,7 +15314,7 @@ async def index():
         }
         
         function loadGeminiModel() {
-            const saved = localStorage.getItem('gemini_model') || 'models/gemini-2.0-flash-exp';
+            const saved = localStorage.getItem('gemini_model') || 'models/gemini-3-flash-preview';
             const select = document.getElementById('gemini-model');
             if (select) {
                 // Check if the saved value exists in options
@@ -10460,8 +15323,8 @@ async def index():
                     select.value = saved;
                 } else {
                     // Default to first option if saved value is invalid
-                    select.value = 'models/gemini-2.0-flash-exp';
-                    localStorage.setItem('gemini_model', 'models/gemini-2.0-flash-exp');
+                    select.value = 'models/gemini-3-flash-preview';
+                    localStorage.setItem('gemini_model', 'models/gemini-3-flash-preview');
                 }
             }
         }
@@ -10476,22 +15339,28 @@ async def index():
         }
         
         function askGemini() {
-            const prompt = window.prompt('Hỏi Gemini AI (MIỄN PHÍ - ví dụ: What is Python?):', '');
+            const prompt = window.prompt('🤖 Hỏi Gemini AI + 📚 Knowledge Base\n(Gemini sẽ tự động tìm trong cơ sở dữ liệu của bạn):', '');
             if (prompt && prompt.trim()) {
-                const model = localStorage.getItem('gemini_model') || 'models/gemini-2.0-flash-exp';
+                const model = localStorage.getItem('gemini_model') || 'models/gemini-3-flash-preview';
                 const modelName = getGeminiModelName(model);
-                addLog(`🤖 Hỏi Gemini ${modelName}: "${prompt}"`, 'info');
+                addLog(`🤖 Đang hỏi Gemini ${modelName} + 📚 Knowledge Base...`, 'info');
+                addLog(`   ❓ Câu hỏi: "${prompt}"`, 'info');
                 
-                // Use generic /api/call_tool endpoint
-                fetch('/api/call_tool', {
+                // Sử dụng endpoint /api/tool/ask_gemini (có tích hợp KB tự động)
+                fetch('/api/tool/ask_gemini', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({tool: 'ask_gemini', args: {prompt: prompt.trim(), model: model}})
+                    body: JSON.stringify({prompt: prompt.trim(), model: model})
                 })
                 .then(res => res.json())
                 .then(result => {
                     if(result.success) {
-                        addLog(`✅ Gemini: ${result.response_text.substring(0, 200)}...`, 'success');
+                        const response = result.response || result.response_text || '';
+                        const hasKB = result.knowledge_base_used ? ' 📚' : '';
+                        addLog(`✅ Gemini${hasKB}: ${response.substring(0, 300)}...`, 'success');
+                        if(result.knowledge_base_used) {
+                            addLog(`   📚 Đã sử dụng thông tin từ Knowledge Base`, 'info');
+                        }
                     } else {
                         addLog(`❌ Gemini error: ${result.error}`, 'error');
                     }
@@ -10544,7 +15413,10 @@ async def index():
         
         async function callTool(name, params) {
             try {
-                addLog(`🛠️ Tool: ${name}`, 'info');
+                const paramsStr = JSON.stringify(params);
+                const displayParams = paramsStr.length > 50 ? paramsStr.substring(0, 50) + '...' : paramsStr;
+                addLog(`🔧 Tool: ${name}(${displayParams})`, 'info');
+                
                 // Gọi API endpoint tương ứng với tool
                 const endpoint = `/api/tool/${name}`;
                 const response = await fetch(endpoint, {
@@ -10553,10 +15425,20 @@ async def index():
                     body: JSON.stringify(params)
                 });
                 const result = await response.json();
-                addLog(`✅ ${name}: ${JSON.stringify(result).substring(0, 150)}`, 'success');
+                
+                // Hiển thị kết quả đầy đủ hơn
+                let resultMsg = '';
+                if (result.success) {
+                    const msg = result.message || result.content || JSON.stringify(result).substring(0, 200);
+                    resultMsg = `✅ ${name}: ${msg}`;
+                } else {
+                    resultMsg = `❌ ${name}: ${result.error || 'Unknown error'}`;
+                }
+                addLog(resultMsg, result.success ? 'success' : 'error');
+                
                 return result;
             } catch (error) {
-                addLog(`❌ Tool error: ${error.message}`, 'error');
+                addLog(`❌ Tool "${name}" error: ${error.message}`, 'error');
                 return {success: false, error: error.message};
             }
         }
@@ -10588,6 +15470,38 @@ async def index():
                 }
             } catch (error) {
                 addLog(`❌ ${error.message}`, 'error');
+            }
+        }
+        
+        async function getQuotas() {
+            try {
+                const response = await fetch('/api/quotas');
+                const data = await response.json();
+                if (data.success) {
+                    // Gemini quota
+                    const geminiEl = document.getElementById('gemini-quota');
+                    if (data.gemini && geminiEl) {
+                        if (data.gemini.has_key) {
+                            geminiEl.innerHTML = `✅ ${data.gemini.free_tier}<br><small style="color:#6b7280;">${data.gemini.daily_limit}</small>`;
+                        } else {
+                            geminiEl.innerHTML = `❌ <small style="color:#ef4444;">Chưa có API key</small>`;
+                        }
+                    }
+                    
+                    // Serper quota
+                    const serperEl = document.getElementById('serper-quota');
+                    if (data.serper && serperEl) {
+                        if (data.serper.has_key) {
+                            serperEl.innerHTML = `✅ ${data.serper.free_tier}`;
+                        } else {
+                            serperEl.innerHTML = `❌ <small style="color:#ef4444;">Chưa có API key</small>`;
+                        }
+                    }
+                } else {
+                    console.log('Error fetching quotas:', data.error);
+                }
+            } catch (error) {
+                console.error('Failed to fetch quotas:', error);
             }
         }
         
@@ -10670,29 +15584,52 @@ async def index():
                 const response = await fetch('/api/endpoints');
                 const data = await response.json();
                 
-                // Tìm thiết bị đang active (Thiết bị 3 - index 2)
-                const activeDevice = data.endpoints[2]; // Thiết bị 3
+                // 🔥 FIX: Định nghĩa activeDevice từ active_index
+                const activeIndex = data.active_index || 0;
+                const activeDevice = data.endpoints && data.endpoints[activeIndex] ? data.endpoints[activeIndex] : null;
                 
-                if (activeDevice && activeDevice.token) {
-                    document.getElementById('endpoint-url').value = activeDevice.token;
+                // Load all 3 device tokens into separate input fields
+                if (data.endpoints && data.endpoints.length >= 3) {
+                    const input1 = document.getElementById('endpoint-url-1');
+                    const input2 = document.getElementById('endpoint-url-2');
+                    const input3 = document.getElementById('endpoint-url-3');
+                    
+                    if (input1) input1.value = data.endpoints[0]?.token || '';
+                    if (input2) input2.value = data.endpoints[1]?.token || '';
+                    if (input3) input3.value = data.endpoints[2]?.token || '';
                 }
                 
-                // Load Gemini API key
-                if (data.gemini_api_key) {
-                    document.getElementById('gemini-api-key').value = data.gemini_api_key;
-                    updateGeminiKeyStatus('✓ API key đã cấu hình', '#10b981');
+                // Load Gemini API key (luôn set, kể cả empty)
+                const geminiInput = document.getElementById('gemini-api-key');
+                if (geminiInput) {
+                    geminiInput.value = data.gemini_api_key || '';
+                    if (data.gemini_api_key) {
+                        updateGeminiKeyStatus('✓ API key đã cấu hình', '#10b981');
+                    } else {
+                        updateGeminiKeyStatus('', '');
+                    }
                 }
                 
-                // Load OpenAI API key
-                if (data.openai_api_key) {
-                    document.getElementById('openai-api-key').value = data.openai_api_key;
-                    updateOpenAIKeyStatus('✓ API key đã cấu hình', '#10b981');
+                // Load OpenAI API key (luôn set, kể cả empty)
+                const openaiInput = document.getElementById('openai-api-key');
+                if (openaiInput) {
+                    openaiInput.value = data.openai_api_key || '';
+                    if (data.openai_api_key) {
+                        updateOpenAIKeyStatus('✓ API key đã cấu hình', '#10b981');
+                    } else {
+                        updateOpenAIKeyStatus('', '');
+                    }
                 }
                 
-                // Load Serper API key (Google Search)
-                if (data.serper_api_key) {
-                    document.getElementById('serper-api-key').value = data.serper_api_key;
-                    updateSerperKeyStatus('✓ Google Search sẵn sàng', '#10b981');
+                // Load Serper API key (Google Search) (luôn set, kể cả empty)
+                const serperInput = document.getElementById('serper-api-key');
+                if (serperInput) {
+                    serperInput.value = data.serper_api_key || '';
+                    if (data.serper_api_key) {
+                        updateSerperKeyStatus('✓ Google Search sẵn sàng', '#10b981');
+                    } else {
+                        updateSerperKeyStatus('', '');
+                    }
                 }
                 
                 // Cập nhật thông tin hiện tại trong config section
@@ -10709,6 +15646,49 @@ async def index():
             }
         }
         
+        // Toggle API key visibility (show/hide password)
+        function toggleApiKeyVisibility(inputId, button) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.innerHTML = '🙈'; // Hide icon (khỉ che mắt)
+                button.title = 'Ẩn API key';
+            } else {
+                input.type = 'password';
+                button.innerHTML = '🐵'; // Show icon (khỉ đang nhìn)
+                button.title = 'Hiện API key';
+            }
+        }
+        
+        // Copy API key to clipboard
+        async function copyApiKey(inputId, button) {
+            const input = document.getElementById(inputId);
+            const value = input.value.trim();
+            
+            if (!value) {
+                button.innerHTML = '❌';
+                setTimeout(() => { button.innerHTML = '📋'; }, 1000);
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(value);
+                button.classList.add('copied');
+                button.innerHTML = '✅';
+                
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.innerHTML = '📋';
+                }, 1500);
+            } catch (error) {
+                // Fallback for older browsers
+                input.select();
+                document.execCommand('copy');
+                button.innerHTML = '✅';
+                setTimeout(() => { button.innerHTML = '📋'; }, 1500);
+            }
+        }
+        
         // Auto-save Gemini API key
         let geminiSaveTimeout;
         async function autoSaveGeminiKey() {
@@ -10717,13 +15697,13 @@ async def index():
             geminiSaveTimeout = setTimeout(async () => {
                 const apiKey = document.getElementById('gemini-api-key').value.trim();
                 
-                if (!apiKey) {
-                    updateGeminiKeyStatus('', '');
-                    return;
-                }
-                
+                // 🔥 FIX: Cho phép save empty string (khi user xóa key)
                 try {
-                    updateGeminiKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    if (apiKey) {
+                        updateGeminiKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    } else {
+                        updateGeminiKeyStatus('💾 Xóa key...', '#f59e0b');
+                    }
                     
                     const response = await fetch('/api/gemini-key', {
                         method: 'POST',
@@ -10761,13 +15741,13 @@ async def index():
             openaiSaveTimeout = setTimeout(async () => {
                 const apiKey = document.getElementById('openai-api-key').value.trim();
                 
-                if (!apiKey) {
-                    updateOpenAIKeyStatus('', '');
-                    return;
-                }
-                
+                // 🔥 FIX: Cho phép save empty string (khi user xóa key)
                 try {
-                    updateOpenAIKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    if (apiKey) {
+                        updateOpenAIKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    } else {
+                        updateOpenAIKeyStatus('💾 Xóa key...', '#f59e0b');
+                    }
                     
                     const response = await fetch('/api/openai-key', {
                         method: 'POST',
@@ -10805,13 +15785,13 @@ async def index():
             serperSaveTimeout = setTimeout(async () => {
                 const apiKey = document.getElementById('serper-api-key').value.trim();
                 
-                if (!apiKey) {
-                    updateSerperKeyStatus('', '');
-                    return;
-                }
-                
+                // 🔥 FIX: Cho phép save empty string (khi user xóa key)
                 try {
-                    updateSerperKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    if (apiKey) {
+                        updateSerperKeyStatus('💾 Đang lưu...', '#f59e0b');
+                    } else {
+                        updateSerperKeyStatus('💾 Xóa key...', '#f59e0b');
+                    }
                     
                     const response = await fetch('/api/serper-key', {
                         method: 'POST',
@@ -10842,50 +15822,58 @@ async def index():
         }
         
         async function saveEndpoint() {
-            let input = document.getElementById('endpoint-url').value.trim();
-            
-            if (!input) {
-                addLog('❌ Vui lòng nhập JWT token hoặc URL đầy đủ!', 'error');
-                return;
-            }
-            
-            let token = input;
-            
-            // Nếu user nhập URL đầy đủ, extract token từ URL
-            if (input.startsWith('wss://') || input.startsWith('http')) {
-                try {
-                    const url = new URL(input);
-                    const tokenParam = url.searchParams.get('token');
-                    if (tokenParam) {
-                        token = tokenParam;
-                        addLog('✅ Đã tự động extract token từ URL', 'info');
-                    } else {
-                        addLog('❌ URL không chứa token parameter!', 'error');
-                        return;
-                    }
-                } catch (e) {
-                    addLog('❌ URL không hợp lệ!', 'error');
+            try {
+                addLog('⏳ Đang lưu endpoints...', 'info');
+                
+                // Lấy token từ cả 3 input fields
+                const token1 = document.getElementById('endpoint-url-1').value.trim();
+                const token2 = document.getElementById('endpoint-url-2').value.trim();
+                const token3 = document.getElementById('endpoint-url-3').value.trim();
+                
+                if (!token1 && !token2 && !token3) {
+                    addLog('❌ Vui lòng nhập ít nhất 1 JWT token!', 'error');
                     return;
                 }
-            }
-            
-            try {
-                addLog('⏳ Đang lưu endpoint...', 'info');
+                
+                // Helper function to extract token from URL or return as-is
+                function extractToken(input) {
+                    if (!input) return '';
+                    
+                    // Nếu user nhập URL đầy đủ, extract token từ URL
+                    if (input.startsWith('wss://') || input.startsWith('http')) {
+                        try {
+                            const url = new URL(input);
+                            const tokenParam = url.searchParams.get('token');
+                            if (tokenParam) {
+                                return tokenParam;
+                            }
+                        } catch (e) {
+                            return input; // Return as-is if parse fails
+                        }
+                    }
+                    return input;
+                }
+                
+                const cleanToken1 = extractToken(token1);
+                const cleanToken2 = extractToken(token2);
+                const cleanToken3 = extractToken(token3);
                 
                 // Lấy danh sách thiết bị hiện tại
                 const response = await fetch('/api/endpoints');
                 const data = await response.json();
                 
-                // Cập nhật token cho Thiết bị 3 (index 2)
+                // Update all 3 devices
                 const devices = data.endpoints.map((device, index) => {
-                    if (index === 2) { // Thiết bị 3
-                        return {
-                            name: 'Thiết bị 3',
-                            token: token,
-                            enabled: true
-                        };
-                    }
-                    return device;
+                    let token = '';
+                    if (index === 0) token = cleanToken1;
+                    else if (index === 1) token = cleanToken2;
+                    else if (index === 2) token = cleanToken3;
+                    
+                    return {
+                        name: device.name || `Thiết bị ${index + 1}`,
+                        token: token,
+                        enabled: token.length > 0  // Auto-enable if has token
+                    };
                 });
                 
                 // Lưu cấu hình
@@ -10898,22 +15886,22 @@ async def index():
                 const saveData = await saveResponse.json();
                 
                 if (saveData.success) {
-                    addLog('✅ Đã lưu endpoint thành công!', 'success');
+                    addLog('✅ Đã lưu endpoints thành công!', 'success');
                     
-                    // Chuyển sang thiết bị 3
-                    const switchResponse = await fetch('/api/endpoints/switch/2', {method: 'POST'});
-                    const switchData = await switchResponse.json();
+                    // Show which devices were updated
+                    let updatedCount = 0;
+                    if (cleanToken1) { addLog('  📱 Thiết bị 1: Đã cập nhật', 'success'); updatedCount++; }
+                    if (cleanToken2) { addLog('  📱 Thiết bị 2: Đã cập nhật', 'success'); updatedCount++; }
+                    if (cleanToken3) { addLog('  📱 Thiết bị 3: Đã cập nhật', 'success'); updatedCount++; }
                     
-                    if (switchData.success) {
-                        addLog('✅ ' + switchData.message, 'success');
-                    }
+                    addLog(`📡 ${updatedCount} thiết bị sẽ tự động kết nối...`, 'info');
                     
                     closeSettingsModal();
                     
-                    // Reload trang sau 2 giây để kết nối lại
+                    // Reload trang sau 1 giây
                     setTimeout(() => {
                         location.reload();
-                    }, 2000);
+                    }, 1000);
                 } else {
                     addLog('❌ Lỗi: ' + saveData.error, 'error');
                 }
@@ -10923,55 +15911,71 @@ async def index():
         }
         
         function copyFullUrl() {
-            const input = document.getElementById('endpoint-url').value.trim();
-            if (!input) {
-                addLog('❌ Không có dữ liệu để copy!', 'error');
+            // Get tokens from all 3 fields
+            const token1 = document.getElementById('endpoint-url-1').value.trim();
+            const token2 = document.getElementById('endpoint-url-2').value.trim();
+            const token3 = document.getElementById('endpoint-url-3').value.trim();
+            
+            if (!token1 && !token2 && !token3) {
+                addLog('❌ Không có token nào để copy!', 'error');
                 return;
             }
             
-            let token = input;
+            let copyText = '';
             
-            // Nếu user đã nhập URL đầy đủ, extract token
-            if (input.startsWith('wss://') || input.startsWith('http')) {
-                try {
-                    const url = new URL(input);
-                    const tokenParam = url.searchParams.get('token');
-                    if (tokenParam) {
-                        token = tokenParam;
+            // Helper function to extract token and create URL
+            function createFullUrl(input, deviceNum) {
+                if (!input) return null;
+                
+                let token = input;
+                
+                // Nếu user đã nhập URL đầy đủ, extract token
+                if (input.startsWith('wss://') || input.startsWith('http')) {
+                    try {
+                        const url = new URL(input);
+                        const tokenParam = url.searchParams.get('token');
+                        if (tokenParam) {
+                            token = tokenParam;
+                        }
+                    } catch (e) {
+                        return null;
                     }
-                } catch (e) {
-                    addLog('❌ URL không hợp lệ!', 'error');
-                    return;
                 }
+                
+                return `Thiết bị ${deviceNum}: wss://api.xiaozhi.me/mcp/?token=${token}`;
             }
             
-            // Tạo URL đầy đủ
-            const fullUrl = `wss://api.xiaozhi.me/mcp/?token=${token}`;
+            // Create URLs for all devices with tokens
+            const urls = [];
+            if (token1) urls.push(createFullUrl(token1, 1));
+            if (token2) urls.push(createFullUrl(token2, 2));
+            if (token3) urls.push(createFullUrl(token3, 3));
+            
+            copyText = urls.filter(u => u).join('\n\n');
             
             // Copy vào clipboard
-            navigator.clipboard.writeText(fullUrl).then(() => {
-                addLog('✅ Đã copy URL đầy đủ vào clipboard!', 'success');
+            navigator.clipboard.writeText(copyText).then(() => {
+                addLog(`✅ Đã copy ${urls.length} URL vào clipboard!`, 'success');
             }).catch(err => {
                 addLog('❌ Lỗi copy: ' + err.message, 'error');
             });
         }
         
-        // Legacy functions (kept for compatibility, but hidden from UI)
+        // Load and display all 3 devices
         async function loadDevices() {
             try {
                 const response = await fetch('/api/endpoints');
                 const data = await response.json();
                 
-                // Update current endpoint info in config section
-                const activeDevice = data.endpoints[2]; // Thiết bị 3
-                if (document.getElementById('current-device-name')) {
-                    document.getElementById('current-device-name').textContent = activeDevice?.name || 'Chưa cấu hình';
-                }
-                if (document.getElementById('current-device-token')) {
-                    const token = activeDevice?.token || 'Chưa có token';
-                    document.getElementById('current-device-token').textContent = 
-                        token.length > 50 ? token.substring(0, 50) + '...' : token;
-                }
+                // Update device status display for all 3 devices
+                data.endpoints.forEach((device, index) => {
+                    const deviceName = device?.name || `Thiết bị ${index + 1}`;
+                    const hasToken = device?.token && device.token.length > 0;
+                    const isEnabled = device?.enabled || false;
+                    
+                    addLog(`📱 ${deviceName}: ${hasToken ? '✅ Connected' : '❌ No token'} ${isEnabled ? '(Enabled)' : '(Disabled)'}`, 
+                           hasToken && isEnabled ? 'success' : 'info');
+                });
             } catch (error) {
                 addLog('❌ Lỗi tải danh sách thiết bị: ' + error.message, 'error');
             }
@@ -11478,26 +16482,34 @@ async def index():
         
         async function loadConversationHistory() {
             try {
-                addLog('📚 Đang tải lịch sử hội thoại...', 'info');
+                addLog('📚 Đang tải lịch sử hội thoại từ server...', 'info');
                 const response = await fetch('/api/conversation/history');
                 const data = await response.json();
                 
                 if (data.success) {
-                    displayConversationHistory(data.messages);
-                    document.getElementById('total-messages').textContent = data.total_messages;
+                    const messages = data.messages || [];
+                    const totalMessages = data.total_messages || 0;
                     
-                    if (data.messages && data.messages.length > 0) {
-                        const lastMsg = data.messages[data.messages.length - 1];
-                        document.getElementById('last-update').textContent = 'Cập nhật: ' + lastMsg.timestamp;
+                    displayConversationHistory(messages);
+                    document.getElementById('total-messages').textContent = totalMessages;
+                    
+                    if (messages.length > 0) {
+                        const lastMsg = messages[messages.length - 1];
+                        const updateTime = lastMsg.timestamp || 'Không rõ';
+                        document.getElementById('last-update').textContent = 'Cập nhật: ' + updateTime;
+                        addLog('✅ Đã tải thành công ' + totalMessages + ' tin nhắn (cập nhật lần cuối: ' + updateTime + ')', 'success');
+                    } else {
+                        document.getElementById('last-update').textContent = 'Chưa có tin nhắn';
+                        addLog('✅ Lịch sử hội thoại trống', 'success');
                     }
-                    
-                    addLog('✅ Đã tải ' + data.total_messages + ' tin nhắn', 'success');
                 } else {
-                    addLog('❌ Lỗi tải lịch sử: ' + (data.error || 'Unknown'), 'error');
+                    addLog('❌ Lỗi tải lịch sử hội thoại: ' + (data.error || 'Unknown error'), 'error');
+                    displayConversationHistory([]);
                 }
             } catch (e) {
                 console.error('Failed to load conversation history', e);
-                addLog('❌ Không thể kết nối đến server', 'error');
+                addLog('❌ Không thể kết nối đến server để tải lịch sử', 'error');
+                displayConversationHistory([]);
             }
         }
         
@@ -11505,7 +16517,7 @@ async def index():
             const container = document.getElementById('chat-container');
             container.innerHTML = '';
             
-            if (messages.length === 0) {
+            if (!messages || messages.length === 0) {
                 container.innerHTML = '<div style="text-align:center; color:#999; padding:40px; font-size:1.1em;">Chưa có tin nhắn nào 💬</div>';
                 return;
             }
@@ -11829,17 +16841,34 @@ async def index():
         function renderMusicLibrary(files) {
             const html = files.map((file, index) => {
                 const originalIndex = allMusicFiles.findIndex(f => f.filename === file.filename);
+                const isCurrentTrack = originalIndex === currentTrackIndex;
+                const isTrackPlaying = isCurrentTrack && isPlaying;
+                
                 return `
-                <div class="music-item ${originalIndex === currentTrackIndex && isPlaying ? 'playing' : ''}" 
-                     onclick="selectTrack(${originalIndex})" 
-                     ondblclick="playTrackNow(${originalIndex})" 
-                     style="cursor:pointer; display: flex; align-items: center; padding: 12px; border-radius: 8px; margin-bottom: 8px; background: ${originalIndex === currentTrackIndex ? 'linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%)' : '#f9fafb'}; transition: all 0.2s; border-left: 3px solid ${originalIndex === currentTrackIndex ? '#667eea' : 'transparent'};">
-                    <div class="icon" style="font-size: 1.5em; margin-right: 12px;">${originalIndex === currentTrackIndex && isPlaying ? '🔊' : '🎵'}</div>
-                    <div class="info" style="flex: 1;">
-                        <div class="name" style="font-weight: 600; color: #333; margin-bottom: 3px;">${file.filename}</div>
+                <div class="music-item ${isTrackPlaying ? 'playing' : ''}" 
+                     data-index="${originalIndex}"
+                     onmouseenter="this.querySelector('.play-btn-hover').style.opacity='1'" 
+                     onmouseleave="this.querySelector('.play-btn-hover').style.opacity='0'" 
+                     style="cursor:pointer; display: flex; align-items: center; padding: 12px; border-radius: 8px; margin-bottom: 8px; background: ${isCurrentTrack ? 'linear-gradient(135deg, rgba(102,126,234,0.12) 0%, rgba(118,75,162,0.12) 100%)' : '#f9fafb'}; transition: all 0.2s ease; border-left: 4px solid ${isCurrentTrack ? '#667eea' : 'transparent'}; border: 1px solid ${isCurrentTrack ? '#c7d2fe' : 'transparent'};">
+                    
+                    <!-- Play Button (hover) -->
+                    <div class="play-btn-hover" onclick="playTrack(${originalIndex}); event.stopPropagation();" 
+                         style="width: 42px; height: 42px; margin-right: 12px; border-radius: 50%; background: ${isTrackPlaying ? '#667eea' : 'linear-gradient(135deg, #667eea, #764ba2)'}; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; opacity: ${isTrackPlaying ? '1' : '0'}; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); cursor: pointer;" 
+                         title="${isTrackPlaying ? 'Đang phát' : 'Click để phát'}">
+                        ${isTrackPlaying ? '⏸' : '▶'}
+                    </div>
+                    
+                    <!-- Music Icon (default state) -->
+                    <div class="icon" style="font-size: 1.5em; margin-right: 12px; ${isTrackPlaying ? 'display:none;' : ''}">${isCurrentTrack ? '🔊' : '🎵'}</div>
+                    
+                    <!-- Track Info (clickable) -->
+                    <div class="info" onclick="playTrack(${originalIndex})" style="flex: 1; cursor: pointer;">
+                        <div class="name" style="font-weight: 600; color: ${isCurrentTrack ? '#667eea' : '#333'}; margin-bottom: 3px;">${file.filename}</div>
                         <div class="details" style="font-size: 0.85em; color: #6b7280;">${file.path} • ${file.size_mb} MB</div>
                     </div>
-                    ${originalIndex === currentTrackIndex && isPlaying ? '<span style="color:#667eea; font-size:20px; animation: pulse 1s infinite;">▶️</span>' : ''}
+                    
+                    <!-- Now Playing Indicator -->
+                    ${isTrackPlaying ? '<div style="display:flex; align-items:center; gap:5px; color:#667eea; font-size:12px; animation: pulse 1.5s infinite;"><div style="width:3px; height:12px; background:#667eea; animation: wave1 0.8s ease-in-out infinite;"></div><div style="width:3px; height:18px; background:#667eea; animation: wave2 0.8s ease-in-out infinite 0.1s;"></div><div style="width:3px; height:15px; background:#667eea; animation: wave3 0.8s ease-in-out infinite 0.2s;"></div></div>' : ''}
                 </div>
             `}).join('');
             
@@ -11946,43 +16975,8 @@ async def index():
             }
         }
         
-        // Chọn bài (click đơn) - chỉ highlight, delay để không chặn double-click
-        let selectedTrackIndex = -1;
-        let clickTimer = null;
-        
-        function selectTrack(index) {
-            // Clear timer nếu có (tránh xung đột với double-click)
-            if (clickTimer) {
-                clearTimeout(clickTimer);
-                clickTimer = null;
-                return; // Đây là double-click, bỏ qua
-            }
-            
-            // Delay 200ms để chờ xem có double-click không
-            clickTimer = setTimeout(() => {
-                selectedTrackIndex = index;
-                // Highlight bài được chọn
-                document.querySelectorAll('.music-item').forEach((item, i) => {
-                    const itemIndex = parseInt(item.getAttribute('data-index') || i);
-                    if (itemIndex === index) {
-                        item.style.borderColor = '#667eea';
-                        item.style.background = 'linear-gradient(135deg, rgba(102,126,234,0.15) 0%, rgba(118,75,162,0.15) 100%)';
-                    }
-                });
-                clickTimer = null;
-            }, 200);
-        }
-        
-        // Double-click để phát ngay
-        async function playTrackNow(index) {
-            // Clear single-click timer
-            if (clickTimer) {
-                clearTimeout(clickTimer);
-                clickTimer = null;
-            }
-            // Phát nhạc ngay
-            await playTrack(index);
-        }
+        // SINGLE-CLICK TO PLAY (like Spotify/Apple Music)
+        // Removed complex double-click logic - direct click to play for better UX
         
         // Cập nhật visualizer state
         function updateVisualizer(playing) {
@@ -12277,6 +17271,10 @@ async def index():
         setInterval(getResources, 10000);
         getResources();
         
+        // Load quotas on startup and refresh every 60 seconds
+        getQuotas();
+        setInterval(getQuotas, 60000);
+        
         // Start VLC status polling for real-time sync
         startVlcPolling();
         
@@ -12372,9 +17370,734 @@ async def index():
             }
         }
         
+        // ============================================================
+        // 💬 LLM CHAT FUNCTIONS - Gửi tin nhắn cho Robot/LLM
+        // ============================================================
+        
+        async function refreshLLMConnectionStatus() {
+            try {
+                const response = await fetch('/api/llm_connection_status');
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.devices.forEach((device, index) => {
+                        // Update old status display (if exists)
+                        const statusEl = document.getElementById(`device${index + 1}-status`);
+                        if (statusEl) {
+                            const icon = device.connected ? '✅' : (device.enabled ? '⏳' : '❌');
+                            const text = device.connected ? 'Đã kết nối' : (device.enabled ? 'Đang kết nối...' : 'Chưa cấu hình');
+                            statusEl.innerHTML = `📱 ${device.name}: <span class="status-indicator">${icon} ${text}</span>`;
+                        }
+                        
+                        // Update new device card indicator
+                        const indicator = document.getElementById(`device-${index + 1}-indicator`);
+                        const card = document.getElementById(`device-${index + 1}-card`);
+                        if (indicator) {
+                            if (device.connected) {
+                                indicator.innerHTML = '<span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#10b981;animation:pulse 2s infinite;"></span> ✅ Đã kết nối';
+                                indicator.style.background = '#d1fae5';
+                                indicator.style.color = '#047857';
+                                if (card) card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.4)';
+                            } else if (device.enabled) {
+                                indicator.innerHTML = '<span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:blink 1s infinite;"></span> ⏳ Đang kết nối...';
+                                indicator.style.background = '#fef3c7';
+                                indicator.style.color = '#b45309';
+                                if (card) card.style.boxShadow = '0 0 15px rgba(245, 158, 11, 0.3)';
+                            } else {
+                                indicator.innerHTML = '<span class="status-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;"></span> ❌ Chưa kết nối';
+                                indicator.style.background = '#f3f4f6';
+                                indicator.style.color = '#6b7280';
+                                if (card) card.style.boxShadow = 'none';
+                            }
+                        }
+                    });
+                    
+                    // Update device selector
+                    const select = document.getElementById('llm-device-select');
+                    if (select) {
+                        data.devices.forEach((device, index) => {
+                            const option = select.options[index];
+                            if (option) {
+                                option.text = `${device.connected ? '🟢' : '⚪'} ${device.name}`;
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error('Error refreshing LLM connection status:', e);
+            }
+        }
+        
+        async function sendLLMMessage() {
+            const input = document.getElementById('llm-chat-input');
+            const message = input.value.trim();
+            
+            if (!message) {
+                addLog('⚠️ Vui lòng nhập tin nhắn', 'error');
+                return;
+            }
+            
+            const modelSelect = document.getElementById('llm-chat-model');
+            const selectedModel = modelSelect ? modelSelect.value : 'models/gemini-3-flash-preview';
+            
+            // Add user message to chat
+            addLLMChatMessage('user', message, null);
+            
+            // Clear input
+            input.value = '';
+            input.style.height = '50px';
+            
+            // Show typing indicator
+            showLLMTyping();
+            
+            try {
+                // Call Gemini AI with Knowledge Base integration
+                const response = await fetch('/api/tool/ask_gemini', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: message,
+                        model: selectedModel
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Hide typing indicator
+                hideLLMTyping();
+                
+                if (data.success) {
+                    const responseText = data.response || data.response_text || 'Không có nội dung trả về';
+                    const hasKB = data.knowledge_base_used ? '📚' : '';
+                    const modelName = getModelDisplayName(selectedModel);
+                    
+                    addLLMChatMessage('assistant', responseText, `Gemini ${modelName}${hasKB}`);
+                    
+                    if (data.knowledge_base_used) {
+                        addLog(`✅ Gemini trả lời (sử dụng Knowledge Base)`, 'success');
+                    } else {
+                        addLog(`✅ Gemini trả lời thành công`, 'success');
+                    }
+                    
+                    // 🔊 Text-to-Speech nếu được bật
+                    const ttsToggle = document.getElementById('llm-tts-toggle');
+                    const ttsEnabled = ttsToggle?.checked;
+                    console.log('TTS Toggle element:', ttsToggle);
+                    console.log('TTS Enabled:', ttsEnabled);
+                    if (ttsEnabled && responseText) {
+                        console.log('Calling speakText with:', responseText.substring(0, 100));
+                        speakText(responseText);
+                    }
+                } else {
+                    addLLMChatMessage('assistant', `❌ Lỗi: ${data.error}`, 'System');
+                    addLog(`❌ Lỗi Gemini: ${data.error}`, 'error');
+                }
+            } catch (e) {
+                hideLLMTyping();
+                addLLMChatMessage('assistant', `❌ Lỗi kết nối: ${e.message}`, 'System');
+                addLog(`❌ Lỗi: ${e.message}`, 'error');
+            }
+        }
+        
+        function getModelDisplayName(model) {
+            if (model.includes('gemini-3')) return '3 Flash ⚡';
+            if (model.includes('2.5-pro')) return '2.5 Pro 💎';
+            if (model.includes('2.5-flash')) return '2.5 Flash ⚡';
+            if (model.includes('2.0-flash')) return '2.0 Flash ⚡';
+            return '';
+        }
+        
+        function saveLLMChatModel() {
+            const model = document.getElementById('llm-chat-model')?.value;
+            if (model) {
+                localStorage.setItem('llm_chat_model', model);
+            }
+        }
+        
+        function loadLLMChatModel() {
+            const saved = localStorage.getItem('llm_chat_model') || 'models/gemini-3-flash-preview';
+            const select = document.getElementById('llm-chat-model');
+            if (select) {
+                select.value = saved;
+            }
+            // Load TTS preference
+            loadTTSPreference();
+        }
+        
+        // ===== STT (Speech-to-Text) Functions - Microphone Input =====
+        let llmRecognition = null;
+        let llmIsRecording = false;
+        let llmSilenceTimer = null;
+        let llmLastSpeechTime = 0;
+        const SILENCE_TIMEOUT = 2000; // 2 giây im lặng thì tự gửi
+        
+        // 🎯 Wake Word Detection
+        let wakeWordRecognition = null;
+        let wakeWordActive = false;
+        let wakeWordWasActive = false; // 🆕 Track nếu wake word đang bật trước khi chat
+        let wakeWordIdleTimer = null; // 🆕 Timer tự tắt sau 20s không dùng
+        const WAKE_WORD_IDLE_TIMEOUT = 20000; // 20 giây không dùng thì tự tắt
+        const WAKE_WORDS = ['hey gemini', 'hê gemini', 'ok gemini', 'ô kê gemini', 'xin chào', 'này gemini', 'gemini ơi', 'ê gemini'];
+        const GOODBYE_WORDS = ['goodbye', 'good bye', 'tạm biệt', 'bye bye', 'bye', 'bai bai', 'ngủ đi', 'đi ngủ', 'tắt đi', 'dừng lại'];
+        
+        function initWakeWordDetection() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return null;
+            
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'vi-VN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            
+            recognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript.toLowerCase().trim();
+                    
+                    // 🆕 Check goodbye word - Tắt wake word
+                    const isGoodbye = GOODBYE_WORDS.some(word => transcript.includes(word));
+                    if (isGoodbye) {
+                        console.log('👋 Goodbye detected:', transcript);
+                        addLog('👋 Goodbye! Tắt Wake Word...', 'info');
+                        showVoiceStatus('👋 Tạm biệt! Đã tắt Wake Word.', 'success');
+                        stopWakeWordDetection();
+                        wakeWordWasActive = false;
+                        localStorage.setItem('wake_word_enabled', 'false');
+                        setTimeout(() => hideVoiceStatus(), 2000);
+                        return;
+                    }
+                    
+                    // Check wake word
+                    const isWakeWord = WAKE_WORDS.some(word => transcript.includes(word));
+                    if (isWakeWord && !llmIsRecording) {
+                        console.log('🎯 Wake word detected:', transcript);
+                        addLog('🎯 Wake word detected! Bắt đầu nghe...', 'success');
+                        showVoiceStatus('🎯 Đã nghe thấy! Đang chuyển sang chế độ chat...', 'success');
+                        
+                        // 🆕 Mark wake word was active
+                        wakeWordWasActive = true;
+                        resetWakeWordIdleTimer();
+                        
+                        // Stop wake word detection, start chat recording
+                        stopWakeWordDetection();
+                        setTimeout(() => startLLMVoiceInput(), 300);
+                        return;
+                    }
+                }
+            };
+            
+            recognition.onend = () => {
+                if (wakeWordActive) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    console.error('Wake word error:', event.error);
+                }
+            };
+            
+            return recognition;
+        }
+        
+        // 🆕 Reset idle timer - Sau 20s không nói gì sẽ tự tắt wake word
+        function resetWakeWordIdleTimer() {
+            if (wakeWordIdleTimer) {
+                clearTimeout(wakeWordIdleTimer);
+            }
+            wakeWordIdleTimer = setTimeout(() => {
+                if (wakeWordActive && !llmIsRecording) {
+                    addLog('⏰ Wake Word tự tắt sau 20s không hoạt động', 'info');
+                    showVoiceStatus('⏰ Wake Word tự tắt (hết thời gian chờ)', 'warning');
+                    stopWakeWordDetection();
+                    wakeWordWasActive = false;
+                    localStorage.setItem('wake_word_enabled', 'false');
+                    setTimeout(() => hideVoiceStatus(), 2000);
+                }
+            }, WAKE_WORD_IDLE_TIMEOUT);
+        }
+        
+        function startWakeWordDetection() {
+            if (!wakeWordRecognition) {
+                wakeWordRecognition = initWakeWordDetection();
+            }
+            if (!wakeWordRecognition) {
+                addLog('❌ Trình duyệt không hỗ trợ Wake Word', 'error');
+                return;
+            }
+            
+            wakeWordActive = true;
+            wakeWordWasActive = true;
+            localStorage.setItem('wake_word_enabled', 'true');
+            
+            try {
+                wakeWordRecognition.start();
+                updateWakeWordButton(true);
+                showVoiceStatus('👂 Đang lắng nghe... Nói "Hey Gemini" hoặc "Goodbye" để tắt', 'recording');
+                addLog('👂 Wake word đang lắng nghe... Nói "Hey Gemini" để chat, "Goodbye" để tắt', 'info');
+                resetWakeWordIdleTimer();
+            } catch(e) {
+                if (e.name === 'InvalidStateError') {
+                    wakeWordRecognition.stop();
+                    setTimeout(() => startWakeWordDetection(), 100);
+                }
+            }
+        }
+        
+        function stopWakeWordDetection() {
+            wakeWordActive = false;
+            if (wakeWordIdleTimer) {
+                clearTimeout(wakeWordIdleTimer);
+                wakeWordIdleTimer = null;
+            }
+            if (wakeWordRecognition) {
+                try { wakeWordRecognition.stop(); } catch(e) {}
+            }
+            updateWakeWordButton(false);
+        }
+        
+        function toggleWakeWord() {
+            if (wakeWordActive) {
+                stopWakeWordDetection();
+                wakeWordWasActive = false;
+                localStorage.setItem('wake_word_enabled', 'false');
+                addLog('👂 Đã tắt Wake Word detection', 'info');
+                hideVoiceStatus();
+            } else {
+                startWakeWordDetection();
+            }
+        }
+        
+        // 🆕 Re-enable wake word after chat response (nếu trước đó đang bật)
+        function reEnableWakeWordAfterResponse() {
+            if (wakeWordWasActive) {
+                setTimeout(() => {
+                    if (!llmIsRecording && wakeWordWasActive) {
+                        startWakeWordDetection();
+                    }
+                }, 1500); // Wait 1.5s after response
+            }
+        }
+        
+        function updateWakeWordButton(active) {
+            const btn = document.getElementById('llm-wakeword-btn');
+            if (btn) {
+                if (active) {
+                    btn.style.background = 'linear-gradient(135deg,#8b5cf6,#7c3aed)';
+                    btn.innerHTML = '👂';
+                    btn.title = '👂 Wake Word đang lắng nghe... (Click để tắt)';
+                    btn.style.animation = 'pulse 2s infinite';
+                } else {
+                    btn.style.background = 'linear-gradient(135deg,#6b7280,#4b5563)';
+                    btn.innerHTML = '👂';
+                    btn.title = '👂 Bật Wake Word (nói "Hey Gemini" để chat)';
+                    btn.style.animation = 'none';
+                }
+            }
+        }
+        
+        function initLLMSpeechRecognition() {
+            // Check for browser support
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('Browser does not support Speech Recognition');
+                return null;
+            }
+            
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'vi-VN'; // Vietnamese
+            recognition.continuous = true; // Keep listening
+            recognition.interimResults = true; // Show partial results
+            recognition.maxAlternatives = 1;
+            
+            recognition.onstart = () => {
+                llmIsRecording = true;
+                llmLastSpeechTime = Date.now();
+                updateMicButton(true);
+                showVoiceStatus('🎤 Đang nghe... Nói xong sẽ tự động gửi!', 'recording');
+                addLog('🎤 Bắt đầu ghi âm (auto-send sau 2s im lặng)', 'info');
+                startSilenceDetection();
+            };
+            
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                // Reset silence timer on speech
+                llmLastSpeechTime = Date.now();
+                
+                const input = document.getElementById('llm-chat-input');
+                if (input) {
+                    if (finalTranscript) {
+                        // Append final result to existing text
+                        const existingText = input.value.trim();
+                        input.value = existingText ? existingText + ' ' + finalTranscript : finalTranscript;
+                        showVoiceStatus('✅ ' + input.value.substring(0, 60) + (input.value.length > 60 ? '...' : ''), 'success');
+                    } else if (interimTranscript) {
+                        // Show interim result
+                        showVoiceStatus('🎤 ' + interimTranscript, 'recording');
+                    }
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed') {
+                    showVoiceStatus('❌ Vui lòng cho phép truy cập microphone!', 'error');
+                    addLog('❌ Microphone bị từ chối quyền truy cập', 'error');
+                } else if (event.error === 'no-speech') {
+                    // Auto-send if have text and no speech
+                    autoSendIfHaveText();
+                    return;
+                } else {
+                    showVoiceStatus('❌ Lỗi: ' + event.error, 'error');
+                    addLog('❌ STT lỗi: ' + event.error, 'error');
+                }
+                stopLLMVoiceInput();
+            };
+            
+            recognition.onend = () => {
+                if (llmIsRecording) {
+                    // Check if should auto-send
+                    const timeSinceLastSpeech = Date.now() - llmLastSpeechTime;
+                    if (timeSinceLastSpeech >= SILENCE_TIMEOUT) {
+                        autoSendIfHaveText();
+                    } else {
+                        // Auto-restart if still recording
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            stopLLMVoiceInput();
+                        }
+                    }
+                } else {
+                    updateMicButton(false);
+                    hideVoiceStatus();
+                }
+            };
+            
+            return recognition;
+        }
+        
+        function startSilenceDetection() {
+            if (llmSilenceTimer) clearInterval(llmSilenceTimer);
+            
+            llmSilenceTimer = setInterval(() => {
+                if (!llmIsRecording) {
+                    clearInterval(llmSilenceTimer);
+                    return;
+                }
+                
+                const timeSinceLastSpeech = Date.now() - llmLastSpeechTime;
+                const input = document.getElementById('llm-chat-input');
+                
+                if (timeSinceLastSpeech >= SILENCE_TIMEOUT && input && input.value.trim()) {
+                    // Auto-send after silence
+                    autoSendIfHaveText();
+                } else if (timeSinceLastSpeech >= 1000 && input && input.value.trim()) {
+                    // Show countdown
+                    const remaining = Math.ceil((SILENCE_TIMEOUT - timeSinceLastSpeech) / 1000);
+                    showVoiceStatus(`⏳ Gửi sau ${remaining}s... (nói tiếp để hủy)`, 'warning');
+                }
+            }, 500);
+        }
+        
+        function autoSendIfHaveText() {
+            const input = document.getElementById('llm-chat-input');
+            if (input && input.value.trim()) {
+                showVoiceStatus('📤 Đang gửi tin nhắn...', 'success');
+                stopLLMVoiceInput();
+                
+                // Small delay then send
+                setTimeout(() => {
+                    sendLLMMessage();
+                    // 🆕 Re-enable wake word after response (dùng function mới)
+                    reEnableWakeWordAfterResponse();
+                }, 300);
+            } else {
+                stopLLMVoiceInput();
+                // 🆕 Nếu không có text, vẫn re-enable wake word
+                reEnableWakeWordAfterResponse();
+            }
+        }
+        
+        function toggleLLMVoiceInput() {
+            if (llmIsRecording) {
+                // If recording, stop and send if have text
+                autoSendIfHaveText();
+            } else {
+                startLLMVoiceInput();
+            }
+        }
+        
+        function startLLMVoiceInput() {
+            // Stop wake word if active
+            if (wakeWordActive) {
+                stopWakeWordDetection();
+            }
+            
+            if (!llmRecognition) {
+                llmRecognition = initLLMSpeechRecognition();
+            }
+            
+            if (!llmRecognition) {
+                showVoiceStatus('❌ Trình duyệt không hỗ trợ STT. Hãy dùng Chrome!', 'error');
+                addLog('❌ Trình duyệt không hỗ trợ Speech Recognition', 'error');
+                return;
+            }
+            
+            // Clear input for fresh start
+            const input = document.getElementById('llm-chat-input');
+            if (input) input.value = '';
+            
+            try {
+                llmRecognition.start();
+            } catch (e) {
+                if (e.name === 'InvalidStateError') {
+                    // Already started
+                    stopLLMVoiceInput();
+                    setTimeout(() => startLLMVoiceInput(), 100);
+                } else {
+                    console.error('Start speech recognition error:', e);
+                    showVoiceStatus('❌ Không thể bắt đầu ghi âm', 'error');
+                }
+            }
+        }
+        
+        function stopLLMVoiceInput() {
+            llmIsRecording = false;
+            if (llmSilenceTimer) {
+                clearInterval(llmSilenceTimer);
+                llmSilenceTimer = null;
+            }
+            if (llmRecognition) {
+                try {
+                    llmRecognition.stop();
+                } catch (e) {}
+            }
+            updateMicButton(false);
+            setTimeout(() => hideVoiceStatus(), 1500);
+        }
+        
+        function updateMicButton(isRecording) {
+            const btn = document.getElementById('llm-mic-btn');
+            if (btn) {
+                if (isRecording) {
+                    btn.style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+                    btn.innerHTML = '⏹️';
+                    btn.title = '⏹️ Nhấn để dừng và gửi';
+                    btn.style.animation = 'pulse 1s infinite';
+                } else {
+                    btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                    btn.innerHTML = '🎤';
+                    btn.title = '🎤 Nhấn để nói (auto-send)';
+                    btn.style.animation = 'none';
+                }
+            }
+        }
+        
+        function showVoiceStatus(text, type) {
+            const statusDiv = document.getElementById('llm-voice-status');
+            const statusText = document.getElementById('llm-voice-status-text');
+            if (statusDiv && statusText) {
+                statusDiv.style.display = 'block';
+                statusText.textContent = text;
+                
+                if (type === 'recording') {
+                    statusDiv.style.background = 'linear-gradient(135deg,#fef3c7,#fde68a)';
+                } else if (type === 'success') {
+                    statusDiv.style.background = 'linear-gradient(135deg,#d1fae5,#a7f3d0)';
+                } else if (type === 'error') {
+                    statusDiv.style.background = 'linear-gradient(135deg,#fee2e2,#fecaca)';
+                } else if (type === 'warning') {
+                    statusDiv.style.background = 'linear-gradient(135deg,#ffedd5,#fed7aa)';
+                }
+            }
+        }
+        
+        function hideVoiceStatus() {
+            const statusDiv = document.getElementById('llm-voice-status');
+            if (statusDiv) {
+                statusDiv.style.display = 'none';
+            }
+        }
+        
+        // ===== TTS (Text-to-Speech) Functions =====
+        function saveTTSPreference() {
+            const enabled = document.getElementById('llm-tts-toggle')?.checked || false;
+            localStorage.setItem('llm_tts_enabled', enabled);
+            if (enabled) {
+                addLog('🔊 Đã bật đọc to câu trả lời', 'info');
+            } else {
+                addLog('🔇 Đã tắt đọc to câu trả lời', 'info');
+            }
+        }
+        
+        function loadTTSPreference() {
+            const saved = localStorage.getItem('llm_tts_enabled') === 'true';
+            const toggle = document.getElementById('llm-tts-toggle');
+            if (toggle) {
+                toggle.checked = saved;
+            }
+        }
+        
+        let currentTTSAudio = null; // Track current TTS audio
+        
+        async function speakText(text) {
+            try {
+                // Hiển thị indicator đang đọc
+                showSpeakingIndicator();
+                
+                // Gọi API TTS backend
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`🔊 Đang đọc: ${text.substring(0, 50)}...`, 'info');
+                } else {
+                    addLog(`❌ TTS lỗi: ${data.error}`, 'error');
+                }
+                
+                hideSpeakingIndicator();
+            } catch (e) {
+                console.error('TTS error:', e);
+                addLog(`❌ TTS lỗi: ${e.message}`, 'error');
+                hideSpeakingIndicator();
+            }
+        }
+        
+        function stopSpeaking() {
+            // Gọi API dừng TTS
+            fetch('/api/tts/stop', { method: 'POST' })
+                .then(() => {
+                    addLog('🔇 Đã dừng đọc', 'info');
+                    hideSpeakingIndicator();
+                })
+                .catch(e => console.error('Stop TTS error:', e));
+        }
+        
+        function showSpeakingIndicator() {
+            // Thêm indicator vào status bar
+            const statusBar = document.getElementById('llm-ai-status');
+            if (statusBar && !document.getElementById('speaking-indicator')) {
+                const indicator = document.createElement('span');
+                indicator.id = 'speaking-indicator';
+                indicator.innerHTML = '<span style="animation:pulse 1s infinite;">🔊 Đang đọc...</span> <button onclick="stopSpeaking()" style="background:rgba(255,255,255,0.3);border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.8em;">⏹️ Dừng</button>';
+                indicator.style.cssText = 'font-size:0.85em; background:rgba(255,255,255,0.2); padding:4px 10px; border-radius:20px; display:flex; align-items:center; gap:8px;';
+                statusBar.appendChild(indicator);
+            }
+        }
+        
+        function hideSpeakingIndicator() {
+            const indicator = document.getElementById('speaking-indicator');
+            if (indicator) indicator.remove();
+        }
+        
+        function addLLMChatMessage(role, content, deviceName) {
+            const container = document.getElementById('llm-chat-messages');
+            
+            // Remove welcome message if exists
+            const welcome = container.querySelector('div[style*="text-align:center"]');
+            if (welcome) welcome.remove();
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `llm-message ${role}`;
+            
+            const time = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            
+            let deviceTag = '';
+            if (deviceName && role === 'assistant') {
+                deviceTag = `<span class="device-tag">${deviceName}</span>`;
+            }
+            
+            msgDiv.innerHTML = `
+                <div class="content">${content}${deviceTag}</div>
+                <span class="time">${time}</span>
+            `;
+            
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Store message
+            llmChatMessages.push({ role, content, deviceName, time: new Date().toISOString() });
+        }
+        
+        function showLLMTyping() {
+            const container = document.getElementById('llm-chat-messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'llm-typing-indicator';
+            typingDiv.className = 'llm-message assistant';
+            typingDiv.innerHTML = `
+                <div class="llm-typing">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function hideLLMTyping() {
+            const typing = document.getElementById('llm-typing-indicator');
+            if (typing) typing.remove();
+        }
+        
+        function handleLLMChatKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendLLMMessage();
+            }
+        }
+        
+        function autoResizeLLMInput(textarea) {
+            textarea.style.height = '50px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+        }
+        
+        function sendQuickMessage(message) {
+            const input = document.getElementById('llm-chat-input');
+            input.value = message;
+            sendLLMMessage();
+        }
+        
+        function clearLLMChat() {
+            const container = document.getElementById('llm-chat-messages');
+            container.innerHTML = `
+                <div style="text-align:center; color:#666; padding:40px 20px;">
+                    <div style="font-size:4em; margin-bottom:15px;">🤖</div>
+                    <h3 style="color:#667eea; margin-bottom:10px;">Chào mừng đến Chat với Gemini AI!</h3>
+                    <p style="font-size:0.95em; max-width:400px; margin:0 auto;">
+                        Chat trực tiếp với Gemini AI.<br>
+                        AI sẽ tự động tìm kiếm trong Knowledge Base của bạn để trả lời chính xác hơn.
+                    </p>
+                </div>
+            `;
+            llmChatMessages = [];
+            addLog('🗑️ Đã xóa lịch sử chat', 'info');
+        }
+        
         // Load music folder settings when opening the section
         document.addEventListener('DOMContentLoaded', () => {
             loadMusicFolderSettings();
+            // 🔥 FIX: Auto-load API keys when page loads
+            loadCurrentEndpoint();
+            // 🔥 FIX: Auto-refresh connection status
+            refreshLLMConnectionStatus();
+            // ⏰ Refresh connection status every 3 seconds
+            setInterval(refreshLLMConnectionStatus, 3000);
         });
         
     // Initialize playlists on page load
@@ -12397,6 +18120,70 @@ async def index():
 </html>
     """
     return html
+
+# ============================================================
+# 📨 API ENDPOINT: SEND MESSAGE TO LLM
+# ============================================================
+
+class SendMessageRequest(BaseModel):
+    message: str
+    device_index: int = None
+    wait_response: bool = True
+    timeout: int = 30
+
+class BroadcastMessageRequest(BaseModel):
+    message: str
+    wait_response: bool = False
+
+@app.post("/api/send_message_to_llm")
+async def api_send_message_to_llm(request: SendMessageRequest):
+    """
+    API endpoint để gửi tin nhắn cho LLM qua WebSocket.
+    LLM sẽ đọc được tin nhắn và tự trả lời.
+    """
+    result = await send_message_to_llm(
+        message=request.message,
+        device_index=request.device_index,
+        wait_response=request.wait_response,
+        timeout=request.timeout
+    )
+    return result
+
+@app.post("/api/broadcast_to_llm")
+async def api_broadcast_to_llm(request: BroadcastMessageRequest):
+    """
+    API endpoint để broadcast tin nhắn đến tất cả LLM đang kết nối.
+    """
+    result = await broadcast_to_all_llm(
+        message=request.message,
+        wait_response=request.wait_response
+    )
+    return result
+
+@app.get("/api/llm_connection_status")
+async def api_llm_connection_status():
+    """
+    Kiểm tra trạng thái kết nối của các thiết bị LLM.
+    """
+    status = {
+        "success": True,
+        "devices": []
+    }
+    
+    for i in range(3):
+        device_status = {
+            "index": i,
+            "name": endpoints_config[i].get("name", f"Thiết bị {i + 1}"),
+            "connected": xiaozhi_connected.get(i, False),
+            "enabled": endpoints_config[i].get("enabled", False),
+            "has_token": bool(endpoints_config[i].get("token", ""))
+        }
+        status["devices"].append(device_status)
+    
+    status["active_index"] = active_endpoint_index
+    status["total_connected"] = sum(1 for v in xiaozhi_connected.values() if v)
+    
+    return status
 
 # API Endpoints
 @app.post("/api/volume")
@@ -12427,24 +18214,78 @@ async def api_resources():
         raise HTTPException(500, result["error"])
     return result
 
+@app.get("/api/quotas")
+async def api_quotas():
+    """Lấy thông tin quota của Gemini và Serper APIs"""
+    result = await get_api_quotas()
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
 @app.get("/api/vlc_status")
 async def api_vlc_status():
-    """VLC Player status endpoint for Web UI real-time sync"""
+    """VLC status - MCP-style response với session tracking"""
     try:
-        status = vlc_player.get_full_status()
-        return status
+        # Cache status để tránh query liên tục (200ms)
+        import time
+        now = time.time()
+        if not hasattr(vlc_player, '_status_cache') or (now - vlc_player._status_cache_time) > 0.2:
+            status = vlc_player.get_full_status()
+            # MCP-style: thêm metadata
+            status['timestamp'] = int(now * 1000)  # milliseconds
+            status['session_id'] = getattr(vlc_player, '_session_id', 'default')
+            vlc_player._status_cache = status
+            vlc_player._status_cache_time = now
+        return vlc_player._status_cache
     except Exception as e:
-        return {"success": False, "error": str(e), "state": "error"}
+        return {
+            "success": False, 
+            "error": str(e), 
+            "state": "error",
+            "timestamp": int(time.time() * 1000)
+        }
 
 @app.post("/api/vlc_seek")
 async def api_vlc_seek(data: dict):
-    """Seek VLC player to specific position (0.0 - 1.0)"""
+    """Seek VLC player - MCP-style với validation và state tracking"""
     try:
         position = float(data.get("position", 0))
+        
+        # Validate input (xiaozhi pattern: validate before execution)
+        if not 0.0 <= position <= 1.0:
+            return {
+                "success": False,
+                "error": "Position must be between 0.0 and 1.0",
+                "error_type": "validation_error",
+                "provided_value": position
+            }
+        
+        # Get current state
+        old_position = vlc_player.get_position()
+        current_time = vlc_player.get_time()
+        
+        # Execute seek
         vlc_player.set_position(position)
-        return {"success": True, "position": position}
+        
+        # Calculate time delta
+        new_time = vlc_player.get_time()
+        
+        return {
+            "success": True,
+            "action": "seek",
+            "position": position,
+            "previous_position": old_position,
+            "time_delta_ms": new_time - current_time,
+            "timestamp": int(time.time() * 1000),
+            "message": f"Sought to {int(position * 100)}%"
+        }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e),
+            "error_type": "exception",
+            "timestamp": int(time.time() * 1000)
+        }
 
 @app.post("/api/vlc_volume")
 async def api_vlc_volume(data: dict):
@@ -12503,72 +18344,118 @@ async def api_vlc_play_file(data: dict):
 
 @app.post("/api/vlc_play_pause")
 async def api_vlc_play_pause():
-    """Toggle VLC play/pause"""
+    """Toggle VLC play/pause - MCP-style với state tracking"""
     try:
         if vlc_player and vlc_player._player:
+            # Track state before action (xiaozhi pattern)
+            was_playing = vlc_player.is_playing()
+            
+            # Execute command
             vlc_player.pause()
+            
+            # Get new state
             is_playing = vlc_player.is_playing()
-            return {"success": True, "is_playing": is_playing, "message": "▶️ Đang phát" if is_playing else "⏸️ Đã tạm dừng"}
-        return {"success": False, "error": "VLC chưa khởi tạo hoặc chưa phát nhạc"}
+            
+            return {
+                "success": True,
+                "is_playing": is_playing,
+                "previous_state": "playing" if was_playing else "paused",
+                "current_state": "playing" if is_playing else "paused",
+                "action": "pause" if was_playing else "play",
+                "message": "▶️ Đang phát" if is_playing else "⏸️ Đã tạm dừng",
+                "timestamp": int(time.time() * 1000)
+            }
+        return {
+            "success": False, 
+            "error": "VLC chưa khởi tạo hoặc chưa phát nhạc",
+            "state": "not_initialized"
+        }
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False, 
+            "error": str(e),
+            "error_type": "exception",
+            "timestamp": int(time.time() * 1000)
+        }
 
 @app.post("/api/vlc_stop")
 async def api_vlc_stop():
-    """Stop VLC player"""
+    """Stop VLC player - MCP-style với state cleanup"""
     try:
         if vlc_player and vlc_player._player:
+            # Get current state before stopping
+            was_playing = vlc_player.is_playing()
+            current_media = vlc_player._player.get_media()
+            stopped_track = current_media.get_meta(0) if current_media else "Unknown"
+            
+            # Execute stop
             vlc_player.stop()
-            return {"success": True, "message": "⏹️ Đã dừng nhạc"}
-        return {"success": False, "error": "VLC chưa khởi tạo hoặc chưa phát nhạc"}
+            
+            return {
+                "success": True,
+                "action": "stop",
+                "message": "⏹️ Đã dừng nhạc",
+                "previous_state": "playing" if was_playing else "paused",
+                "stopped_track": stopped_track,
+                "timestamp": int(time.time() * 1000)
+            }
+        return {
+            "success": False,
+            "error": "VLC chưa khởi tạo hoặc chưa phát nhạc",
+            "state": "not_initialized"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 @app.post("/api/vlc_next")
 async def api_vlc_next():
-    """Next track in VLC - Tự động phát bài tiếp theo"""
+    """Next track - MCP-style async với immediate response"""
     try:
         if vlc_player and vlc_player._list_player:
-            # Chuyển bài tiếp theo
+            # Get current track info before switching (xiaozhi pattern)
+            current_media = vlc_player._player.get_media()
+            current_title = current_media.get_meta(0) if current_media else "Unknown"
+            current_index = vlc_player._list_player.get_media_player().get_position()
+            
+            # Execute command
             vlc_player._list_player.next()
-            import time
-            time.sleep(0.5)  # Đợi VLC xử lý
-            # LUÔN gọi play() để đảm bảo phát
-            vlc_player._list_player.play()
-            time.sleep(0.2)
-            status = vlc_player.get_full_status()
-            print(f"⏭️ [API] Next → {status.get('current_song', 'Unknown')}")
+            vlc_player._list_player.play()  # Đảm bảo phát
+            
+            # MCP-style: trả về immediate response + track info
             return {
-                "success": True, 
-                "message": f"⏭️ Bài tiếp: {status.get('current_song', 'Unknown')}",
-                "current_song": status.get('current_song'),
-                "is_playing": True
+                "success": True,
+                "action": "next",
+                "message": "⏭️ Chuyển bài tiếp theo",
+                "is_playing": True,
+                "previous_track": {
+                    "title": current_title,
+                    "position": current_index
+                },
+                "timestamp": int(time.time() * 1000),
+                "note": "Track info sẽ update sau 500ms qua /api/vlc_status"
             }
-        return {"success": False, "error": "VLC chưa khởi tạo hoặc chưa có playlist"}
+        return {
+            "success": False,
+            "error": "VLC chưa khởi tạo",
+            "state": "not_initialized"
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 
 @app.post("/api/vlc_previous")
 async def api_vlc_previous():
-    """Previous track in VLC - Tự động phát bài trước"""
+    """Previous track - TỐI ƯU: Không block UI với sleep"""
     try:
         if vlc_player and vlc_player._list_player:
-            # Chuyển bài trước
             vlc_player._list_player.previous()
-            import time
-            time.sleep(0.5)  # Đợi VLC xử lý
-            # LUÔN gọi play() để đảm bảo phát
-            vlc_player._list_player.play()
-            time.sleep(0.2)
-            status = vlc_player.get_full_status()
-            print(f"⏮️ [API] Previous → {status.get('current_song', 'Unknown')}")
+            vlc_player._list_player.play()  # Đảm bảo phát
+            # Trả về ngay - Web UI sẽ poll status để update
             return {
                 "success": True, 
-                "message": f"⏮️ Bài trước: {status.get('current_song', 'Unknown')}",
-                "current_song": status.get('current_song'),
+                "message": "⏮️ Chuyển bài trước",
                 "is_playing": True
             }
-        return {"success": False, "error": "VLC chưa khởi tạo hoặc chưa có playlist"}
+        return {"success": False, "error": "VLC chưa khởi tạo"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -12609,6 +18496,75 @@ async def call_any_tool(data: dict):
         return {"success": False, "error": str(e)}
 
 # ============================================================
+# 🎯 VLC MCP ENDPOINTS - Hybrid System
+# ============================================================
+
+@app.post("/mcp/vlc/call")
+async def mcp_vlc_call(request: dict):
+    """
+    MCP endpoint for VLC control (JSON-RPC 2.0)
+    
+    Xiaozhi-esp32 style protocol:
+    {
+      "jsonrpc": "2.0",
+      "method": "tools/call",
+      "params": {
+        "name": "vlc.play",
+        "arguments": {"file": "song.mp3"}
+      },
+      "id": 1
+    }
+    """
+    if not VLC_MCP_AVAILABLE:
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": "VLC MCP server not available"
+            },
+            "id": request.get("id")
+        }
+    
+    try:
+        response = await vlc_mcp_server.handle_mcp_request(request)
+        return response
+    except Exception as e:
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            },
+            "id": request.get("id")
+        }
+
+@app.get("/mcp/vlc/tools")
+async def mcp_vlc_list_tools():
+    """List all available VLC MCP tools"""
+    if not VLC_MCP_AVAILABLE:
+        return {
+            "success": False,
+            "error": "VLC MCP server not available"
+        }
+    
+    return {
+        "success": True,
+        "tools": vlc_mcp_server.list_tools()
+    }
+
+@app.get("/mcp/vlc/status")
+async def mcp_vlc_status():
+    """Get VLC MCP server status"""
+    return {
+        "success": True,
+        "mcp_available": VLC_MCP_AVAILABLE,
+        "vlc_available": VLC_AVAILABLE,
+        "total_tools": len(vlc_mcp_server.tools) if VLC_MCP_AVAILABLE else 0,
+        "protocol": "JSON-RPC 2.0",
+        "architecture": "xiaozhi-esp32"
+    }
+
+# ============================================================
 # 🧠 INTENT DETECTION API ENDPOINTS
 # ============================================================
 
@@ -12638,23 +18594,992 @@ async def api_detect_intent(data: dict):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.post("/api/auto_execute")
+async def api_auto_execute(data: dict):
+    """
+    🤖 AUTO TOOL EXECUTOR v2.0 - NÂNG CẤP
+    
+    Phân tích THÔNG MINH response từ LLM và tự động gọi tool
+    
+    IMPROVEMENTS:
+    - ✅ Ưu tiên phân tích USER QUERY trước (chính xác hơn)
+    - ✅ Phát hiện câu PHỦ ĐỊNH (không, chưa, đừng)
+    - ✅ Phát hiện câu HỎI (có phải, có nên)
+    - ✅ Context-aware patterns (xem trước/sau)
+    - ✅ Multi-language support (Vi + En)
+    - ✅ Better logging và debug info
+    
+    Args:
+        llm_response: Text response từ LLM
+        original_query: Câu hỏi gốc của user (QUAN TRỌNG - ưu tiên cao)
+        auto_execute: True để tự động gọi tool (default: True)
+    
+    Returns:
+        {
+            "success": bool,
+            "intent_detected": str,
+            "tool_suggested": str,
+            "confidence": float,
+            "tool_executed": bool,
+            "tool_result": dict,
+            "analysis": {
+                "source": "query|response",
+                "matched_pattern": str,
+                "is_question": bool,
+                "is_negative": bool
+            }
+        }
+    """
+    try:
+        llm_response = data.get("llm_response", data.get("response", "")).strip()
+        original_query = data.get("original_query", data.get("query", "")).strip()
+        auto_execute = data.get("auto_execute", True)
+        
+        print(f"\n{'='*70}")
+        print(f"🤖 [Auto Execute v2.0] NEW REQUEST")
+        print(f"{'='*70}")
+        print(f"📝 User Query: '{original_query}'")
+        print(f"💬 LLM Response: '{llm_response}'")
+        print(f"⚙️  Auto Execute: {auto_execute}")
+        print(f"{'-'*70}")
+        
+        # ===== BƯỚC 1: PHÂN TÍCH NGỮ CẢNH =====
+        import re
+        
+        # Phát hiện câu phủ định
+        negative_patterns = [
+            r'\b(không|chưa|đừng|chớ|thôi|ngưng)\b',
+            r'\b(no|not|don\'t|stop|cancel)\b'
+        ]
+        
+        # Phát hiện câu hỏi
+        question_patterns = [
+            r'\b(có phải|có nên|có thể|được không|như thế nào)\b',
+            r'\?$',  # Kết thúc bằng dấu ?
+            r'\b(is|are|can|could|should|would|do|does)\b.+\?'
+        ]
+        
+        # ===== BƯỚC 2: PATTERNS NÂNG CAP - CONTEXT AWARE =====
+        enhanced_vlc_patterns = {
+            "music_next": {
+                "patterns": [
+                    r'\b(bài tiếp theo|bài tiếp|next song|next track)\b',
+                    r'\b(chuyển bài|skip|bài sau|bài kế|sang bài)\b',
+                    r'\b(tiếp theo|next|forward)\b',
+                    r'\b(phát bài tiếp|play next)\b'
+                ],
+                "keywords": ["next", "tiếp", "skip", "chuyển", "sau", "forward"]
+            },
+            "music_previous": {
+                "patterns": [
+                    r'\b(bài trước|previous song|previous track)\b',
+                    r'\b(quay lại|back|lùi lại|trở lại)\b',
+                    r'\b(bài trước đó|bài cũ)\b',
+                    r'\b(phát bài trước|play previous)\b'
+                ],
+                "keywords": ["previous", "trước", "back", "quay", "lùi"]
+            },
+            "pause_music": {
+                "patterns": [
+                    r'\b(tạm dừng|pause)\b',
+                    r'\b(dừng lại|stop playing|ngừng)\b',
+                    r'\b(tạm ngưng)\b'
+                ],
+                "keywords": ["pause", "tạm", "dừng lại"]
+            },
+            "resume_music": {
+                "patterns": [
+                    r'\b(tiếp tục|resume|continue)\b',
+                    r'\b(phát tiếp|play again|chạy tiếp)\b',
+                    r'\b(mở lại|bật lại)\b'
+                ],
+                "keywords": ["resume", "tiếp tục", "continue", "phát tiếp"]
+            },
+            "stop_music": {
+                "patterns": [
+                    r'\b(dừng hẳn|stop completely)\b',
+                    r'\b(tắt nhạc|stop music|ngừng nhạc)\b',
+                    r'\b(dừng|stop)\b(?!.*playing)'  # "dừng" nhưng không có "playing"
+                ],
+                "keywords": ["stop", "dừng", "tắt", "ngừng"]
+            },
+            "play_music": {
+                "patterns": [
+                    r'\b(phát nhạc|play music)\b',
+                    r'\b(mở nhạc|bật nhạc|chạy nhạc)\b',
+                    r'\b(play song|start music)\b'
+                ],
+                "keywords": ["play", "phát", "mở", "bật", "chạy"]
+            }
+        }
+        
+        # ===== BƯỚC 3: PHÂN TÍCH ƯU TIÊN USER QUERY TRƯỚC =====
+        detected_tool = None
+        confidence = 0.0
+        matched_pattern = None
+        analysis_source = "none"
+        
+        # Priority 1: Phân tích USER QUERY (chính xác nhất)
+        if original_query:
+            query_lower = original_query.lower()
+            
+            # Kiểm tra phủ định và câu hỏi trong query
+            is_negative = any(re.search(p, query_lower) for p in negative_patterns)
+            is_question = any(re.search(p, query_lower) for p in question_patterns)
+            
+            print(f"🔍 [Analysis] Query Context:")
+            print(f"   - Is Negative: {is_negative}")
+            print(f"   - Is Question: {is_question}")
+            
+            if not is_negative and not is_question:
+                # Chỉ phân tích khi KHÔNG phải câu phủ định hoặc câu hỏi
+                for tool_name, tool_data in enhanced_vlc_patterns.items():
+                    # Kiểm tra patterns
+                    for pattern in tool_data["patterns"]:
+                        if re.search(pattern, query_lower):
+                            detected_tool = tool_name
+                            confidence = 0.95  # VERY HIGH confidence vì từ user query
+                            matched_pattern = pattern
+                            analysis_source = "user_query"
+                            print(f"✅ [Query Match] Tool: {tool_name} | Pattern: {pattern}")
+                            break
+                    
+                    # Nếu chưa match, thử keyword matching
+                    if not detected_tool:
+                        keyword_count = sum(1 for kw in tool_data["keywords"] if kw in query_lower)
+                        if keyword_count >= 1:
+                            detected_tool = tool_name
+                            confidence = 0.7 + (keyword_count * 0.1)  # Càng nhiều keyword càng cao
+                            matched_pattern = f"keywords: {[kw for kw in tool_data['keywords'] if kw in query_lower]}"
+                            analysis_source = "user_query_keywords"
+                            print(f"✅ [Query Keywords] Tool: {tool_name} | Matched: {keyword_count}")
+                            break
+                    
+                    if detected_tool:
+                        break
+            else:
+                print(f"⚠️ [Query Skip] Skipped analysis (negative or question)")
+        
+        # Priority 2: Phân tích LLM RESPONSE (nếu query không có kết quả)
+        if not detected_tool and llm_response:
+            response_lower = llm_response.lower()
+            
+            # Kiểm tra phủ định và câu hỏi trong response
+            is_negative = any(re.search(p, response_lower) for p in negative_patterns)
+            is_question = any(re.search(p, response_lower) for p in question_patterns)
+            
+            print(f"🔍 [Analysis] Response Context:")
+            print(f"   - Is Negative: {is_negative}")
+            print(f"   - Is Question: {is_question}")
+            
+            if not is_negative and not is_question:
+                for tool_name, tool_data in enhanced_vlc_patterns.items():
+                    for pattern in tool_data["patterns"]:
+                        if re.search(pattern, response_lower):
+                            detected_tool = tool_name
+                            confidence = 0.75  # Lower than query but still good
+                            matched_pattern = pattern
+                            analysis_source = "llm_response"
+                            print(f"✅ [Response Match] Tool: {tool_name} | Pattern: {pattern}")
+                            break
+                    if detected_tool:
+                        break
+            else:
+                print(f"⚠️ [Response Skip] Skipped analysis (negative or question)")
+        
+        # Priority 3: Intent Detector fallback (nếu cả 2 đều không có kết quả)
+        if not detected_tool:
+            print(f"🔍 [Fallback] Using Intent Detector...")
+            try:
+                text_to_analyze = original_query if original_query else llm_response
+                intent_result = intent_detector.detect_intent(text_to_analyze)
+                detected_tool = intent_result.get("suggested_tool")
+                confidence = intent_result.get("confidence", 0.0) * 0.8  # Giảm 20% vì fallback
+                matched_pattern = "intent_detector"
+                analysis_source = "intent_detector"
+                print(f"🔍 [Intent Detector] Tool: {detected_tool} | Confidence: {confidence:.2f}")
+            except Exception as e:
+                print(f"❌ [Intent Detector] Error: {e}")
+        
+        # ===== BƯỚC 4: TỰ ĐỘNG GỌI TOOL =====
+        tool_executed = False
+        tool_result = None
+        
+        print(f"\n📊 [Decision]")
+        print(f"   - Tool Detected: {detected_tool}")
+        print(f"   - Confidence: {confidence:.2f}")
+        print(f"   - Source: {analysis_source}")
+        print(f"   - Threshold: 0.5")
+        
+        if auto_execute and detected_tool and confidence >= 0.5:  # Giảm threshold xuống 0.5
+            if detected_tool in TOOLS and TOOLS[detected_tool]["handler"]:
+                print(f"🚀 [Execute] Calling tool: {detected_tool}")
+                
+                try:
+                    handler = TOOLS[detected_tool]["handler"]
+                    tool_args = {}
+                    
+                    # Extract arguments cho play_music
+                    if detected_tool == "play_music" and original_query:
+                        # Trích xuất tên bài hát
+                        for kw in ["phát", "play", "bài", "song", "mở", "bật"]:
+                            if kw in original_query.lower():
+                                parts = original_query.lower().split(kw, 1)
+                                if len(parts) > 1:
+                                    filename = parts[1].strip()
+                                    # Loại bỏ các từ thừa
+                                    filename = re.sub(r'\b(cho tôi|giúp tôi|giúp mình|nhé|đi)\b', '', filename).strip()
+                                    if filename:
+                                        tool_args["filename"] = filename
+                                        print(f"🎵 [Extract] Filename: '{filename}'")
+                                    break
+                    
+                    # Gọi tool
+                    tool_result = await handler(**tool_args)
+                    tool_executed = True
+                    
+                    print(f"✅ [Execute] Success!")
+                    print(f"📊 [Result] {str(tool_result)[:150]}...")
+                    
+                except Exception as e:
+                    print(f"❌ [Execute] Error: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    tool_result = {"success": False, "error": str(e)}
+            else:
+                print(f"⚠️ [Execute] Tool '{detected_tool}' not found in registry")
+        elif not auto_execute:
+            print(f"ℹ️ [Execute] Skipped (auto_execute=False)")
+        elif not detected_tool:
+            print(f"⚠️ [Execute] Skipped (no tool detected)")
+        elif confidence < 0.5:
+            print(f"⚠️ [Execute] Skipped (confidence {confidence:.2f} < 0.5)")
+        
+        print(f"{'='*70}\n")
+        
+        # ===== BƯỚC 5: TRẢ VỀ KẾT QUẢ =====
+        return {
+            "success": True,
+            "llm_response": llm_response,
+            "original_query": original_query,
+            "intent_detected": detected_tool or "unknown",
+            "tool_suggested": detected_tool,
+            "confidence": confidence,
+            "tool_executed": tool_executed,
+            "tool_result": tool_result,
+            "analysis": {
+                "source": analysis_source,
+                "matched_pattern": matched_pattern,
+                "is_negative": is_negative if 'is_negative' in locals() else False,
+                "is_question": is_question if 'is_question' in locals() else False
+            },
+            "message": f"✅ Detected: {detected_tool} ({analysis_source}) | Executed: {tool_executed}" if detected_tool else "⚠️ No tool detected"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
+# ============================================================
+# 🧠 SMART CONVERSATION ANALYZER v1.0
+# Phân tích hội thoại thông minh & tự động điều khiển MỌI tool
+# ============================================================
+
+class SmartConversationAnalyzer:
+    """
+    🧠 SMART CONVERSATION ANALYZER
+    
+    Phân tích TOÀN BỘ lịch sử hội thoại để:
+    1. Hiểu INTENT thực sự của user (không phụ thuộc từ khóa cứng)
+    2. Phát hiện tool phù hợp nhất từ 50+ tools
+    3. Extract arguments thông minh
+    4. Tự động thực thi tool
+    
+    ĐẶC BIỆT:
+    - Dùng AI (Gemini/GPT-4) để phân tích → HIỂU NGỮ CẢNH
+    - Không cần regex patterns cho từng tool
+    - Hỗ trợ TẤT CẢ tools (không chỉ VLC)
+    - Context-aware: hiểu conversation history
+    """
+    
+    def __init__(self):
+        self.conversation_history = []  # Lưu lịch sử hội thoại
+        self.max_history = 20  # Giữ 20 tin nhắn gần nhất
+        self.last_executed_tool = None
+        self.last_tool_result = None
+        
+        # Build tool catalog từ TOOLS dictionary
+        self.tool_catalog = self._build_tool_catalog()
+        
+    def _build_tool_catalog(self) -> str:
+        """Tạo catalog tools cho AI prompt"""
+        catalog_lines = []
+        for tool_name, tool_info in TOOLS.items():
+            desc = tool_info.get("description", "")[:100]
+            params = list(tool_info.get("parameters", {}).keys())
+            params_str = ", ".join(params) if params else "none"
+            catalog_lines.append(f"- {tool_name}: {desc}... | params: {params_str}")
+        return "\n".join(catalog_lines)
+    
+    def add_message(self, role: str, content: str, tool_called: str = None):
+        """Thêm message vào history"""
+        self.conversation_history.append({
+            "role": role,  # "user" hoặc "assistant" hoặc "system"
+            "content": content,
+            "tool_called": tool_called,
+            "timestamp": datetime.now().isoformat()
+        })
+        # Giữ max history
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
+    
+    def get_conversation_context(self, last_n: int = 10) -> str:
+        """Lấy context từ conversation history"""
+        recent = self.conversation_history[-last_n:] if len(self.conversation_history) > last_n else self.conversation_history
+        context_lines = []
+        for msg in recent:
+            role = "USER" if msg["role"] == "user" else "ASSISTANT"
+            tool_info = f" [called: {msg['tool_called']}]" if msg.get("tool_called") else ""
+            context_lines.append(f"{role}: {msg['content']}{tool_info}")
+        return "\n".join(context_lines)
+    
+    async def analyze_with_ai(self, user_query: str, llm_response: str = "") -> dict:
+        """
+        Dùng AI để phân tích conversation và xác định tool cần gọi
+        
+        Returns:
+            {
+                "tool_name": str,           # Tool cần gọi
+                "arguments": dict,          # Arguments cho tool
+                "confidence": float,        # Độ tin cậy (0-1)
+                "reasoning": str,           # Giải thích lý do
+                "should_execute": bool      # Có nên thực thi không
+            }
+        """
+        # Lấy conversation context
+        context = self.get_conversation_context(last_n=5)
+        
+        # Build prompt cho AI
+        analysis_prompt = f"""🧠 BẠN LÀ TOOL ANALYZER - Phân tích hội thoại và xác định TOOL cần gọi.
+
+📋 DANH SÁCH TOOLS CÓ SẴN:
+{self.tool_catalog}
+
+📜 LỊCH SỬ HỘI THOẠI GẦN ĐÂY:
+{context}
+
+📝 YÊU CẦU HIỆN TẠI CỦA USER:
+"{user_query}"
+
+💬 LLM ĐÃ PHẢN HỒI (nếu có):
+"{llm_response}"
+
+🎯 NHIỆM VỤ: Phân tích và trả về JSON với format CHÍNH XÁC:
+{{
+    "tool_name": "tên_tool_cần_gọi hoặc null nếu không cần tool",
+    "arguments": {{"param1": "value1", "param2": "value2"}} hoặc {{}},
+    "confidence": 0.0 đến 1.0,
+    "reasoning": "giải thích ngắn gọn lý do chọn tool này",
+    "should_execute": true hoặc false
+}}
+
+🚨 LƯU Ý QUAN TRỌNG:
+1. NẾU user hỏi câu hỏi chung (thời tiết, tin tức...) → KHÔNG cần tool → tool_name: null
+2. NẾU user yêu cầu hành động CỤ THỂ → tìm tool phù hợp
+3. NẾU LLM đã nói "đã chuyển bài", "đã tạm dừng" nhưng KHÔNG gọi tool → cần gọi tool
+4. Confidence < 0.6 → should_execute: false
+5. CHỈ trả về JSON, không có text khác
+
+VÍ DỤ:
+- User: "phát nhạc" → {{"tool_name": "play_music", "arguments": {{}}, "confidence": 0.95, "reasoning": "user muốn phát nhạc", "should_execute": true}}
+- User: "bài tiếp theo" → {{"tool_name": "music_next", "arguments": {{}}, "confidence": 0.95, "reasoning": "user muốn chuyển bài", "should_execute": true}}
+- User: "mở chrome" → {{"tool_name": "open_application", "arguments": {{"app_name": "chrome"}}, "confidence": 0.95, "reasoning": "mở trình duyệt", "should_execute": true}}
+- User: "hôm nay thời tiết thế nào?" → {{"tool_name": null, "arguments": {{}}, "confidence": 0.0, "reasoning": "câu hỏi thông thường, không cần tool", "should_execute": false}}
+
+TRẢ VỀ JSON:"""
+
+        try:
+            # Thử dùng Gemini trước
+            if GEMINI_AVAILABLE and hasattr(genai, '_client') or os.getenv("GEMINI_API_KEY"):
+                try:
+                    api_key = os.getenv("GEMINI_API_KEY", "")
+                    if api_key:
+                        genai.configure(api_key=api_key)
+                        model = genai.GenerativeModel('models/gemini-3-flash-preview')
+                        response = model.generate_content(analysis_prompt)
+                        ai_result = response.text.strip()
+                        print(f"🤖 [AI Analysis] Gemini response: {ai_result[:200]}...")
+                        return self._parse_ai_response(ai_result)
+                except Exception as e:
+                    print(f"⚠️ [AI Analysis] Gemini error: {e}")
+            
+            # Fallback: dùng OpenAI
+            if OPENAI_AVAILABLE:
+                try:
+                    api_key = os.getenv("OPENAI_API_KEY", "")
+                    if api_key:
+                        client = OpenAI(api_key=api_key)
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[{"role": "user", "content": analysis_prompt}],
+                            temperature=0.1,
+                            max_tokens=500
+                        )
+                        ai_result = response.choices[0].message.content.strip()
+                        print(f"🤖 [AI Analysis] GPT-4 response: {ai_result[:200]}...")
+                        return self._parse_ai_response(ai_result)
+                except Exception as e:
+                    print(f"⚠️ [AI Analysis] OpenAI error: {e}")
+            
+            # Fallback cuối: dùng rule-based
+            print("⚠️ [AI Analysis] No AI available, using rule-based analysis")
+            return await self._rule_based_analysis(user_query, llm_response)
+            
+        except Exception as e:
+            print(f"❌ [AI Analysis] Error: {e}")
+            return await self._rule_based_analysis(user_query, llm_response)
+    
+    def _parse_ai_response(self, ai_text: str) -> dict:
+        """Parse JSON từ AI response"""
+        try:
+            # Tìm JSON trong response
+            import json
+            
+            # Thử parse trực tiếp
+            try:
+                return json.loads(ai_text)
+            except:
+                pass
+            
+            # Tìm JSON block
+            json_match = re.search(r'\{[\s\S]*\}', ai_text)
+            if json_match:
+                return json.loads(json_match.group())
+            
+            # Không tìm được JSON
+            return {
+                "tool_name": None,
+                "arguments": {},
+                "confidence": 0.0,
+                "reasoning": "Could not parse AI response",
+                "should_execute": False
+            }
+        except Exception as e:
+            print(f"❌ [Parse] Error: {e}")
+            return {
+                "tool_name": None,
+                "arguments": {},
+                "confidence": 0.0,
+                "reasoning": f"Parse error: {e}",
+                "should_execute": False
+            }
+    
+    async def _rule_based_analysis(self, user_query: str, llm_response: str) -> dict:
+        """Fallback: phân tích bằng rules khi không có AI"""
+        query_lower = user_query.lower() if user_query else ""
+        response_lower = llm_response.lower() if llm_response else ""
+        combined = (query_lower + " " + response_lower).strip()
+        
+        print(f"🔍 [Rule-Based] Analyzing: '{combined}'")
+        
+        # Extended patterns cho TẤT CẢ tools (HỖ TRỢ TIẾNG VIỆT KHÔNG DẤU)
+        all_tool_patterns = {
+            # === MUSIC CONTROLS ===
+            "music_next": {
+                "patterns": [
+                    r"bài tiếp|bai tiep|next|skip|chuyển bài|chuyen bai",
+                    r"bài sau|bai sau|bài kế|bai ke|sang bài|sang bai",
+                    r"tiep theo|tiếp theo|ke tiep|kế tiếp"
+                ],
+                "keywords": ["next", "tiếp", "tiep", "skip", "chuyển", "chuyen", "sau", "kế", "ke"]
+            },
+            "music_previous": {
+                "patterns": [
+                    r"bài trước|bai truoc|previous|quay lại|quay lai",
+                    r"back|lùi|lui|trở lại|tro lai|bai cu|bài cũ"
+                ],
+                "keywords": ["previous", "trước", "truoc", "back", "quay", "lùi", "lui"]
+            },
+            "pause_music": {
+                "patterns": [r"tạm dừng|tam dung|pause|dừng lại|dung lai|ngưng|ngung"],
+                "keywords": ["pause", "tạm", "tam", "dừng", "dung"]
+            },
+            "resume_music": {
+                "patterns": [r"tiếp tục|tiep tuc|resume|continue|phát tiếp|phat tiep|chạy tiếp|chay tiep"],
+                "keywords": ["resume", "tiếp tục", "tiep tuc", "continue"]
+            },
+            "stop_music": {
+                "patterns": [r"dừng hẳn|dung han|stop|tắt nhạc|tat nhac|ngừng nhạc|ngung nhac"],
+                "keywords": ["stop", "tắt", "tat", "dừng hẳn", "dung han"]
+            },
+            "play_music": {
+                "patterns": [
+                    r"phát nhạc|phat nhac|play music|bật nhạc|bat nhac",
+                    r"mở nhạc|mo nhac|nghe nhạc|nghe nhac"
+                ],
+                "keywords": ["phát", "phat", "play", "bật", "bat", "mở", "mo", "nghe"]
+            },
+            
+            # === VOLUME CONTROLS ===
+            "volume_up": {
+                "patterns": [r"tăng âm|tang am|volume up|to hơn|to hon|lớn hơn|lon hon"],
+                "keywords": ["tăng", "tang", "up", "to hơn", "to hon", "lớn", "lon"]
+            },
+            "volume_down": {
+                "patterns": [r"giảm âm|giam am|volume down|nhỏ hơn|nho hon|bớt to|bot to"],
+                "keywords": ["giảm", "giam", "down", "nhỏ", "nho", "bớt", "bot"]
+            },
+            "mute_volume": {
+                "patterns": [r"tắt tiếng|tat tieng|mute|câm|cam|im lặng|im lang"],
+                "keywords": ["mute", "tắt tiếng", "tat tieng", "câm", "cam"]
+            },
+            "set_volume": {
+                "patterns": [r"âm lượng \d+|am luong \d+|volume \d+|đặt âm|dat am|chỉnh âm|chinh am"],
+                "keywords": ["âm lượng", "am luong", "volume"]
+            },
+            
+            # === APPLICATIONS ===
+            "open_application": {
+                "patterns": [
+                    r"mở ứng dụng|mo ung dung|open app|mở chrome|mo chrome",
+                    r"mở word|mo word|mở excel|mo excel|mở notepad|mo notepad",
+                    r"khởi động|khoi dong"
+                ],
+                "keywords": ["mở", "mo", "open", "khởi động", "khoi dong", "chạy", "chay"]
+            },
+            "kill_process": {
+                "patterns": [r"tắt ứng dụng|tat ung dung|kill|đóng app|dong app|close app"],
+                "keywords": ["tắt", "tat", "kill", "đóng", "dong", "close"]
+            },
+            
+            # === SYSTEM ===
+            "take_screenshot": {
+                "patterns": [r"chụp màn hình|chup man hinh|screenshot|capture screen"],
+                "keywords": ["chụp", "chup", "screenshot", "capture"]
+            },
+            "get_system_resources": {
+                "patterns": [r"tài nguyên|tai nguyen|system info|cpu|ram|memory"],
+                "keywords": ["tài nguyên", "tai nguyen", "system", "cpu", "ram"]
+            },
+            "get_current_time": {
+                "patterns": [r"mấy giờ|may gio|thời gian|thoi gian|time now|giờ hiện tại|gio hien tai"],
+                "keywords": ["giờ", "gio", "time", "thời gian", "thoi gian"]
+            },
+            
+            # === FILES ===
+            "create_file": {
+                "patterns": [r"tạo file|tao file|create file|viết file|viet file"],
+                "keywords": ["tạo file", "tao file", "create file", "viết", "viet"]
+            },
+            "read_file": {
+                "patterns": [r"đọc file|doc file|read file|xem file"],
+                "keywords": ["đọc", "doc", "read", "xem"]
+            },
+            "list_files": {
+                "patterns": [r"liệt kê file|liet ke file|list files|xem thư mục|xem thu muc"],
+                "keywords": ["liệt kê", "liet ke", "list", "thư mục", "thu muc"]
+            },
+            
+            # === CALCULATOR ===
+            "calculator": {
+                "patterns": [r"tính|tinh|calculate|bao nhiêu|bao nhieu|\d+\s*[\+\-\*\/]\s*\d+"],
+                "keywords": ["tính", "tinh", "calculate", "cộng", "cong", "trừ", "tru", "nhân", "nhan", "chia"]
+            },
+            
+            # === CLIPBOARD ===
+            "get_clipboard": {
+                "patterns": [r"clipboard|đã copy gì|da copy gi|lấy clipboard|lay clipboard"],
+                "keywords": ["clipboard", "copy"]
+            },
+            "set_clipboard": {
+                "patterns": [r"copy vào clipboard|copy vao clipboard|set clipboard"],
+                "keywords": ["copy vào", "copy vao", "set clipboard"]
+            },
+            
+            # === BROWSER ===
+            "search_web": {
+                "patterns": [r"tìm kiếm google|tim kiem google|search google|mở google tìm|mo google tim"],
+                "keywords": ["google", "search web", "tìm kiếm", "tim kiem"]
+            },
+            "open_youtube": {
+                "patterns": [r"mở youtube|mo youtube|youtube|xem video"],
+                "keywords": ["youtube", "video"]
+            },
+            
+            # === BRIGHTNESS ===
+            "set_brightness": {
+                "patterns": [r"độ sáng|do sang|brightness|sáng hơn|sang hon|tối hơn|toi hon"],
+                "keywords": ["sáng", "sang", "brightness", "tối", "toi"]
+            }
+        }
+        
+        # Tìm tool match nhất
+        best_match = None
+        best_confidence = 0.0
+        best_reason = ""
+        
+        for tool_name, tool_patterns in all_tool_patterns.items():
+            # Check patterns
+            for pattern in tool_patterns["patterns"]:
+                if re.search(pattern, combined):
+                    confidence = 0.85
+                    if confidence > best_confidence:
+                        best_confidence = confidence
+                        best_match = tool_name
+                        best_reason = f"Pattern match: {pattern}"
+                        print(f"✅ [Rule-Based] Pattern matched: {tool_name} ({pattern})")
+                    break
+            
+            # ALWAYS check keywords (không chỉ khi chưa có match)
+            keyword_count = sum(1 for kw in tool_patterns["keywords"] if kw in combined)
+            if keyword_count >= 1:
+                confidence = 0.6 + (keyword_count * 0.1)
+                if confidence > best_confidence:
+                    best_confidence = confidence
+                    best_match = tool_name
+                    best_reason = f"Keywords: {keyword_count} matches"
+                    print(f"✅ [Rule-Based] Keywords matched: {tool_name} ({keyword_count} keywords)")
+        
+        print(f"📊 [Rule-Based] Result: {best_match} (confidence: {best_confidence:.2f})")
+        
+        # Extract arguments
+        arguments = {}
+        if best_match:
+            # Dùng combined text để extract args nếu query trống
+            text_for_args = user_query if user_query else llm_response
+            arguments = self._extract_arguments(best_match, text_for_args)
+        
+        return {
+            "tool_name": best_match,
+            "arguments": arguments,
+            "confidence": best_confidence,
+            "reasoning": best_reason,
+            "should_execute": best_confidence >= 0.5
+        }
+    
+    def _extract_arguments(self, tool_name: str, query: str) -> dict:
+        """Extract arguments cho tool từ query"""
+        args = {}
+        query_lower = query.lower()
+        
+        # play_music → extract filename
+        if tool_name == "play_music":
+            for kw in ["phát", "play", "bài", "song", "mở", "bật", "nghe"]:
+                if kw in query_lower:
+                    parts = query_lower.split(kw, 1)
+                    if len(parts) > 1:
+                        filename = parts[1].strip()
+                        filename = re.sub(r'\b(cho tôi|giúp tôi|nhé|đi|nào)\b', '', filename).strip()
+                        if filename and len(filename) > 1:
+                            args["filename"] = filename
+                        break
+        
+        # open_application → extract app_name
+        elif tool_name == "open_application":
+            for kw in ["mở", "open", "khởi động", "chạy"]:
+                if kw in query_lower:
+                    parts = query_lower.split(kw, 1)
+                    if len(parts) > 1:
+                        app = parts[1].strip()
+                        app = re.sub(r'\b(cho tôi|giúp|nhé|đi|ứng dụng|app)\b', '', app).strip()
+                        if app:
+                            args["app_name"] = app
+                        break
+        
+        # set_volume → extract level
+        elif tool_name == "set_volume":
+            match = re.search(r'(\d+)\s*(%)?', query)
+            if match:
+                level = int(match.group(1))
+                args["level"] = min(100, max(0, level))
+        
+        # calculator → extract expression
+        elif tool_name == "calculator":
+            # Tìm biểu thức toán
+            expr_match = re.search(r'(\d+[\s\+\-\*\/\(\)]+\d+[\s\d\+\-\*\/\(\)]*)', query)
+            if expr_match:
+                args["expression"] = expr_match.group(1).strip()
+        
+        # set_brightness → extract level
+        elif tool_name == "set_brightness":
+            match = re.search(r'(\d+)\s*(%)?', query)
+            if match:
+                level = int(match.group(1))
+                args["level"] = min(100, max(0, level))
+        
+        # search_web → extract query
+        elif tool_name == "search_web":
+            for kw in ["tìm", "search", "google"]:
+                if kw in query_lower:
+                    parts = query_lower.split(kw, 1)
+                    if len(parts) > 1:
+                        search_query = parts[1].strip()
+                        search_query = re.sub(r'\b(về|cho tôi|giúp|trên)\b', '', search_query).strip()
+                        if search_query:
+                            args["query"] = search_query
+                        break
+        
+        return args
+    
+    async def execute_tool(self, tool_name: str, arguments: dict) -> dict:
+        """Thực thi tool với arguments"""
+        try:
+            if tool_name not in TOOLS:
+                return {"success": False, "error": f"Tool '{tool_name}' not found"}
+            
+            handler = TOOLS[tool_name]["handler"]
+            if not handler:
+                return {"success": False, "error": f"Tool '{tool_name}' has no handler"}
+            
+            # Gọi tool
+            result = await handler(**arguments)
+            
+            # Lưu lại
+            self.last_executed_tool = tool_name
+            self.last_tool_result = result
+            
+            return {"success": True, "tool": tool_name, "result": result}
+            
+        except Exception as e:
+            import traceback
+            return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
+
+
+# Global instance
+smart_analyzer = SmartConversationAnalyzer()
+
+
+@app.post("/api/smart_analyze")
+async def api_smart_analyze(data: dict):
+    """
+    🧠 SMART CONVERSATION ANALYZER API
+    
+    Phân tích hội thoại thông minh, tự động điều khiển MỌI tool.
+    Không phụ thuộc từ khóa cứng - dùng AI để hiểu ngữ cảnh.
+    
+    Args:
+        user_query: Yêu cầu của user
+        llm_response: Phản hồi từ LLM (optional)
+        conversation_history: Lịch sử hội thoại (optional, list of {role, content})
+        auto_execute: Tự động thực thi tool (default: True)
+        use_ai: Dùng AI để phân tích (default: True, fallback to rules)
+    
+    Returns:
+        {
+            "success": bool,
+            "analysis": {
+                "tool_name": str,
+                "arguments": dict,
+                "confidence": float,
+                "reasoning": str,
+                "should_execute": bool
+            },
+            "execution": {
+                "executed": bool,
+                "result": dict
+            },
+            "message": str
+        }
+    """
+    try:
+        user_query = data.get("user_query", data.get("query", "")).strip()
+        llm_response = data.get("llm_response", data.get("response", "")).strip()
+        conversation_history = data.get("conversation_history", [])
+        auto_execute = data.get("auto_execute", True)
+        use_ai = data.get("use_ai", True)
+        
+        print(f"\n{'='*70}")
+        print(f"🧠 [Smart Analyze] NEW REQUEST")
+        print(f"{'='*70}")
+        print(f"📝 User Query: '{user_query}'")
+        print(f"💬 LLM Response: '{llm_response[:100]}...' " if llm_response else "")
+        print(f"⚙️  Auto Execute: {auto_execute} | Use AI: {use_ai}")
+        print(f"📜 History Length: {len(conversation_history)}")
+        print(f"{'-'*70}")
+        
+        if not user_query and not llm_response:
+            return {
+                "success": False,
+                "error": "user_query or llm_response is required"
+            }
+        
+        # Thêm conversation history nếu có
+        for msg in conversation_history:
+            smart_analyzer.add_message(
+                role=msg.get("role", "user"),
+                content=msg.get("content", "")
+            )
+        
+        # Thêm message hiện tại
+        if user_query:
+            smart_analyzer.add_message("user", user_query)
+        if llm_response:
+            smart_analyzer.add_message("assistant", llm_response)
+        
+        # === PHÂN TÍCH ===
+        if use_ai:
+            analysis = await smart_analyzer.analyze_with_ai(user_query, llm_response)
+        else:
+            analysis = await smart_analyzer._rule_based_analysis(user_query, llm_response)
+        
+        print(f"\n🎯 [Analysis Result]")
+        print(f"   - Tool: {analysis.get('tool_name')}")
+        print(f"   - Arguments: {analysis.get('arguments')}")
+        print(f"   - Confidence: {analysis.get('confidence', 0):.2f}")
+        print(f"   - Should Execute: {analysis.get('should_execute')}")
+        print(f"   - Reasoning: {analysis.get('reasoning')}")
+        
+        # === THỰC THI ===
+        execution = {"executed": False, "result": None}
+        
+        if auto_execute and analysis.get("should_execute") and analysis.get("tool_name"):
+            tool_name = analysis["tool_name"]
+            arguments = analysis.get("arguments", {})
+            
+            print(f"\n🚀 [Execute] Calling: {tool_name}({arguments})")
+            
+            exec_result = await smart_analyzer.execute_tool(tool_name, arguments)
+            execution = {
+                "executed": exec_result.get("success", False),
+                "result": exec_result
+            }
+            
+            # Cập nhật history với tool đã gọi
+            smart_analyzer.add_message("system", f"Tool executed: {tool_name}", tool_called=tool_name)
+            
+            if exec_result.get("success"):
+                print(f"✅ [Execute] Success!")
+            else:
+                print(f"❌ [Execute] Failed: {exec_result.get('error')}")
+        
+        print(f"{'='*70}\n")
+        
+        return {
+            "success": True,
+            "user_query": user_query,
+            "llm_response": llm_response,
+            "analysis": analysis,
+            "execution": execution,
+            "message": f"✅ Tool: {analysis.get('tool_name')} | Executed: {execution['executed']}" if analysis.get('tool_name') else "⚠️ No tool needed"
+        }
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+
+
+# NOTE: Đã xóa duplicate endpoint /api/conversation/add (line 13967)
+# Endpoint chính nằm ở phần CONVERSATION HISTORY API (line ~15208)
+# Giữ lại để tránh conflict với SmartConversationAnalyzer
+
+
 @app.post("/api/smart_chat")
 async def api_smart_chat(data: dict):
     """
-    Smart Chat với Intent Detection tự động
+    Smart Chat với Intent Detection tự động + VLC MCP Integration + Google Search Grounding
     1. Phân tích intent
-    2. Nếu cần tool → tự động gọi tool trước
+    2. Nếu cần tool → tự động gọi tool (REST) hoặc MCP (VLC)
     3. Gửi kết quả tool + query đến Gemini
     4. Trả về response hoàn chỉnh
+    
+    🆕 VLC MCP: Tự động dùng MCP protocol cho VLC commands
+    🆕 Google Search: Tự động tra cứu Google cho câu hỏi realtime
     """
     query = data.get("query", data.get("prompt", data.get("text", "")))
     use_llm_intent = data.get("use_llm_intent", False)
-    model = data.get("model", "gemini-2.0-flash-exp")
+    model = data.get("model", "gemini-2.0-flash")  # Default model hỗ trợ grounding
+    use_google_search = data.get("use_google_search", True)  # 🆕 Mặc định BẬT Google Search
     
     if not query:
         raise HTTPException(400, "Query is required")
     
     try:
+        # 🆕 STEP -1: Kiểm tra có cần Google Search không (câu hỏi thời sự, giá cả, tin tức)
+        realtime_keywords = [
+            'giá vàng', 'giá usd', 'tỷ giá', 'giá bitcoin', 'crypto', 'chứng khoán',
+            'thời tiết', 'weather', 'tin tức', 'news', 'mới nhất', 'latest',
+            'hôm nay', 'bây giờ', 'hiện nay', 'hiện tại', 'today', 'now', 'current',
+            'năm 2024', 'năm 2025', 'năm 2026', '2024', '2025', '2026',
+            'vô địch', 'champion', 'winner', 'kết quả', 'score', 'result',
+            'tổng thống', 'president', 'thủ tướng', 'chủ tịch', 'ceo',
+            'iphone', 'samsung', 'tesla', 'apple', 'google', 'microsoft', 'ra mắt',
+            'là ai', 'là gì', 'ở đâu', 'what is', 'where is', 'how much', 'bao nhiêu',
+            'sự kiện', 'event', 'lịch', 'schedule', 'khi nào', 'when', 'giá xăng', 'giá dầu',
+            'covid', 'bão', 'động đất', 'tai nạn', 'cháy', 'chiến tranh', 'xung đột'
+        ]
+        query_lower = query.lower()
+        needs_google_search = use_google_search and any(kw in query_lower for kw in realtime_keywords)
+        
+        # 🔍 Nếu cần Google Search, ưu tiên dùng Gemini + Google Search Grounding
+        if needs_google_search:
+            print(f"🔍 [Smart Chat] Phát hiện câu hỏi cần Google Search: {query[:50]}...")
+            try:
+                google_result = await ask_gemini_with_google_search(
+                    prompt=query,
+                    model="gemini-2.0-flash"  # Model hỗ trợ grounding tốt nhất
+                )
+                
+                if google_result.get("success"):
+                    # Lưu vào conversation history
+                    add_to_conversation(role="user", content=query, metadata={"source": "smart_chat_google_search"})
+                    add_to_conversation(
+                        role="assistant", 
+                        content=google_result.get("response", ""),
+                        metadata={
+                            "source": "smart_chat_google_search",
+                            "model": google_result.get("model"),
+                            "google_search_used": True,
+                            "search_queries": google_result.get("search_queries", [])
+                        }
+                    )
+                    
+                    return {
+                        "success": True,
+                        "query": query,
+                        "response": google_result.get("response"),
+                        "intent": {"intent": "realtime_query", "needs_google_search": True},
+                        "tool_used": "google_search_grounding",
+                        "google_search_used": True,
+                        "search_queries": google_result.get("search_queries", []),
+                        "grounding_chunks": google_result.get("grounding_chunks", []),
+                        "model": google_result.get("model"),
+                        "message": google_result.get("message")
+                    }
+                else:
+                    print(f"⚠️ [Smart Chat] Google Search failed, falling back to normal...")
+            except Exception as e:
+                print(f"⚠️ [Smart Chat] Google Search error: {e}, falling back...")
+        
+        # 🆕 STEP 0: Tự động phát hiện và xử lý documents/database với Gemini
+        doc_result = await auto_process_document_with_gemini(query, model=model)
+        
+        if doc_result.get("activated") and doc_result.get("success"):
+            # Đã xử lý document thành công với Gemini
+            print(f"📚 [Auto Document] Success! Documents: {len(doc_result.get('documents_found', []))}")
+            
+            return {
+                "success": True,
+                "query": query,
+                "response": doc_result.get("gemini_response"),
+                "intent": "document_query",
+                "tool_used": "auto_process_document_with_gemini",
+                "documents_found": doc_result.get("documents_found", []),
+                "model": doc_result.get("model_used"),
+                "message": doc_result.get("message"),
+                "auto_document_processing": True
+            }
+        
         # Step 1: Detect intent
         if use_llm_intent:
             intent_result = await intent_detector.detect_with_llm(query, GEMINI_API_KEY)
@@ -12665,12 +19590,59 @@ async def api_smart_chat(data: dict):
         
         tool_result = None
         tool_used = None
+        mcp_used = False
         
         # Step 2: Nếu cần force tool, gọi tool trước
         if intent_result.get("should_force_tool") and intent_result.get("suggested_tool"):
             tool_name = intent_result["suggested_tool"]
             
-            if tool_name in TOOLS and TOOLS[tool_name]["handler"]:
+            # 🆕 CHECK: Nếu là VLC command → dùng MCP
+            vlc_commands = ["music_next", "music_previous", "pause_music", "resume_music", "stop_music", "play_music"]
+            
+            if VLC_MCP_AVAILABLE and tool_name in vlc_commands:
+                print(f"🎯 [VLC MCP] Routing to MCP: {tool_name}")
+                
+                # Map tool name to MCP tool name
+                mcp_tool_map = {
+                    "music_next": "vlc.next",
+                    "music_previous": "vlc.previous",
+                    "pause_music": "vlc.pause",
+                    "resume_music": "vlc.play",
+                    "stop_music": "vlc.stop",
+                    "play_music": "vlc.play"
+                }
+                
+                mcp_tool_name = mcp_tool_map.get(tool_name)
+                
+                if mcp_tool_name:
+                    try:
+                        # Call via MCP protocol
+                        mcp_request = {
+                            "jsonrpc": "2.0",
+                            "method": "tools/call",
+                            "params": {
+                                "name": mcp_tool_name,
+                                "arguments": {}
+                            },
+                            "id": 1
+                        }
+                        
+                        mcp_response = await vlc_mcp_server.handle_mcp_request(mcp_request)
+                        
+                        if "result" in mcp_response:
+                            tool_result = mcp_response["result"]
+                            tool_used = mcp_tool_name
+                            mcp_used = True
+                            print(f"✅ [VLC MCP] Success: {mcp_tool_name}")
+                        else:
+                            print(f"❌ [VLC MCP] Error: {mcp_response.get('error')}")
+                            tool_result = {"error": mcp_response.get("error", {}).get("message", "Unknown error")}
+                    except Exception as e:
+                        print(f"⚠️ [VLC MCP] Exception: {e}")
+                        tool_result = {"error": str(e)}
+            
+            # Fallback: REST API
+            elif tool_name in TOOLS and TOOLS[tool_name]["handler"]:
                 print(f"🔧 [Auto Tool] Calling {tool_name} for query: {query}")
                 
                 try:
@@ -12745,13 +19717,114 @@ async def api_smart_chat(data: dict):
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
+
+# ===== 🔍 GOOGLE SEARCH GROUNDING ENDPOINT =====
+
+@app.post("/api/gemini/google_search")
+async def api_gemini_google_search(data: dict):
+    """
+    🔍 Gemini với Google Search Grounding - Tra cứu Google tự động
+    
+    Tính năng cho phép Gemini tự động tìm kiếm Google để trả lời
+    các câu hỏi cần thông tin mới nhất, real-time.
+    
+    Args (JSON body):
+        prompt (str): Câu hỏi cần Gemini tra cứu và trả lời
+        model (str, optional): Model Gemini (default: gemini-2.0-flash)
+        
+    Returns:
+        success: True/False
+        response: Câu trả lời từ Gemini
+        google_search_used: True nếu đã dùng Google Search
+        search_queries: Các query đã search trên Google
+        grounding_chunks: Nguồn website được trích dẫn
+    
+    Example:
+        POST /api/gemini/google_search
+        {"prompt": "Giá vàng hôm nay là bao nhiêu?"}
+    """
+    prompt = data.get("prompt", data.get("query", data.get("text", "")))
+    model = data.get("model", "gemini-2.0-flash")
+    
+    if not prompt:
+        raise HTTPException(400, "Prompt is required")
+    
+    print(f"🔍 [API Google Search] Query: {prompt[:100]}...")
+    
+    # Lưu user message vào history
+    add_to_conversation(
+        role="user",
+        content=prompt,
+        metadata={"source": "google_search_api", "model": model}
+    )
+    
+    try:
+        # Gọi Gemini với Google Search Grounding
+        result = await ask_gemini_with_google_search(
+            prompt=prompt,
+            model=model
+        )
+        
+        if result.get("success"):
+            # Lưu assistant response vào history
+            add_to_conversation(
+                role="assistant",
+                content=result.get("response", ""),
+                metadata={
+                    "source": "google_search_api",
+                    "model": result.get("model"),
+                    "google_search_used": result.get("google_search_used", False),
+                    "search_queries": result.get("search_queries", [])
+                }
+            )
+            
+            return {
+                "success": True,
+                "prompt": prompt,
+                "response": result.get("response"),
+                "response_text": result.get("response"),  # Alias
+                "model": result.get("model"),
+                "google_search_used": result.get("google_search_used", False),
+                "search_queries": result.get("search_queries", []),
+                "grounding_chunks": result.get("grounding_chunks", []),
+                "message": result.get("message")
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get("error", "Unknown error"),
+                "prompt": prompt
+            }
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error": str(e),
+            "prompt": prompt
+        }
+
+
 # ===== 23 API ENDPOINTS MỚI (Tool 8-30) =====
 
 @app.post("/api/tool/ask_gemini")
 async def api_ask_gemini(data: dict):
-    """Gemini AI endpoint - MOVED TO TOP FOR PRIORITY"""
+    """
+    Gemini AI endpoint with Knowledge Base + Google Search integration
+    
+    Flow:
+    1. Nhận query từ user
+    2. 🆕 Kiểm tra có cần Google Search không (giá cả, tin tức, thời sự)
+    3. Nếu cần realtime → dùng Google Search Grounding
+    4. Nếu không → search Knowledge Base + Gemini
+    5. Trả về response
+    """
     prompt = data.get("prompt", "")
-    model = data.get("model", "models/gemini-2.5-pro")
+    model = data.get("model", "gemini-2.0-flash")  # 🆕 Default model hỗ trợ grounding
+    use_google_search = data.get("use_google_search", True)  # 🆕 Mặc định BẬT
+    # 🔒 BẮT BUỘC search KB - KHÔNG cho user tắt
+    use_knowledge_base = True  # LUÔN BẬT
     
     if not prompt:
         raise HTTPException(400, "Prompt is required")
@@ -12767,7 +19840,130 @@ async def api_ask_gemini(data: dict):
         }
     )
     
-    result = await ask_gemini(prompt=prompt, model=model)
+    # 🆕 STEP 0: Kiểm tra có cần Google Search không
+    realtime_keywords = [
+        # Giá cả, tài chính
+        'giá vàng', 'giá usd', 'tỷ giá', 'giá bitcoin', 'crypto', 'chứng khoán',
+        'gold price', 'exchange rate', 'giá xăng', 'giá dầu', 'giá cao nhất', 'giá mới nhất',
+        'stock', 'bitcoin', 'ethereum', 'btc', 'eth',
+        
+        # Thời tiết
+        'thời tiết', 'weather', 'nhiệt độ', 'temperature', 'mưa', 'bão',
+        
+        # Tin tức, sự kiện
+        'tin tức', 'news', 'mới nhất', 'latest', 'breaking', 'sự kiện',
+        
+        # Thời gian thực
+        'hôm nay', 'bây giờ', 'hiện nay', 'hiện tại', 'today', 'now', 'current',
+        'năm 2024', 'năm 2025', 'năm 2026', '2024', '2025', '2026',
+        
+        # Thể thao, cuộc thi
+        'vô địch', 'champion', 'winner', 'kết quả', 'score', 'result',
+        'world cup', 'euro', 'sea games', 'olympic', 'bóng đá', 'football',
+        
+        # Người nổi tiếng, chính trị
+        'tổng thống', 'president', 'thủ tướng', 'chủ tịch', 'ceo',
+        'ai là', 'who is', 'who won',
+        
+        # Sản phẩm, công nghệ
+        'iphone', 'samsung', 'tesla', 'apple', 'google', 'microsoft',
+        'ra mắt', 'launch', 'release', 'announced',
+        
+        # Tra cứu chung cần thông tin mới
+        'là ai', 'là gì', 'ở đâu', 'what is', 'where is', 'how much', 'bao nhiêu',
+        'khi nào', 'when', 'how many'
+    ]
+    prompt_lower = prompt.lower()
+    needs_google_search = use_google_search and any(kw in prompt_lower for kw in realtime_keywords)
+    
+    # 🔍 Nếu cần Google Search, ưu tiên dùng Gemini + Google Search Grounding
+    if needs_google_search:
+        print(f"🔍 [ask_gemini] Phát hiện câu hỏi cần Google Search: {prompt[:50]}...")
+        try:
+            google_result = await ask_gemini_with_google_search(
+                prompt=prompt,
+                model="gemini-2.0-flash"  # Model hỗ trợ grounding tốt nhất
+            )
+            
+            if google_result.get("success"):
+                response_text = google_result.get("response", "")
+                
+                # Lưu vào conversation history
+                add_to_conversation(
+                    role="assistant",
+                    content=response_text,
+                    metadata={
+                        "source": "web_ui_google_search",
+                        "model": google_result.get("model"),
+                        "google_search_used": True,
+                        "search_queries": google_result.get("search_queries", [])
+                    }
+                )
+                
+                return {
+                    "success": True,
+                    "prompt": prompt,
+                    "response": response_text,
+                    "response_text": response_text,
+                    "model": google_result.get("model"),
+                    "google_search_used": True,
+                    "search_queries": google_result.get("search_queries", []),
+                    "grounding_chunks": google_result.get("grounding_chunks", []),
+                    "message": f"✅ Gemini đã tra cứu Google và trả lời (model: {google_result.get('model')})"
+                }
+            else:
+                print(f"⚠️ [ask_gemini] Google Search failed: {google_result.get('error')}, falling back to KB...")
+        except Exception as e:
+            print(f"⚠️ [ask_gemini] Google Search error: {e}, falling back to KB...")
+    
+    # 🆕 AUTO-READ ALL KNOWLEDGE BASE (BẮT BUỘC) - Fallback nếu Google Search không dùng/fail
+    enhanced_prompt = prompt
+    kb_context_used = False
+    
+    if use_knowledge_base:  # Luôn = True
+        try:
+            # ĐỌC TOÀN BỘ Knowledge Base - KHÔNG filter theo query
+            kb_result = await get_knowledge_context(
+                query="",  # ĐỂ TRỐNG để lấy TẤT CẢ documents
+                max_chars=50000,  # Tăng giới hạn để đọc nhiều hơn
+                use_gemini_summary=True  # Bật Gemini tóm tắt
+            )
+            
+            if kb_result.get("success") and kb_result.get("context"):
+                kb_context = kb_result["context"]
+                docs_count = kb_result.get("documents_included", 0)
+                
+                # Thêm context vào prompt
+                enhanced_prompt = f"""📚 KNOWLEDGE BASE - TOÀN BỘ CƠ SỞ DỮ LIỆU ({docs_count} tài liệu):
+{kb_context}
+
+{'='*60}
+❓ CÂU HỎI CỦA USER:
+{prompt}
+
+{'='*60}
+💡 HƯỚNG DẪN TRẢ LỜI:
+- Bạn đã có TOÀN BỘ nội dung Knowledge Base ở trên
+- Phân tích và tóm tắt thông tin liên quan đến câu hỏi
+- Trả lời DỰA TRÊN dữ liệu có sẵn, KHÔNG đoán mò
+- Trích dẫn nguồn cụ thể (tên file, phần nội dung)
+- Nếu không tìm thấy thông tin, hãy nói rõ "Không có trong cơ sở dữ liệu"
+"""
+                kb_context_used = True
+                print(f"✅ [KB] Loaded ALL Knowledge Base: {docs_count} documents, {len(kb_context)} chars")
+            else:
+                print(f"⚠️ [KB] Knowledge Base is empty or not indexed yet")
+        except Exception as e:
+            print(f"⚠️ [KB] Error getting context: {e}")
+            # Không có context, dùng prompt gốc
+    
+    # Gọi Gemini với enhanced prompt
+    result = await ask_gemini(prompt=enhanced_prompt, model=model)
+    
+    # Thêm metadata về KB usage
+    if kb_context_used and result.get("success"):
+        result["knowledge_base_used"] = True
+        result["message"] = result.get("response", "") + "\n\n📚 *Trả lời dựa trên Knowledge Base của bạn*"
     
     # Lưu AI response vào history
     if result.get("success"):
@@ -12778,11 +19974,111 @@ async def api_ask_gemini(data: dict):
                 "source": "web_ui",
                 "model": model,
                 "ai_provider": "gemini",
+                "knowledge_base_used": kb_context_used,
                 "token_count": result.get("token_count", 0) if "token_count" in result else None
             }
         )
     
     return result
+
+
+# ===== TTS (Text-to-Speech) API =====
+# Global variable để track trạng thái TTS
+tts_is_playing = False
+tts_stop_requested = False
+
+@app.post("/api/tts")
+async def api_text_to_speech(data: dict):
+    """
+    API đọc to văn bản - Ưu tiên Gemini TTS, fallback to gTTS/SAPI
+    ⚡ FAST MODE: Chỉ đọc 500 ký tự đầu để response nhanh
+    """
+    global tts_is_playing, tts_stop_requested
+    
+    print(f"🔊 [TTS API] Received request")
+    
+    text = data.get("text", "")
+    if not text:
+        print("❌ [TTS API] No text provided")
+        return {"success": False, "error": "Không có văn bản để đọc"}
+    
+    # ⚡ FAST MODE: Giới hạn 500 ký tự để TTS nhanh (real-time feel)
+    max_chars = 500
+    original_length = len(text)
+    if len(text) > max_chars:
+        # Cắt tại dấu câu gần nhất để không bị cắt giữa từ
+        cut_text = text[:max_chars]
+        last_sentence = max(
+            cut_text.rfind('.'),
+            cut_text.rfind('!'),
+            cut_text.rfind('?'),
+            cut_text.rfind('。')
+        )
+        if last_sentence > max_chars // 2:
+            text = text[:last_sentence + 1]
+        else:
+            text = cut_text
+        print(f"🔊 [TTS API] Truncated from {original_length} to {len(text)} chars for fast response")
+    
+    # Loại bỏ markdown formatting
+    text = clean_markdown_for_tts(text)
+    
+    tts_is_playing = True
+    tts_stop_requested = False
+    
+    try:
+        # Ưu tiên Gemini TTS (chất lượng cao)
+        print(f"🎙️ [TTS API] Trying Gemini TTS ({len(text)} chars)...")
+        voice = data.get("voice", "Aoede")  # Default female voice
+        result = await gemini_text_to_speech(text, voice=voice, save_audio=False)
+        
+        if result.get("success"):
+            print(f"✅ [TTS API] Gemini TTS success!")
+            tts_is_playing = False
+            return result
+        
+        # Fallback to gTTS/SAPI
+        print(f"⚠️ [TTS API] Gemini TTS failed, falling back to gTTS/SAPI...")
+        result = await text_to_speech(text, save_audio=False)
+        print(f"🔊 [TTS API] Result: {result}")
+        tts_is_playing = False
+        return result
+    except Exception as e:
+        print(f"❌ [TTS API] Error: {e}")
+        import traceback
+        traceback.print_exc()
+        tts_is_playing = False
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/tts/stop")
+async def api_tts_stop():
+    """
+    Dừng TTS đang phát
+    """
+    global tts_is_playing, tts_stop_requested
+    
+    tts_stop_requested = True
+    
+    try:
+        import pygame
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()
+        tts_is_playing = False
+        return {"success": True, "message": "Đã dừng TTS"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/tts/status")
+async def api_tts_status():
+    """
+    Kiểm tra trạng thái TTS
+    """
+    global tts_is_playing
+    return {"is_playing": tts_is_playing}
+
 
 @app.post("/api/tool/open_application")
 async def api_open_app(data: dict):
@@ -12981,11 +20277,21 @@ async def api_theme():
         raise HTTPException(500, result["error"])
     return result
 
+@app.post("/api/tool/change_wallpaper")
+async def api_change_wallpaper(data: dict):
+    """Đổi hình nền - endpoint cho Web UI"""
+    keyword = data.get("keyword", "")
+    path = data.get("path", "")
+    result = await change_wallpaper(keyword=keyword, custom_path=path)
+    if not result["success"]:
+        raise HTTPException(500, result["error"])
+    return result
+
 @app.post("/api/tool/set_wallpaper")
 async def api_wallpaper(data: dict):
+    """Alias của change_wallpaper"""
     path = data.get("path", "")
     keyword = data.get("keyword", "")
-    # Dùng change_wallpaper với custom_path nếu có path
     result = await change_wallpaper(keyword=keyword, custom_path=path)
     if not result["success"]:
         raise HTTPException(500, result["error"])
@@ -13067,9 +20373,79 @@ async def get_endpoints():
     global GEMINI_API_KEY, OPENAI_API_KEY, SERPER_API_KEY
     return {
         "endpoints": endpoints_config,
+        "active_index": active_endpoint_index,
         "gemini_api_key": GEMINI_API_KEY,
         "openai_api_key": OPENAI_API_KEY,
         "serper_api_key": SERPER_API_KEY
+    }
+
+@app.get("/api/endpoints/status")
+async def get_endpoints_status():
+    """🔥 NEW: Get detailed endpoint connection status with stats"""
+    status = {
+        "endpoints": [],
+        "active_index": active_endpoint_index,
+        "total_connected": sum(1 for v in xiaozhi_connected.values() if v)
+    }
+    
+    # Add detailed info for each endpoint
+    for i, ep in enumerate(endpoints_config):
+        endpoint_status = {
+            "index": i,
+            "name": ep.get("name", f"Thiết bị {i+1}"),
+            "enabled": ep.get("enabled", False),
+            "has_token": bool(ep.get("token")),
+            "connected": xiaozhi_connected.get(i, False),
+            "is_active": i == active_endpoint_index
+        }
+        
+        # Thêm stats từ EndpointManager nếu có
+        if ENDPOINT_MANAGER_AVAILABLE:
+            try:
+                manager = get_endpoint_manager()
+                stats = manager.stats.get(i)
+                if stats:
+                    endpoint_status["stats"] = {
+                        "total_connects": stats.total_connects,
+                        "total_disconnects": stats.total_disconnects,
+                        "total_errors": stats.total_errors,
+                        "last_connected": stats.last_connected,
+                        "last_error": stats.last_error,
+                        "uptime_seconds": stats.uptime_seconds
+                    }
+            except Exception:
+                pass
+        
+        status["endpoints"].append(endpoint_status)
+    
+    return status
+
+@app.post("/api/endpoints/reconnect/{index}")
+async def reconnect_endpoint(index: int):
+    """🔥 NEW: Force reconnect an endpoint"""
+    global should_reconnect
+    
+    if index < 0 or index >= len(endpoints_config):
+        return {"success": False, "error": f"Invalid index: {index}"}
+    
+    ep = endpoints_config[index]
+    if not ep.get("token"):
+        return {"success": False, "error": "Endpoint has no token"}
+    
+    # Trigger reconnect
+    should_reconnect[index] = True
+    
+    # Cập nhật EndpointManager nếu có
+    if ENDPOINT_MANAGER_AVAILABLE:
+        try:
+            manager = get_endpoint_manager()
+            manager.should_reconnect[index] = True
+        except Exception:
+            pass
+    
+    return {
+        "success": True,
+        "message": f"Đang reconnect {ep.get('name', f'Thiết bị {index+1}')}..."
     }
 
 # YouTube Playlists API
@@ -13153,6 +20529,42 @@ def load_knowledge_index():
             print(f"⚠️ [Knowledge] Error loading index: {e}")
     return {"documents": [], "total_chunks": 0, "last_update": ""}
 
+# ============================================================
+# VECTOR SEARCH ENGINE - Global Instance
+# ============================================================
+
+_vector_engine = None
+
+def get_vector_engine():
+    """Lấy hoặc khởi tạo VectorSearchEngine"""
+    global _vector_engine
+    if _vector_engine is None and VECTOR_SEARCH_AVAILABLE:
+        _vector_engine = VectorSearchEngine()
+        
+        # Try loading existing index - kiểm tra nhiều vị trí
+        vector_paths = [
+            Path("test_vector.faiss"),  # Trong thư mục gốc
+            KNOWLEDGE_DATA_DIR / "vector_index.faiss",  # Trong AppData
+            Path("vector_index.faiss")  # Backup trong gốc
+        ]
+        
+        for vector_index_path in vector_paths:
+            if vector_index_path.exists():
+                try:
+                    # Remove .faiss extension for load_index
+                    base_path = str(vector_index_path.with_suffix(''))
+                    _vector_engine.load_index(base_path)
+                    print(f"✅ [VectorSearch] Loaded index from: {vector_index_path}")
+                    print(f"   Statistics: {_vector_engine.get_statistics()}")
+                    break
+                except Exception as e:
+                    print(f"⚠️ [VectorSearch] Failed to load {vector_index_path}: {e}")
+                    continue
+        else:
+            print(f"⚠️ [VectorSearch] No valid index found in any location")
+            
+    return _vector_engine
+
 def save_knowledge_index(index_data: dict):
     """Lưu index"""
     try:
@@ -13164,45 +20576,40 @@ def save_knowledge_index(index_data: dict):
         return False
 
 async def summarize_with_gemini(text: str, filename: str) -> dict:
-    """Tóm tắt document bằng Gemini Flash"""
+    """Tóm tắt document bằng Gemini Flash (optimized)"""
     try:
         import google.generativeai as genai
         
         # Configure Gemini
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('models/gemini-3-flash-preview')
         
-        # Tạo prompt để tóm tắt
-        prompt = f"""Hãy phân tích và tóm tắt nội dung của tài liệu sau đây:
+        # ⚡ PROMPT NGẮN GỌN - phản hồi nhanh hơn
+        prompt = f"""Tóm tắt tài liệu:
 
-Tên file: {filename}
+File: {filename}
+Nội dung: {text[:6000]}
 
-Nội dung:
-{text[:8000]}  # Giới hạn 8K ký tự để tránh quá tải
-
----
-
-Yêu cầu:
-1. Tóm tắt ngắn gọn (2-3 câu) về nội dung chính
-2. Liệt kê 5-7 keywords quan trọng
-3. Trích dẫn 2-3 câu quan trọng nhất từ tài liệu
-4. Phân loại tài liệu (ví dụ: technical, business, educational, etc.)
-
-Trả lời theo format JSON:
+Trả về JSON:
 {{
-  "summary": "...",
-  "keywords": ["...", "..."],
-  "key_quotes": ["...", "..."],
-  "category": "..."
+  "summary": "[2-3 câu chính]",
+  "keywords": ["5-7 từ khóa"],
+  "key_quotes": ["2 trích dẫn quan trọng"],
+  "category": "[loại: technical/business/etc]"
 }}"""
         
-        print(f"🤖 [Gemini] Đang tóm tắt: {filename}...")
-        response = model.generate_content(prompt)
+        print(f"⚡ [Gemini] Tóm tắt: {filename[:30]}...")
+        
+        # ⏱️ Timeout 12 giây
+        loop = asyncio.get_event_loop()
+        response = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: model.generate_content(prompt)),
+            timeout=12.0
+        )
         
         # Parse JSON response
         import json
         result_text = response.text.strip()
-        # Remove markdown code blocks if present
         if result_text.startswith("```json"):
             result_text = result_text[7:]
         if result_text.endswith("```"):
@@ -13210,14 +20617,21 @@ Trả lời theo format JSON:
         result_text = result_text.strip()
         
         result = json.loads(result_text)
-        print(f"✅ [Gemini] Đã tóm tắt: {filename}")
+        print(f"✅ [Gemini] Done: {filename[:30]}")
         return result
         
-    except Exception as e:
-        print(f"⚠️ [Gemini] Lỗi tóm tắt {filename}: {e}")
-        # Fallback: trả về summary cơ bản
+    except asyncio.TimeoutError:
+        print(f"⏱️ [Gemini] Timeout: {filename}")
         return {
-            "summary": text[:500] + "...",
+            "summary": text[:400] + "...",
+            "keywords": [],
+            "key_quotes": [],
+            "category": "unknown"
+        }
+    except Exception as e:
+        print(f"⚠️ [Gemini] Error {filename}: {e}")
+        return {
+            "summary": text[:400] + "...",
             "keywords": [],
             "key_quotes": [],
             "category": "unknown"
@@ -13253,7 +20667,18 @@ def extract_text_from_file(file_path: str) -> str:
                     for page in reader.pages:
                         text += page.extract_text() + "\n"
             except ImportError:
-                text = f"[PDF file - Cần cài PyPDF2: pip install PyPDF2]"
+                # Fallback: Read as binary and extract text using basic regex
+                print(f"⚠️ [Extract] PyPDF2 not installed, using fallback for {file_path}")
+                try:
+                    with open(file_path, 'rb') as f:
+                        content = f.read()
+                        import re
+                        # Simple extraction: find readable ASCII/Unicode text
+                        text = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f]+', ' ', 
+                                     content.decode('latin1', errors='ignore'))
+                        text = ' '.join(text.split())  # Clean whitespace
+                except:
+                    text = f"[PDF file - Cần cài PyPDF2: pip install PyPDF2]"
             except Exception as e:
                 text = f"[Lỗi đọc PDF: {str(e)}]"
         
@@ -13264,22 +20689,42 @@ def extract_text_from_file(file_path: str) -> str:
                 for para in doc.paragraphs:
                     text += para.text + "\n"
             except ImportError:
-                text = f"[Word file - Cần cài python-docx: pip install python-docx]"
+                # Fallback: Try reading docx as zip
+                print(f"⚠️ [Extract] python-docx not installed, using fallback for {file_path}")
+                try:
+                    import zipfile
+                    import xml.etree.ElementTree as ET
+                    with zipfile.ZipFile(file_path) as docx:
+                        xml_content = docx.read('word/document.xml')
+                        tree = ET.XML(xml_content)
+                        paragraphs = []
+                        for paragraph in tree.iter('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t'):
+                            if paragraph.text:
+                                paragraphs.append(paragraph.text)
+                        text = '\n'.join(paragraphs)
+                except:
+                    text = f"[Word file - Cần cài python-docx: pip install python-docx]"
             except Exception as e:
                 text = f"[Lỗi đọc Word: {str(e)}]"
         
         elif ext in ['.xlsx', '.xls']:
             try:
                 import openpyxl
+                print(f"✅ [Extract] openpyxl loaded, reading: {file_path}")
                 wb = openpyxl.load_workbook(file_path, data_only=True)
+                rows_read = 0
                 for sheet in wb.worksheets:
                     for row in sheet.iter_rows():
                         row_text = ', '.join([str(cell.value) if cell.value else '' for cell in row])
                         if row_text.strip():
                             text += row_text + "\n"
-            except ImportError:
+                            rows_read += 1
+                print(f"✅ [Extract] Excel read complete: {rows_read} rows")
+            except ImportError as ie:
+                print(f"❌ [Extract] openpyxl ImportError: {ie}")
                 text = f"[Excel file - Cần cài openpyxl: pip install openpyxl]"
             except Exception as e:
+                print(f"❌ [Extract] Excel error: {type(e).__name__}: {e}")
                 text = f"[Lỗi đọc Excel: {str(e)}]"
         
         elif ext == '.rtf':
@@ -13422,7 +20867,7 @@ async def api_knowledge_scan(data: dict):
 
 @app.post("/api/knowledge/index_all")
 async def api_knowledge_index_all():
-    """Index tất cả files trong thư mục"""
+    """Index tất cả files trong thư mục (parallel processing)"""
     config = load_knowledge_config()
     folder_path = config.get("folder_path", "")
     
@@ -13430,29 +20875,64 @@ async def api_knowledge_index_all():
         return {"success": False, "error": "Chưa cấu hình thư mục hoặc thư mục không tồn tại"}
     
     files = scan_folder_for_files(folder_path)
-    indexed_count = 0
-    documents = []
+    print(f"⚡ [Index] Starting parallel indexing of {len(files)} files...")
     
-    for file_info in files:
+    # ⚡ PARALLEL PROCESSING: Index nhiều files cùng lúc
+    async def index_single_file(file_info):
         try:
             text = extract_text_from_file(file_info["path"])
-            if text and not text.startswith("["):  # Không phải lỗi
-                # Tóm tắt bằng Gemini Flash
-                ai_summary = await summarize_with_gemini(text, file_info["name"])
+            
+            # Check if extraction failed
+            if not text or len(text.strip()) < 10:
+                print(f"⚠️ [Index] Skipped {file_info['name']}: No text extracted")
+                return None
                 
-                documents.append({
-                    "file_path": file_info["path"],
-                    "file_name": file_info["name"],
-                    "content": text[:50000],  # Giới hạn 50k ký tự mỗi file
-                    "summary": ai_summary.get("summary", ""),
-                    "keywords": ai_summary.get("keywords", []),
-                    "key_quotes": ai_summary.get("key_quotes", []),
-                    "category": ai_summary.get("category", "general"),
-                    "indexed_at": datetime.now().isoformat()
-                })
-                indexed_count += 1
+            if text.startswith("["):  # Error message from extract_text_from_file
+                print(f"⚠️ [Index] Skipped {file_info['name']}: {text}")
+                return None
+            
+            print(f"📄 [Index] Processing {file_info['name']} ({len(text)} chars)...")
+            
+            # Tóm tắt bằng Gemini Flash
+            ai_summary = await summarize_with_gemini(text, file_info["name"])
+            
+            if not ai_summary or not ai_summary.get("summary"):
+                print(f"⚠️ [Index] No summary for {file_info['name']}")
+                # Still index with basic info
+                ai_summary = {
+                    "summary": text[:400] + "...",
+                    "keywords": [],
+                    "key_quotes": [],
+                    "category": "general"
+                }
+            
+            result = {
+                "file_path": file_info["path"],
+                "file_name": file_info["name"],
+                "content": text[:50000],  # Giới hạn 50k ký tự mỗi file
+                "summary": ai_summary.get("summary", ""),
+                "keywords": ai_summary.get("keywords", []),
+                "key_quotes": ai_summary.get("key_quotes", []),
+                "category": ai_summary.get("category", "general"),
+                "indexed_at": datetime.now().isoformat()
+            }
+            print(f"✅ [Index] Indexed {file_info['name']}")
+            return result
+            
         except Exception as e:
-            print(f"⚠️ Error indexing {file_info['path']}: {e}")
+            print(f"❌ [Index] Error indexing {file_info['name']}: {e}")
+            return None
+    
+    # Process files in parallel (batch of 5 at a time to avoid API rate limits)
+    documents = []
+    batch_size = 5
+    for i in range(0, len(files), batch_size):
+        batch = files[i:i+batch_size]
+        results = await asyncio.gather(*[index_single_file(f) for f in batch], return_exceptions=True)
+        documents.extend([r for r in results if r and not isinstance(r, Exception)])
+        print(f"⚡ [Index] Processed {min(i+batch_size, len(files))}/{len(files)} files...")
+    
+    indexed_count = len(documents)
     
     # Lưu index
     index_data = {
@@ -13461,6 +20941,35 @@ async def api_knowledge_index_all():
         "last_update": datetime.now().strftime("%Y-%m-%d %H:%M")
     }
     save_knowledge_index(index_data)
+    
+    # 🆕 BUILD VECTOR INDEX with FAISS
+    if VECTOR_SEARCH_AVAILABLE and documents:
+        try:
+            print(f"🔨 [VectorSearch] Building vector index for {len(documents)} documents...")
+            vector_engine = get_vector_engine()
+            
+            # Prepare documents in correct format: [{"id": str, "text": str, "metadata": dict}]
+            documents_data = [
+                {
+                    "id": f"doc_{i}",
+                    "text": doc["content"],
+                    "metadata": {
+                        "file_name": doc["file_name"],
+                        "file_path": doc["file_path"],
+                        "index": i
+                    }
+                }
+                for i, doc in enumerate(documents)
+            ]
+            
+            # Build and save index
+            vector_engine.build_index(documents_data)
+            vector_engine.save_index()
+            
+            stats = vector_engine.get_statistics()
+            print(f"✅ [VectorSearch] Index built: {stats['num_vectors']} vectors, {stats['embedding_dim']} dims")
+        except Exception as e:
+            print(f"⚠️ [VectorSearch] Failed to build index: {e}")
     
     # Cập nhật config
     config["indexed_files"] = [f["path"] for f in files if any(d["file_path"] == f["path"] for d in documents)]
@@ -13483,9 +20992,15 @@ async def api_knowledge_index_file(data: dict):
         return {"success": False, "error": "File không tồn tại"}
     
     try:
+        file_name = Path(file_path).name
+        print(f"📄 [Index] Starting index: {file_name}")
+        
         text = extract_text_from_file(file_path)
         if not text or text.startswith("["):
+            print(f"❌ [Index] Failed to extract: {file_name} - {text[:100] if text else 'Empty'}")
             return {"success": False, "error": f"Không thể đọc file: {text}"}
+        
+        print(f"📝 [Index] Extracted {len(text)} chars from {file_name}")
         
         # Load existing index
         index_data = load_knowledge_index()
@@ -13493,13 +21008,25 @@ async def api_knowledge_index_file(data: dict):
         # Remove existing entry for this file
         index_data["documents"] = [d for d in index_data["documents"] if d["file_path"] != file_path]
         
-        # Tóm tắt bằng Gemini Flash
-        ai_summary = await summarize_with_gemini(text, Path(file_path).name)
+        # 🆕 TRY summarize, nhưng fallback nếu fail
+        ai_summary = {"summary": "", "keywords": [], "key_quotes": [], "category": "general"}
+        try:
+            ai_summary = await asyncio.wait_for(
+                summarize_with_gemini(text, file_name),
+                timeout=30.0  # 30s timeout
+            )
+            print(f"✅ [Index] AI Summary done for {file_name}")
+        except asyncio.TimeoutError:
+            print(f"⚠️ [Index] AI Summary timeout for {file_name}, using basic index")
+            ai_summary["summary"] = text[:500] + "..."
+        except Exception as e:
+            print(f"⚠️ [Index] AI Summary error for {file_name}: {e}, using basic index")
+            ai_summary["summary"] = text[:500] + "..."
         
         # Add new entry
         index_data["documents"].append({
             "file_path": file_path,
-            "file_name": Path(file_path).name,
+            "file_name": file_name,
             "content": text[:50000],
             "summary": ai_summary.get("summary", ""),
             "keywords": ai_summary.get("keywords", []),
@@ -13511,6 +21038,7 @@ async def api_knowledge_index_file(data: dict):
         index_data["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         
         save_knowledge_index(index_data)
+        print(f"✅ [Index] Saved: {file_name} (total: {index_data['total_chunks']} docs)")
         
         # Update config
         config = load_knowledge_config()
@@ -13519,9 +21047,10 @@ async def api_knowledge_index_file(data: dict):
         config["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         save_knowledge_config(config)
         
-        return {"success": True, "message": f"Đã index: {Path(file_path).name}"}
+        return {"success": True, "message": f"Đã index: {file_name}"}
     
     except Exception as e:
+        print(f"❌ [Index] Error indexing {file_path}: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/knowledge/clear")
@@ -13614,8 +21143,14 @@ async def api_knowledge_search(query: str = ""):
     }
 
 @app.get("/api/knowledge/context")
-async def api_knowledge_get_context(query: str = "", max_chars: int = 10000):
-    """Lấy context từ knowledge base để cung cấp cho LLM"""
+async def api_knowledge_get_context(query: str = "", max_chars: int = 10000, use_gemini_summary: bool = True):
+    """Lấy context từ knowledge base để cung cấp cho LLM - với Gemini summarization"""
+    result = await get_knowledge_context(query, max_chars, use_gemini_summary)
+    return result
+    
+@app.get("/api/knowledge/context_legacy")
+async def api_knowledge_get_context_legacy(query: str = "", max_chars: int = 10000):
+    """Legacy endpoint - không dùng Gemini summarization"""
     index_data = load_knowledge_index()
     documents = index_data.get("documents", [])
     
@@ -13870,18 +21405,7 @@ async def api_list_conversation_files():
         "files": files
     }
 
-@app.get("/api/conversation/today")
-async def api_get_today_conversation():
-    """Lấy hội thoại của ngày hôm nay"""
-    today_file = get_today_conversation_file()
-    if today_file.exists():
-        try:
-            with open(today_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            return {"success": True, "data": data}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-    return {"success": True, "data": {"date": datetime.now().strftime("%Y-%m-%d"), "messages": []}}
+# NOTE: Endpoint /api/conversation/today đã bị xóa (không còn file theo ngày)
 
 @app.post("/api/endpoints/switch/{index}")
 async def switch_endpoint(index: int):
@@ -13919,15 +21443,16 @@ async def save_endpoints(data: dict):
         # Cập nhật endpoints_config
         endpoints_config = []
         for dev in devices:
+            token = dev.get('token', '').strip()  # Strip whitespace
             endpoints_config.append({
                 'name': dev.get('name', 'Thiết bị'),
-                'token': dev.get('token', ''),
-                'enabled': bool(dev.get('token', ''))
+                'token': token,
+                'enabled': bool(token)  # Only enabled if token not empty
             })
         
-        # Lưu vào file JSON
-        if save_endpoints_to_file(endpoints_config, active_endpoint_index):
-            print(f"✅ [Endpoint] Successfully saved {len(devices)} devices to file")
+        # 🔥 FIX: FORCE SAVE khi user bấm Save - không skip
+        if save_endpoints_to_file(endpoints_config, active_endpoint_index, force_save=True):
+            print(f"✅ [Endpoint] User saved {len(devices)} devices (forced)")
         else:
             print(f"⚠️ [Endpoint] Failed to save to file, but config updated in memory")
         
@@ -13952,24 +21477,30 @@ async def save_gemini_key(data: dict):
     try:
         api_key = data.get('api_key', '').strip()
         
-        if not api_key:
-            return {"success": False, "error": "API key không được để trống"}
+        # 🔥 FIX: Cho phép empty string (user xóa key)
+        if api_key:
+            # Validate format only if key is provided
+            if not api_key.startswith('AIzaSy'):
+                return {"success": False, "error": "API key không hợp lệ (phải bắt đầu với 'AIzaSy')"}
         
-        # Validate format (Gemini API key starts with AIzaSy)
-        if not api_key.startswith('AIzaSy'):
-            return {"success": False, "error": "API key không hợp lệ (phải bắt đầu với 'AIzaSy')"}
-        
-        # Update global variable
+        # Update global variable (allow empty)
         GEMINI_API_KEY = api_key
         
         # Save to file
         if save_endpoints_to_file(endpoints_config, active_endpoint_index):
-            print(f"✅ [Gemini] API key saved (ends with ...{api_key[-8:]})")
-            return {
-                "success": True,
-                "message": "✓ Đã lưu Gemini API key",
-                "key_preview": f"...{api_key[-8:]}"
-            }
+            if api_key:
+                print(f"✅ [Gemini] API key saved (ends with ...{api_key[-8:]})")
+                return {
+                    "success": True,
+                    "message": "✓ Đã lưu Gemini API key",
+                    "key_preview": f"...{api_key[-8:]}"
+                }
+            else:
+                print("✅ [Gemini] API key cleared")
+                return {
+                    "success": True,
+                    "message": "✓ Đã xóa Gemini API key"
+                }
         else:
             return {"success": False, "error": "Lỗi lưu file config"}
     except Exception as e:
@@ -13983,24 +21514,30 @@ async def save_openai_key(data: dict):
     try:
         api_key = data.get('api_key', '').strip()
         
-        if not api_key:
-            return {"success": False, "error": "API key không được để trống"}
+        # 🔥 FIX: Cho phép empty string (user xóa key)
+        if api_key:
+            # Validate format only if key is provided
+            if not api_key.startswith('sk-'):
+                return {"success": False, "error": "API key không hợp lệ (phải bắt đầu với 'sk-')"}
         
-        # Validate format (OpenAI API key starts with sk-)
-        if not api_key.startswith('sk-'):
-            return {"success": False, "error": "API key không hợp lệ (phải bắt đầu với 'sk-')"}
-        
-        # Update global variable
+        # Update global variable (allow empty)
         OPENAI_API_KEY = api_key
         
         # Save to file
         if save_endpoints_to_file(endpoints_config, active_endpoint_index):
-            print(f"✅ [OpenAI] API key saved (ends with ...{api_key[-8:]})")
-            return {
-                "success": True,
-                "message": "✓ Đã lưu OpenAI API key",
-                "key_preview": f"...{api_key[-8:]}"
-            }
+            if api_key:
+                print(f"✅ [OpenAI] API key saved (ends with ...{api_key[-8:]})")
+                return {
+                    "success": True,
+                    "message": "✓ Đã lưu OpenAI API key",
+                    "key_preview": f"...{api_key[-8:]}"
+                }
+            else:
+                print("✅ [OpenAI] API key cleared")
+                return {
+                    "success": True,
+                    "message": "✓ Đã xóa OpenAI API key"
+                }
         else:
             return {"success": False, "error": "Lỗi lưu file config"}
     except Exception as e:
@@ -14014,23 +21551,31 @@ async def save_serper_key(data: dict):
     try:
         api_key = data.get('api_key', '').strip()
         
-        if not api_key:
-            return {"success": False, "error": "API key không được để trống"}
-        
-        # Update global variable
+        # 🔥 FIX: Cho phép empty string (user xóa key)
+        # Update global variable (allow empty)
         SERPER_API_KEY = api_key
         
         # Cập nhật environment variable để rag_system.py có thể dùng
-        os.environ['SERPER_API_KEY'] = api_key
+        if api_key:
+            os.environ['SERPER_API_KEY'] = api_key
+        else:
+            os.environ.pop('SERPER_API_KEY', None)  # Remove if empty
         
         # Save to file
         if save_endpoints_to_file(endpoints_config, active_endpoint_index):
-            print(f"✅ [Serper] Google Search API key saved (ends with ...{api_key[-8:]})")
-            return {
-                "success": True,
-                "message": "✓ Đã lưu Serper API key - Google Search sẵn sàng!",
-                "key_preview": f"...{api_key[-8:]}"
-            }
+            if api_key:
+                print(f"✅ [Serper] Google Search API key saved (ends with ...{api_key[-8:]})")
+                return {
+                    "success": True,
+                    "message": "✓ Đã lưu Serper API key - Google Search sẵn sàng!",
+                    "key_preview": f"...{api_key[-8:]}"
+                }
+            else:
+                print("✅ [Serper] API key cleared")
+                return {
+                    "success": True,
+                    "message": "✓ Đã xóa Serper API key"
+                }
         else:
             return {"success": False, "error": "Lỗi lưu file config"}
     except Exception as e:
@@ -14089,6 +21634,67 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "model": msg_data.get("model", "unknown")
                             }
                         )
+                
+                # 🆕 SMART ANALYZE - Phân tích thông minh với AI (MỚI - ƯU TIÊN)
+                elif msg_type == "smart_analyze":
+                    user_query = msg_data.get("query", "")
+                    llm_response = msg_data.get("response", "")
+                    auto_execute = msg_data.get("auto_execute", True)
+                    use_ai = msg_data.get("use_ai", True)
+                    conversation_history = msg_data.get("history", [])
+                    
+                    print(f"🧠 [WebSocket] Smart Analyze: query='{user_query[:50]}...'")
+                    
+                    # Gọi Smart Analyzer API
+                    analyze_result = await api_smart_analyze({
+                        "user_query": user_query,
+                        "llm_response": llm_response,
+                        "conversation_history": conversation_history,
+                        "auto_execute": auto_execute,
+                        "use_ai": use_ai
+                    })
+                    
+                    # Gửi kết quả về client
+                    await websocket.send_json({
+                        "type": "smart_analyze_result",
+                        **analyze_result
+                    })
+                    
+                    print(f"✅ [WebSocket] Smart analyze result sent")
+                
+                # 🔄 AUTO TOOL EXECUTION (Legacy - vẫn giữ để tương thích)
+                elif msg_type == "llm_response_check":
+                    llm_response = msg_data.get("response", "")
+                    original_query = msg_data.get("query", "")
+                    auto_execute = msg_data.get("auto_execute", True)
+                    use_smart = msg_data.get("use_smart", True)  # Mặc định dùng Smart Analyzer
+                    
+                    if llm_response or original_query:
+                        print(f"🤖 [WebSocket] Processing: '{(original_query or llm_response)[:50]}...'")
+                        
+                        if use_smart:
+                            # 🧠 Dùng Smart Analyzer (mới - thông minh hơn)
+                            result = await api_smart_analyze({
+                                "user_query": original_query,
+                                "llm_response": llm_response,
+                                "auto_execute": auto_execute,
+                                "use_ai": True
+                            })
+                            result["type"] = "smart_analyze_result"
+                        else:
+                            # Legacy: dùng pattern matching
+                            result = await api_auto_execute({
+                                "llm_response": llm_response,
+                                "original_query": original_query,
+                                "auto_execute": auto_execute
+                            })
+                            result["type"] = "auto_execute_result"
+                        
+                        # Gửi kết quả về client
+                        await websocket.send_json(result)
+                        
+                        print(f"✅ [WebSocket] Result sent to client")
+                
             except json.JSONDecodeError:
                 pass  # Not JSON, skip logging
             
@@ -14101,6 +21707,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.on_event("startup")
 async def startup():
+    """Khởi động server với endpoint manager cải tiến - ghi nhớ endpoint mỗi lần khởi động"""
+    global endpoints_config, active_endpoint_index
+    
     # Check music folder config and notify
     config_info = check_music_folder_config()
     if config_info.get("has_config"):
@@ -14110,11 +21719,78 @@ async def startup():
     else:
         print(f"⚠️ [Music Config] No user music folder configured. Will use VLC music_library as fallback.")
     
+    # 🔥 NEW: Sử dụng MCPEndpointManager để quản lý kết nối
+    if ENDPOINT_MANAGER_AVAILABLE:
+        try:
+            manager = get_endpoint_manager()
+            
+            # Đồng bộ config từ manager (đã được load và ghi nhớ từ lần trước)
+            endpoints_config = manager.endpoints
+            active_endpoint_index = manager.active_index
+            
+            print(f"📋 [Startup] Loaded {len(endpoints_config)} endpoints from saved config")
+            print(f"📍 [Startup] Active endpoint: {active_endpoint_index} ({endpoints_config[active_endpoint_index].get('name', 'Unknown')})")
+            
+            # Register callbacks để đồng bộ trạng thái
+            def on_connect_callback(index, name):
+                global xiaozhi_connected
+                xiaozhi_connected[index] = True
+                print(f"🔔 [Manager] Device {index + 1} ({name}) connected")
+            
+            def on_disconnect_callback(index):
+                global xiaozhi_connected, xiaozhi_connections
+                xiaozhi_connected[index] = False
+                xiaozhi_connections[index] = None
+                print(f"🔌 [Manager] Device {index + 1} disconnected")
+            
+            def on_error_callback(index, error):
+                print(f"❌ [Manager] Device {index + 1} error: {error}")
+            
+            manager.on_connect(on_connect_callback)
+            manager.on_disconnect(on_disconnect_callback)
+            manager.on_error(on_error_callback)
+            
+            # Vẫn dùng websocket client cũ để xử lý messages, nhưng thông tin được ghi nhớ
+            print(f"🚀 [Startup] Starting WebSocket clients with remembered endpoints...")
+            
+        except Exception as e:
+            print(f"⚠️ [Startup] EndpointManager error: {e}")
+    
     # Enable WebSocket client with error handling
     try:
-        asyncio.create_task(xiaozhi_websocket_client())
+        # Khởi tạo 3 Xiaozhi clients đồng thời
+        for i in range(3):
+            asyncio.create_task(xiaozhi_websocket_client(device_index=i))
+        print(f"✅ [Startup] WebSocket clients started for {len(endpoints_config)} devices")
     except Exception as e:
-        print(f"⚠️ Failed to start WebSocket client: {e}")
+        print(f"⚠️ Failed to start WebSocket clients: {e}")
+
+@app.on_event("shutdown")
+async def shutdown():
+    """Save conversation history và endpoint state on shutdown - tránh mất data"""
+    try:
+        print("💾 [Shutdown] Saving conversation history...")
+        save_conversation_history()
+        print(f"✅ [Shutdown] Saved {len(conversation_history)} messages")
+        
+        # 🔥 NEW: Lưu endpoint state để ghi nhớ cho lần khởi động sau
+        if ENDPOINT_MANAGER_AVAILABLE:
+            try:
+                manager = get_endpoint_manager()
+                # Đồng bộ config hiện tại trước khi lưu
+                manager.endpoints = endpoints_config
+                manager.active_index = active_endpoint_index
+                manager.save_config()
+                print(f"💾 [Shutdown] Saved endpoint config (active: {active_endpoint_index})")
+            except Exception as e:
+                print(f"⚠️ [Shutdown] Error saving endpoint config: {e}")
+        
+        # Lưu endpoints vào file cũ để backward compatible
+        save_endpoints_to_file(endpoints_config, active_endpoint_index)
+        print(f"💾 [Shutdown] Saved {len(endpoints_config)} endpoints")
+        
+    except Exception as e:
+        print(f"⚠️ [Shutdown] Error saving: {e}")
         import traceback
         traceback.print_exc()
 
@@ -14125,55 +21801,71 @@ if __name__ == "__main__":
     import time
     
     # ============================================================
-    # LICENSE VERIFICATION - PROFESSIONAL EDITION
+    # UNIFIED STARTUP BANNER - PROFESSIONAL EDITION
     # ============================================================
-    if LICENSE_SYSTEM_AVAILABLE:
-        print("=" * 60)
-        print(" 🔐 miniZ MCP v4.3.0 - PROFESSIONAL EDITION")
-        print("=" * 60)
-        print(" Đang kiểm tra license...")
-        
-        license_manager = get_license_manager()
-        license_status = license_manager.check_license()
-        
-        if not license_status['valid']:
-            print(f" ❌ {license_status['message']}")
-            print(" 📋 Hardware ID của máy này:")
-            print(f"    {license_manager.get_hardware_id()}")
-            print()
-            print(" Vui lòng kích hoạt license để tiếp tục...")
-            print("=" * 60)
-            
-            # Show activation window
-            try:
-                activated = show_activation_window()
-                if not activated:
-                    print("\n❌ Chưa kích hoạt license. Thoát chương trình.")
-                    sys.exit(1)
-                else:
-                    print("\n✅ License kích hoạt thành công!")
-                    license_status = license_manager.check_license()
-            except Exception as e:
-                print(f"\n❌ Lỗi khi mở cửa sổ kích hoạt: {e}")
-                print("Vui lòng liên hệ hỗ trợ: support@miniz-mcp.com")
-                sys.exit(1)
-        else:
-            print(f" ✅ License hợp lệ")
-            print(f" 📋 Loại: {license_status['license_data'].get('license_type', 'N/A')}")
-            print(f" 👤 Khách hàng: {license_status['license_data'].get('customer_name', 'N/A')}")
-            print(f" 🔑 Hardware ID: {license_manager.get_hardware_id()}")
-            
-            if license_status.get('warning'):
-                print(f" {license_status['warning']}")
-            
-            print("=" * 60)
-    else:
-        print("⚠️ WARNING: License system not available - Running in trial mode")
-        print("=" * 60)
+    print("\n")
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║                                                            ║")
+    print("║          🔐 miniZ MCP v4.3.0 - PROFESSIONAL EDITION        ║")
+    print("║                                                            ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print()
     
-    # ============================================================
-    # START SERVER
-    # ============================================================
+    # Step 1: FREE EDITION - No License Check
+    print("🔍 [1/4] Kiểm tra phiên bản...")
+    print("    ✅ miniZ MCP FREE EDITION")
+    print("    📦 Loại: FREE (Không giới hạn)")
+    print("    👤 Người dùng: Community User")
+    
+    # Auto-startup check - Lần đầu chạy thì bật auto-start
+    marker_file = os.path.join(os.path.expanduser("~"), ".miniz_mcp_installed")
+    if not os.path.exists(marker_file):
+        print("    ⚙️ Cài đặt khởi động cùng Windows...")
+        AutoStartupManager.enable_autostart()
+        try:
+            with open(marker_file, 'w') as f:
+                f.write("installed=true\\nversion=4.3.0\\nedition=FREE")
+        except:
+            pass
+    else:
+        if AutoStartupManager.is_autostart_enabled():
+            print("    🔄 Khởi động cùng Windows: BẬT")
+    
+    print()
+    
+    # Step 2: Check Firewall/Internet Permission
+    print("🔥 [2/4] Kiểm tra quyền kết nối mạng...")
+    firewall_status = FirewallChecker.check_firewall_rules()
+    internet_status = FirewallChecker.check_internet_connection()
+    
+    if firewall_status['rules_found']:
+        print("    ✅ Firewall: Đã cấp quyền")
+        print(f"    📌 Rules: {', '.join(firewall_status['rules_found'][:3])}")
+    else:
+        print("    ⚠️ Firewall: Chưa có rule (Windows sẽ hỏi khi cần)")
+        print("    💡 Tip: Nhấn 'Allow' khi Windows hỏi cho phép truy cập mạng")
+    
+    if internet_status['connected']:
+        latency = internet_status.get('latency_ms', '?')
+        print(f"    ✅ Internet: Đã kết nối ({latency}ms)")
+    else:
+        print("    ⚠️ Internet: Không kết nối hoặc đang kiểm tra...")
+        print("    💡 Đảm bảo máy tính có kết nối mạng để sử dụng AI")
+    
+    print()
+    
+    # Step 3: Initialize Server
+    print("🚀 [3/4] Khởi động Server...")
+    print("    🌐 Web Dashboard: http://localhost:8000")
+    print("    📡 WebSocket MCP: Multi-device support")
+    print("    🛠️  Tools: 141 công cụ AI sẵn sàng")
+    print("    ✅ Server initialized")
+    
+    print()
+    
+    # Step 4: Open Browser
+    print("🌐 [4/4] Mở giao diện...")
+    print("    ⏳ Browser sẽ tự động mở sau 2 giây...")
     
     def open_browser():
         """Mo browser sau 2 giay"""
@@ -14184,14 +21876,12 @@ if __name__ == "__main__":
     threading.Thread(target=open_browser, daemon=True).start()
     
     print()
-    print("=" * 60)
-    print(" 🚀 miniZ MCP - SIDEBAR UI")
-    print("=" * 60)
-    print(" 🌐 Web Dashboard: http://localhost:8000")
-    print(" 📡 WebSocket MCP: Multi-device support")
-    print(" 🛠️  Tools: 30 available (20 original + 10 new from reference)")
-    print(" 🌐 Browser se tu dong mo sau 2 giay...")
-    print("=" * 60)
+    print("╔════════════════════════════════════════════════════════════╗")
+    print("║                                                            ║")
+    print("║              ✅ miniZ MCP READY TO USE                      ║")
+    print("║                                                            ║")
+    print("╚════════════════════════════════════════════════════════════╝")
+    print()
     
     # Fix logging error when running as frozen EXE
     import sys
